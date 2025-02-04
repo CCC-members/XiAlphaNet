@@ -1,0 +1,19 @@
+function [x_opt] = np_ref_solution(x)
+x0 = x.Solution;
+[e,a,s2] = x2v(x0);
+ta = set_threshold_em(a(:,1));
+te = set_threshold_em(e(:,1));
+%t0 = min(ta,te);
+pos_a = (a(:,1)>ta);
+a(:,1) = a(:,1).* pos_a;
+a(:,2) = a(:,2).* pos_a;
+a(:,3) = a(:,3).* pos_a;
+a(:,4) = a(:,4).* pos_a;
+pos_e = (e(:,1)>te);
+e(:,1) = e(:,1).* pos_e;
+e(:,2) = e(:,2).* pos_e;
+e(:,3) = e(:,3).* pos_e;
+x0 = v2x(e,a,s2);
+x.Solution = x0;
+x_opt = x;
+end

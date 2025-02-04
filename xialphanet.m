@@ -56,7 +56,7 @@ if(getGlobalGuimode())
     XiAlphaNet
 else
     %checked = check_properties()
-    processing_interface(properties)
+    process_interface(properties)
 
     %% Finishing process
     disp('--------------------------Process finished.-------------------------------');
