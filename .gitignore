@@ -1,0 +1,8 @@
+*.asv
+Thumbs.db*
+data/
+results/
+tmp/
+Data/
+Reports/
+
