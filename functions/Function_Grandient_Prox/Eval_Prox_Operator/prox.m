@@ -1,21 +1,15 @@
-function [p] = prox(x, c, parameters)
+function [p] = prox(x, c)
     % Split x into parts e, a, s2 using x2v function
     [e, a, s2] = x2v(x);  
 
     % Retrieve the threshold parameter
-    t = parameters.Threshold;
 
     % Apply ridge and group lasso proximal functions
     % Ensure s2 is above a minimum value
     s2 = abs(max(prox_ridge(s2, c(1)), 10^(-3)));
     % Ensure e and a are non-negative after applying proximal functions
-    e = abs(max(prox_glasso(e, c(2)), 0));
-    a = abs(max(prox_glasso(a, c(3)), 0));
-
-    % Prevent overfitting the activation
-    % Limit the first column of e and a based on the threshold
-    %e(:, 1) = min(e(:, 1), 4/5*t);
-    %a(:, 1) = min(a(:, 1), t/5);
+    e(:,1:3) = abs(max(prox_glasso(e(:,1:3), c(2)), 0));
+    a(:,1:3) = abs(max(prox_glasso(a(:,1:3), c(3)), 0));
 
     % Identify non-zero entries in a and e
     nonzero_positions_a = a(:, 1) ~= 0;
@@ -25,7 +19,7 @@ function [p] = prox(x, c, parameters)
     if any(nonzero_positions_a)
          a(nonzero_positions_a, 4) = max(min(a(nonzero_positions_a, 4), 13), 7);
          a(nonzero_positions_a, 2) = max(min(a(nonzero_positions_a, 2), 0.009), 0.0009);
-         a(nonzero_positions_a, 3) = max(min(a(nonzero_positions_a, 3), 40), 5);
+         a(nonzero_positions_a, 3) = max(min(a(nonzero_positions_a, 3), 40), 0.001);
         % a(nonzero_positions_a, 1) = min(a(nonzero_positions_a,1),e(nonzero_positions_a,1)/5);
      end
 % 

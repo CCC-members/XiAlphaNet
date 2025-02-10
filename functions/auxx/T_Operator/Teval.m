@@ -1,4 +1,4 @@
-function  [parameters] = Teval(parameters)
+function  [T] = Teval(parameters)
 %% 
 Nw = parameters.Dimensions.Nw;
 Ne = parameters.Dimensions.Ne;
@@ -14,8 +14,6 @@ else
     D = parameters.Model.D;
 end
 
-%R = parameters.Model.R;
-%E = parameters.Model.E;
 
 freq = parameters.Data.freq;
 %%
@@ -37,6 +35,5 @@ else
     end
 end 
 toc
-parameters.Model.T = T;
 
 end

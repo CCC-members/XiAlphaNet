@@ -10,7 +10,7 @@ close all;
 %% Reading Anatomical Data
 
 setup;
-disp('--> Reading Anatomical Data')
+disp('-->> Reading Anatomical Data')
 load('Data/Atlas_Anatomical/tess_cortex_mid_high_8000V_fix.mat');
 load('Data/Avarege_Conn&Tract_ROISpace/averageConnectivity_tractLengths.mat');
 load('Data/Avarege_Conn&Tract_ROISpace/averageConnectivity_Fpt.mat');
@@ -53,8 +53,8 @@ disp ("-->> Correcting the Anatomical Connectivity by the Atlas");
 Fpt = exp(Fpt);
 Fpt = nulldiag(Fpt);
 corrected_conn = Fpt(new_order, new_order);
-corrected_conn = corrected_conn/max(max(corrected_conn));
-Fpt = Fpt/max(max(Fpt));
+corrected_conn = corrected_conn/norm(corrected_conn,'fro');
+Fpt = Fpt/norm(Fpt,'fro');
 
 %% Read and Correct Delay Matrix Between Neurotracts
 
@@ -86,9 +86,14 @@ end
 corrected_delay= delay(new_order, new_order);
 correted_delay = sym_matrix(corrected_delay); 
 
-% Fill the nan entries using gaussian processes regression 
-load('Data/Average_Velocity_ROISpace/GPfit_Delay_Mean.mat');
+% Fill the nan entries such that the distribution its preseved 
+%load('Data/Average_Velocity_ROISpace/GPfit_Delay_Mean.mat');
 nonnan_corrected_delay=corrected_delay;
+nan_indices = isnan(corrected_delay);
+mean_delays_ms = 9.5;
+speed_mm_per_ms = mean(mean(corrected_tractLengths(nan_indices)))/mean_delays_ms;
+nonnan_corrected_delay(nan_indices) = corrected_tractLengths(nan_indices)/speed_mm_per_ms;
+corrected_delay(nan_indices) = nonnan_corrected_delay(nan_indices) ;
 
 %% Visualize the Tract and Connectivity Matrices in the ROI Space
 
@@ -234,7 +239,7 @@ end
 
 %% Average Reference Cross
 
-disp('--> Preforming Average Reference on the Cross-Spectrum')
+disp('-->> Preforming Average Reference on the Cross-Spectrum')
 load('Data/Scalp_Density_Matrix/Control/F5NEYQ3SO5AQ.mat')
 % Frequency
 Nw = 47;
@@ -255,7 +260,7 @@ E = roi_voxel_map;
 
 % Full Model of Spatio - Temporal Correlation on the Voxel Space
 parameters.Model.K = Gain;    % Lead Field
-parameters.Model.C =  0.02*conn_8K; % Anatomical Conenctivity
+parameters.Model.C =  conn_8K; % Anatomical Conenctivity
 parameters.Model.L = tract_8K; % Length of the tracts
 parameters.Model.D = delay_8K/1000; % delays in seconds 
 parameters.Model.R = R;  % Projection matrix from Voxel to ROI space
@@ -264,7 +269,7 @@ parameters.Model.C_local =conn_local8K;  % Local Connectivity Structure
 
 % Compress Model  of Spatio - Temporal Correlations on the ROI Space
 parameters.Compact_Model.K = Gain*R';    % Lead Field
-parameters.Compact_Model.C = 0.02*corrected_conn;  %  Anatomical Connectivity
+parameters.Compact_Model.C = corrected_conn;  %  Anatomical Connectivity
 parameters.Compact_Model.L = corrected_tractLengths; % Length of the Neurotracts
 parameters.Compact_Model.D =corrected_delay/1000; % delays in seconds 
 parameters.Compact_Model.R = R; 
@@ -306,7 +311,7 @@ disp ("-->> Delete unnecesary data");
 clear all 
 
 % Compute the T_operator T = I- Conn*exp(-2 pi i w Delay)
-disp ("-->> Compute the Transfer Function of Model (May take some time)");
+disp ("-->> Compute the Transfer Function of the Model (May take some time)");
 
 load('Data/Model_Parameters/parameters.mat');
 tic

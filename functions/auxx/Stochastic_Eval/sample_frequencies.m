@@ -1,4 +1,4 @@
-function [parameters] = sample_frequencies(parameters)
+function [Nsfreq,sw,sp] = sample_frequencies(freq,index_stoch,Nsfreq)
     % This function samples frequencies randomly from the given input parameters
     % using stratified sampling if enabled. It returns an array of sampled frequencies and their
     % positions in the original frequency array.
@@ -13,10 +13,10 @@ function [parameters] = sample_frequencies(parameters)
     %   The function updates the parameters structure by adding sampled frequencies
     %   and their positions.
 
-    freq = parameters.Data.freq;
+    % freq = parameters.Data.freq;
 
-    if parameters.Stochastic.stoch == 1
-        k = parameters.Stochastic.Nsfreq;
+    if index_stoch
+        k =Nsfreq;
 
         % Ensure there are enough frequencies to sample
         if numel(freq) < k
@@ -42,15 +42,15 @@ function [parameters] = sample_frequencies(parameters)
         N_numerator = numel(freq);
 
         % Store the sampled frequencies and their indices
-        parameters.Stochastic.Sampled.sw = [sampled_freqs; N_numerator*ones(1, k)];
-        parameters.Stochastic.Sampled.sp = positions;
+        sw = [sampled_freqs; N_numerator*ones(1, k)];
+        sp = positions;
     else
         % If stochastic sampling is not enabled, return all frequencies with an identity marker
         sampled_freqs = freq;
         positions = 1:numel(sampled_freqs);
         N_numerator = 1;  % Marker is set to 1 when no stochastic sampling
-        parameters.Stochastic.Nsfreq  = 1;
-        parameters.Stochastic.Sampled.sw = [sampled_freqs; N_numerator*ones(1, numel(sampled_freqs))];
-        parameters.Stochastic.Sampled.sp = positions;
+        Nsfreq  = 1;
+        sw = [sampled_freqs; N_numerator*ones(1, numel(sampled_freqs))];
+        sp = positions;
     end
 end

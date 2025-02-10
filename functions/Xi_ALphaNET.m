@@ -1,81 +1,89 @@
-function [x,temp_parameters] =  Xi_ALphaNET(parameters)
+function [x] =  Xi_ALphaNET(properties,data,parameters)
 
 disp('-->> Initializing Model Parameters...')
-%Nworkers = 30;
-%parpool(Nworkers);
 
-parameters.Dimensions.Nv = 360;
-parameters.BayesIter0 = 100;
-parameters.BayesIter = 20;
-parameters.Parallel.Conn_Delay = 1;
-parameters.Parallel.Lambda = 0;
-parameters.Parallel.T = 0;
-parameters.Parallel.Kmin = 0;
-parameters.Parallel.StochFISTA = 0;
-parameters.Parallel.Lipt = 1;
-%std_lambdad = 0.57;% The ratio between the standar deviation of the conduction delays over the mean across the lifespan
-lambda_space_cd = [[0.43,1.57];[0.001,1.2]]; 
+Nr = parameters.Dimensions.Nr;
+Nv = parameters.Dimensions.Nv;
+Ne = parameters.Dimensions.Ne;
+Nw = properties.general_params.data.nFreqs;
+BayesIter_Delay = properties.general_params.model.BayesIter_Delay;
+BayesIter_Reg1 = properties.general_params.model.BayesIter_Reg1;
+BayesIter_Reg2 = properties.general_params.model.BayesIter_Reg2;
+Nrand1 = properties.general_params.model.Nrand1;
+Nrand2 = properties.general_params.model.Nrand2;
+lambda_space_cd = properties.general_params.delay.lambda_space_cd;
+conn_delay = properties.general_params.parallel.conn_delay;
+stoch1 = properties.general_params.model.stoch1;
+stoch2 = properties.general_params.model.stoch2;
+tf_default = properties.general_params.tensor_field.default;
+
+
+parameters.Dimensions.Nv = Nr;
+[NewCross,scale] = global_scale_factor_correction(data.Cross);
+data.Cross = NewCross;
+clear NewCross;
+
+ 
+if data.age<15
+   parameters.Model.D=0.0110*parameters.Model.D/ mean(parameters.Model.D(:));
+end
+age = data.age;
+
 
 disp('-->> Estimating Connectivity & Delays Strengths...')
-[lambda_opt_dc] = bayes_search_conn_delay(lambda_space_cd, parameters);
+Cross = data.Cross;
+freq = data.freq;
+K = parameters.Compact_Model.K;
+D = parameters.Compact_Model.D;
+C = parameters.Compact_Model.C;
+
+
+[lambda_opt_dc] = bayes_search_conn_delay(lambda_space_cd, Ne,Nr,Nw,freq,Cross,BayesIter_Reg1,K,D,C,conn_delay,BayesIter_Delay);
+
 
 lambda1 = lambda_opt_dc(1); % Estimated delay strenght
 lambda2 = lambda_opt_dc(2); % Estimated connectivity delay
 % 
-% % Use the lambda values in your calculations
-% %parameters = parameters; % Create a copy to avoid modifying the original
-% parameters.Model.D = lambda1 * parameters.Model.D;
-% parameters.Model.C = lambda2 * parameters.Model.C;
-% 
-% parameters = Teval(parameters);
-% 
-% disp('-->> Estimating Number of Batchs to StochFISTA...')
-% k_min = 30;
-% parameters.Parallel.Kmin = 0;
-% parameters.Stochastic.stoch = 1;
-% parameters.Stochastic.Nsfreq = k_min;
-% parameters.Stochastic.Niter = 1;
-% parameters = sample_frequencies(parameters);
-% parameters.Threshold = activation_threshold(parameters);
-% 
-% disp('-->> Estimating Lipschitz Constant...')
-% parameters.Parallel.Lipt = 1;
-% parameters.Lipschitz = 0.01;%estimateLipschitzConstant(parameters, 1, 100);
-% lambda_space  = [100,1000,1000];
-% 
-% disp('-->> Initializing Bayesian Optimization On Regularization...')
-% parameters.BayesIter = 100;
-% parameters.Parallel.Lambda = 1;
-% [lambda_opt] = bayesianOptSearch(lambda_space, parameters);
-% parameters.Stochastic.stoch = 0;
-% parameters.Stochastic.Niter = 1;
-% parameters.Lipschitz=parameters.Lipschitz;
-% parameters.Threshold=parameters.Threshold;
-% parameters = sample_frequencies(parameters);
-% 
-% disp('-->> Estimating Transfer Function...')
-% 
-% parameters.Dimensions.Nv = 8003;
-% parameters.Parallel.T = 1;
-% parameters = Teval(parameters);
-% temp_parameters = parameters;
-% 
-% disp('-->> Initializing Stochastic FISTA global optimizer...')
-% parameters.Parallel.StochFISTA = 0;
-% [x_opt,~] = stoch_fista_global(lambda_opt, parameters);
-% x.Solution = x_opt.Solution;
+% Use the lambda values to updata connectivity and delays
+
+parameters.Model.D = lambda1 * parameters.Model.D;
+parameters.Model.C = lambda2 * parameters.Model.C;
+
+parameters.Compact_Model.D = lambda1 * parameters.Compact_Model.D;
+parameters.Compact_Model.C = lambda2 * parameters.Compact_Model.C;
+
+T = Teval(parameters);
+disp('-->> Estimating Number of Batchs to StochFISTA...')
+
+k_min = 30;%findMinimumK(parameters, 10, 10);
+
+index_parall_bayes= 1;
+Nsfreq = k_min;
+
+Lipschitz = 0.01;
+
+disp('-->> Initializing Bayesian Optimization On Regularization...')
+lambda_space  = [100,1000,1000];
+
+[lambda_opt] = bayesianOptSearch(lambda_space,Ne,Nr,T,freq,stoch1,0,index_parall_bayes,Nsfreq,Cross,Nrand1,Lipschitz,BayesIter_Reg2);
+
+disp('-->> Estimating Transfer Function...')
+if(tf_default)
+    T = read_tensor_field(lambda1,lambda2,age);
+else
+    T = Teval(parameters);
+end
+clear parameters;
+
+disp('-->> Initializing Stochastic FISTA global optimizer...')
+[x_opt, ~] = stoch_fista_global(lambda_opt, Ne,Nv,T,freq,stoch2,conn_delay,Nsfreq,Cross,Nrand2,Lipschitz);
+
+[e,a,s2] = x2v(x_opt.Solution);
+e(:,1) = e(:,1)/scale;
+a(:,1) = a(:,1)/scale;
+s2 = s2/scale;
+x_opt.Solution = v2x(e,a,s2);
+x.Solution = x_opt.Solution;
 x.Lambda_DC = lambda_opt_dc;
 x.Lambda_reg = lambda_opt;
-x.K_min= k_min;
 end
-% 
-% % % 
-% figure(4)
-% x0 = x.Solution;
-% s = reconstructSDM(x0,temp_parameters);
-% [l0] = log_spectrum(s,temp_parameters);
-% plot(temp_parameters.Data.freq,l0');
-% figure(5) 
-% [l] = log_spectrum(temp_parameters.Data.Cross,temp_parameters);
-% plot(temp_parameters.Data.freq,l');
-% norm(l0-l,'fro')/norm(l,'fro')
