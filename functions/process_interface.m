@@ -33,7 +33,7 @@ end
 %% Loop through each .mat file in the subjects
 subjects = dir(input_path);
 subjects(ismember({subjects.name},{'..','.'})) = [];
-for s=1:10
+for s=1:length(subjects)
     if(isfile(XAN_file))
         XIALPHANET              = jsondecode(fileread(XAN_file));
     end
