@@ -17,7 +17,7 @@ function k_min = findMinimumK(parameters, RE_tol, Nxrand)
 
     % Generate a random x sample for the entire computation
     x = generateRandomSample(parameters, 10); % Generate random x
-
+    x,Ne,T,sw,sp,nsf_band,Sw
     % Evaluate F fully without stochastic sampling
     parameters.Stochastic.stoch = 1;
     parameters.Stochastic.Nsfreq = 47; % Set current k

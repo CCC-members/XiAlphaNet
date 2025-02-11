@@ -1,8 +1,8 @@
-function x = generateRandomSample(parameters, var)
-    Nv = parameters.Dimensions.Nv;
-    t = activation_threshold(parameters);
-    t=t;
-    [mf,stdf,mr,~] = init_freq(parameters);
+function x = generateRandomSample(Ne,Nv,S,T,freq, var)
+    %Nv = parameters.Dimensions.Nv;
+    t = activation_threshold(S,T);
+    %[me,se,ma,sa] = activation_threshold(parameters)
+    [mf,stdf,mr,~] = init_freq(Ne,S,freq);
     % Mean values
     meanE1 = mr*t/(mr+1);     % Target mean for e(:,1)
     meanE2 = 0.001; % Target mean for e(:,2)
@@ -27,7 +27,7 @@ function x = generateRandomSample(parameters, var)
     gammaRateA3 = meanA3 / var;
 
     % Generate sigma^2 using a gamma distribution
-    sigma2 = gamrnd(10, 1);  % Shape=10, Rate=1, Mean=10
+    sigma2 = gamrnd(100, 1);  % Shape=10, Rate=1, Mean=10
 
     % Generate matrix e (Nr x 3)
     e1 = abs(normrnd(meanE1, sqrt(var)/10, Nv, 1));  % e(:,1)
@@ -40,7 +40,7 @@ function x = generateRandomSample(parameters, var)
     a2 = abs(normrnd(meanA2, sqrt(var)/1000, Nv, 1));       % a(:,2) using normal distribution
     a3 = gamrnd(gammaShapeA3, 1/gammaRateA3, Nv, 1);  % a(:,3)
     a4 = normrnd(meanA4, sqrt(stdf), Nv, 1);          % a(:,4)
-    a4 = max(min(a4, 13), 5);  %// Clipping to [5, 13]
+    a4 = max(min(a4, 13), 7);  %// Clipping to [7, 13]
 
     a = [a1, a2, a3, a4];
 

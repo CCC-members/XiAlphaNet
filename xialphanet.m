@@ -25,6 +25,8 @@ addpath(genpath(fullfile(pwd,'functions')));
 addpath(genpath(fullfile(pwd,'guide')));
 addpath(genpath(fullfile(pwd,'report')));
 
+addpath(genpath(fullfile(pwd,'tools')));
+
 %%
 %% Init processing
 %%
@@ -38,9 +40,9 @@ catch EM
     return;
 end
 %% Printing data information
-disp(strcat("-->> Name:",properties.app.name));
-disp(strcat("-->> Version:",properties.app.version));
-disp(strcat("-->> Version date:",properties.app.version_date));
+disp(strcat("-->> Name:",properties.generals.name));
+disp(strcat("-->> Version:",properties.generals.version));
+disp(strcat("-->> Version date:",properties.generals.version_date));
 disp("==========================================================================");
 
 %%
@@ -55,13 +57,17 @@ end
 if(getGlobalGuimode())
     XiAlphaNet
 else
-    %checked = check_properties()
-    process_interface(properties)
+    properties = get_properties();
+    [status, properties] = check_properties(properties);
+    if(status)
+        process_interface(properties);
+    end
 
     %% Finishing process
+    disp('==========================================================================');
     disp('--------------------------Process finished.-------------------------------');
     disp('==========================================================================');
-    disp(properties.generals.name);
+    disp(strcat("-->> ",properties.generals.name));
     disp('==========================================================================');
     close all;
     clear all;

@@ -1,0 +1,18 @@
+{
+    "description":"",
+    "leadfield":{
+        "description":"",
+        "file_name":"",
+        "resolution":""
+    },
+    "conn_matrix":{
+        "description":"",
+        "file_name":"",
+        "resolution":""
+    },
+    "cortex":{
+        "description":"",
+        "file_name":"",
+        "resolution":""
+    }
+}
