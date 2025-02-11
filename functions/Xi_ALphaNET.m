@@ -1,4 +1,4 @@
-function [x] =  Xi_ALphaNET(properties,data,parameters)
+function [x,T] =  Xi_ALphaNET(properties,data,parameters)
 
 disp('-->> Initializing Model Parameters...')
 
@@ -52,6 +52,8 @@ parameters.Model.C = lambda2 * parameters.Model.C;
 parameters.Compact_Model.D = lambda1 * parameters.Compact_Model.D;
 parameters.Compact_Model.C = lambda2 * parameters.Compact_Model.C;
 
+parameters.Parallel.T = 0;
+parameters.Data.freq = freq;
 T = Teval(parameters);
 disp('-->> Estimating Number of Batchs to StochFISTA...')
 
@@ -69,8 +71,10 @@ lambda_space  = [100,1000,1000];
 
 disp('-->> Estimating Transfer Function...')
 if(tf_default)
-    T = read_tensor_field(lambda1,lambda2,age);
+    TF_path = fullfile(properties.general_params.tmp.path,'TensorField');
+    T = read_tensor_field(lambda1,lambda2,age,TF_path);
 else
+    parameters.Parallel.T = 1;
     T = Teval(parameters);
 end
 clear parameters;
@@ -86,4 +90,5 @@ x_opt.Solution = v2x(e,a,s2);
 x.Solution = x_opt.Solution;
 x.Lambda_DC = lambda_opt_dc;
 x.Lambda_reg = lambda_opt;
+x.Age = data.age;
 end

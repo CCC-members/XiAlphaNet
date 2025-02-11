@@ -1,4 +1,4 @@
-function [T,pos] = read_tensor_field(delay,conn,age)
+function [T,pos] = read_tensor_field(delay,conn,age,TF_path)
 %load("Data/Tensor_Field/");
 % Define Grid of Delays and Connectivity
 lambda_D_min = 0.4;
@@ -19,11 +19,11 @@ lambda_C_space = linspace(lambda_C_min,lambda_C_max,num_C);
 pos= [pos_delay,pos_conn];
 %%
 if age>15
-    filename = sprintf("Data/Tensor_Field/T_%d_%d.mat",pos_delay,pos_conn);
+    filename = fullfile(TF_path,'Tensor_Field_9.5ms',strcat("T_",num2str(pos_delay),'_',num2str(pos_conn)));
     T = load(filename);
     T = T.T;
 else
-    filename = sprintf("Data/Tensor_Field2/T_%d_%d.mat",pos_delay,pos_conn);
+    filename = fullfile(TF_path,'Tensor_Field_11ms',strcat("T_",num2str(pos_delay),'_',num2str(pos_conn)));
     T = load(filename);
     T = T.T;
 end

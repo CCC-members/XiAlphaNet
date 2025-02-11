@@ -1,7 +1,6 @@
-function [R] = voxel_roi_map
-    load('Data/Atlas_Anatomical/tess_cortex_mid_high_8000V_fix.mat');
-    HCP_MMP1 = Atlas(iAtlas);
-    N_voxel = length(Curvature);
+function [R] = voxel_roi_map(Cortex)
+    HCP_MMP1 = Cortex.Atlas(Cortex.iAtlas);
+    N_voxel = length(Cortex.Curvature);
     
     % Initialize R with zeros
     R = zeros(360, N_voxel);

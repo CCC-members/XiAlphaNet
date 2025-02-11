@@ -1,3 +1,4 @@
+function ComputeTensorField(min_cond_delay)
 %% Tensor_Field
 % Read initial parameters
 clc;clear all;
@@ -39,5 +40,7 @@ for i = 1:num_D
         clear current_parameters
         toc
     end
+end
+
 end
 

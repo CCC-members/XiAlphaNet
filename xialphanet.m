@@ -57,13 +57,17 @@ end
 if(getGlobalGuimode())
     XiAlphaNet
 else
-    %checked = check_properties()
-    process_interface();
+    properties = get_properties();
+    [status, properties] = check_properties(properties);
+    if(status)
+        process_interface(properties);
+    end
 
     %% Finishing process
+    disp('==========================================================================');
     disp('--------------------------Process finished.-------------------------------');
     disp('==========================================================================');
-    disp(properties.generals.name);
+    disp(strcat("-->> ",properties.generals.name));
     disp('==========================================================================');
     close all;
     clear all;

@@ -3,10 +3,19 @@
     "input_path":"/mnt/Data/Ronaldo/MultinationalNorms",
     "data_type":"cross",
     "output_path":"/mnt/Data/Ronaldo/Result",
+    "dataset":{
+        "Name":"MultinationalNorms",
+        "Description":[
+            "MultinationalNorms dataset"
+        ],
+        "descriptors":{
+            "description":"Select the task from the MEEG files to process in each iteration ",
+            "task":"Task"
+        }
+    },
     "parallel":{
         "description":"",
-        "conn_delay":true,
-        
+        "conn_delay":true
     },
     "data":{
         "description":"",
@@ -25,7 +34,9 @@
     },
     "tensor_field":{
         "description":"",
-        "default":true
+        "default":true,
+        "urls":[
+        ]
     },
     "delay":{
         "description":"%std_lambdad = 0.57;% The ratio between the standar deviation of the conduction delays over the mean across the lifespan",
@@ -33,6 +44,10 @@
             [0.4,1.6],
             [0.01,2]
         ]
+    },
+    "tmp":{
+        "description":"",
+        "path":"/mnt/Data/Ronaldo/Templates"
     },
     "participants":[
     ]

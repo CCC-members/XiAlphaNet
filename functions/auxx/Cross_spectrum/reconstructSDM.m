@@ -1,11 +1,11 @@
-function [Sigma_omega] = reconstructSDM(x,parameters)
+function [Sigma_omega] = reconstructSDM(x,parameters,data)
     Ne = parameters.Dimensions.Ne;
     T = parameters.Model.T;
     parameters.Stochastic.stoch = 0;
-    freq = parameters.Data.freq;
+    freq = data.freq;
     [~,sw,sp] = sample_frequencies(freq,parameters.Stochastic.stoch,47);
     Nsw = length(sw(1,:));
-    %Sw = parameters.Data.Cross;
+    %Sw = data.Cross;
     % Unpack x into e, a, and sigma^2
     % Assume x is structured as [vec_r(e); vec_r(a); sigma^2]
     [e,a,sigma2]  =x2v(x);
