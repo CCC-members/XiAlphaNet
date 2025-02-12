@@ -38,18 +38,18 @@ if(isequal(tmp_path,'local'))
     end
     properties.general_params.tmp.path = tmp_path;
 else
-    if(~isfolder(properties.general_params.tmp.path))
-        fprintf(2,strcat('\n-->> Error: The param output_path defined on app/general_params.json file: \n'));
-        disp(properties.general_params.output_path);
+    if(~isfolder(tmp_path))
+        fprintf(2,strcat('\n-->> Error: The param tmp.path defined on app/general_params.json file: \n'));
+        disp(tmp_path);
         fprintf(2,strcat('It is not a correct adreess directory. \n'));
         disp('Please verify the location path.');
         status = false;
         return;
     else
-        [status,values] = fileattrib(properties.general_params.output_path);
+        [status,values] = fileattrib(tmp_path);
         if(~values.UserWrite)
             fprintf(2,strcat('\n-->> Error: The current user do not have write permissions on: \n'));
-            disp(properties.general_params.output_path);
+            disp(tmp_path);
             disp('Please check the folder permission.');
             status = false;
             return;

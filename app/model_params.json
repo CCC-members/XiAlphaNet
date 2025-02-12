@@ -1,0 +1,25 @@
+{
+    "model":{
+        "description":"",
+        "BayesIter_Delay":30,
+        "Nrand1":1,
+        "Nrand2":1,
+        "BayesIter_Reg1":10,
+        "BayesIter_Reg2":10,
+        "stoch1":true,
+        "stoch2":false
+    },
+    "tensor_field":{
+        "description":"",
+        "default":true,
+        "urls":[
+        ]
+    },
+    "delay":{
+        "description":"%std_lambdad = 0.57;% The ratio between the standar deviation of the conduction delays over the mean across the lifespan",
+        "lambda_space_cd":[
+            [0.4,1.6],
+            [0.01,2]
+        ]
+    }
+}
