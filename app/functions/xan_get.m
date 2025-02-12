@@ -8,15 +8,15 @@ end
 
 % Get required context structure
 switch contextName
-    case 'cfs_dir'
-        output1 = fullfile(getUserDir(),'.CiftiStorm');    
+    case 'xan_dir'
+        output1 = fullfile(getUserDir(),'.XiAlphaNet');    
     case 'defaults_dir'
-        cfs_db_dir = fullfile(getUserDir(),'.CiftiStorm');
+        cfs_db_dir = fullfile(getUserDir(),'.XiAlphaNet');
         output1 =  fullfile(cfs_db_dir,'defaults','anatomy');
         output2 =  fullfile(cfs_db_dir,'defaults','eeg');
         output3 =  fullfile(cfs_db_dir,'defaults','meg');
     case 'datasets'
-        cfs_db_dir = fullfile(getUserDir(),'.CiftiStorm');        
+        cfs_db_dir = fullfile(getUserDir(),'.XiAlphaNet');        
         datasets_file =  fullfile(cfs_db_dir,'Datasets','Datasets.json');
         if(isfile(datasets_file))
             output1 = jsondecode(fileread(datasets_file));
@@ -27,7 +27,7 @@ switch contextName
         output1 = fullfile(cfs_get( 'cfs_dir' ),'Datasets','Datasets.json');
     case 'bst_default_eeg'
         output1 = 'https://github.com/brainstorm-tools/brainstorm3/raw/master/defaults/eeg';
-    case 'openmeeg'
+    case 'tmp_path'
         
     case 'duneruro'
 end

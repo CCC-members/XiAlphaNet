@@ -1,5 +1,6 @@
 {
     "description":"",
+    "use_default":true,
     "leadfield":{
         "description":"",
         "file_name":"templates/leadfield.mat",

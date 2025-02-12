@@ -3,13 +3,6 @@ function  process_interface(properties)
 input_path = properties.general_params.input_path;
 output_path = properties.general_params.output_path;
 
- 
-%%
-%% Preprocessing
-%%
-tic;
-parameters = preprocessing(properties);
-toc;
 %%
 %%
 %%
@@ -18,6 +11,7 @@ XAN_path = fullfile(output_path);
 XAN_file = fullfile(XAN_path,XAN_filename);
 if(isfile(XAN_file))
     XIALPHANET = jsondecode(fileread(XAN_file));
+    parameters = load(fullfile(output_path,XIALPHANET.Structural));
 else   
     XIALPHANET.Name             = properties.general_params.dataset.Name;    
     TempUUID                    = java.util.UUID.randomUUID;
@@ -27,12 +21,19 @@ else
     XIALPHANET.Status           = "Processing";
     XIALPHANET.Location         = XAN_path;
     XIALPHANET.general_params   = properties.general_params;
+    XIALPHANET.Structural       = "structural/parameters.mat";
     XIALPHANET.Participants     = [];
+
+    %%
+    %% Preprocessing
+    %%
+    parameters = preprocessing(properties);    
 end
 
 %% Loop through each .mat file in the subjects
 subjects = dir(input_path);
-subjects(ismember({subjects.name},{'..','.'})) = [];
+subjects(ismember({subjects.name},{'..','.','structural'})) = [];
+subjects([subjects.isdir]==0) = [];
 for s=1:length(subjects)
     if(isfile(XAN_file))
         XIALPHANET              = jsondecode(fileread(XAN_file));
