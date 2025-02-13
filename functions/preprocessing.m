@@ -95,10 +95,10 @@ Fpt = Fpt/norm(Fpt,'fro');
 % of cortico-cortical evoked potentials. Brain. 2022 Jun 3;145(5):1653-1667. 
 % doi: 10.1093/brain/awab362. PMID: 35416942; PMCID: PMC9166555.
 
-Labels_TractsDelay = delayM.averageDelays_FTRACTS.parcelIDs;
+Labels_TractsDelay = delayM.parcelIDs;
 disp ("-->> Correcting the Conduction Delays by the Atlas");
 corrected_delay = zeros(Nr, Nr);
-delay = delayM.averageDelays_FTRACTS.delays;
+delay = delayM.delays;
 delay = delay(9:end,:);
 new_order = [];
 for i = 1:Nr
@@ -202,13 +202,14 @@ parameters.Compact_Model.L = corrected_tractLengths; % Length of the Neurotracts
 parameters.Compact_Model.D =corrected_delay/1000; % delays in seconds 
 parameters.Compact_Model.R = R; 
 
-
-
 % Model Dimensions
 parameters.Dimensions.Ne = Ne;  % Number of electrodes 
 parameters.Dimensions.Nr = Nr;  % Number of ROI's
 parameters.Dimensions.Nv =Nv;   % Number of Voxels
 parameters.Dimensions.Nw =  properties.general_params.data.nFreqs; % Number of frequencies
+
+mkdir(fullfile(properties.general_params.output_path,'structural'))
+save(fullfile(properties.general_params.output_path,'structural/parameters.mat'),'-struct','parameters');
 
 end
 
