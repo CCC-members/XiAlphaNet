@@ -3,7 +3,7 @@
     "nFreqs":47,
     "BayesIter_Delay":30,
     "Nrand1":10,
-    "Nrand2":100,
+    "Nrand2":10,
     "BayesIter_Reg1":20,
     "BayesIter_Reg2":100,
     "stoch1":true,

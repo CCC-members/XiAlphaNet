@@ -1,4 +1,4 @@
-function [Participant] = xan_save(properties,SubID,claf,x,T)
+function [Participant] = xan_save(properties,SubID,claf,x,T,Participant)
 
 switch lower(claf)
     case 'subject'
@@ -33,32 +33,36 @@ switch lower(claf)
         Conn_Matrix = x.Lambda_DC(2)*parameters.Compact_Model.C;
         Participant.Conn_Matrix = fullfile('Conn_Matrix.mat');
         save(fullfile(subject_path,"Conn_Matrix.mat"),"Conn_Matrix");
-        % Map Solution into Source  Activation and Crosspectrum on the Frequency Domain
-        [source_act_cross] = eval_source_conn(x.Solution, data.freq,T,parameters.Model.K,parameters.Model.R,properties);
-        % Saving  Full Activation
-        Source_Activations_Full = source_act_cross.Activations.Full;
-        Participant.Source_Activations_Full = fullfile('Source_Activations_Full.mat');
-        save(fullfile(subject_path,"Source_Activations_Full.mat"),"Source_Activations_Full");
-        % Saving Xi-Process Activation
-        Source_Activations_Xi = source_act_cross.Activations.Xi;
-        Participant.Source_Activations_Xi = fullfile('Source_Activations_Xi.mat');
-        save(fullfile(subject_path,"Source_Activations_Xi.mat"),"Source_Activations_Xi");
-        % Saving Alpha-Process Activation
-        Source_Activations_Alpha = source_act_cross.Activations.Xi;
-        Participant.Source_Activations_Alpha = fullfile('Source_Activations_Alpha.mat');
-        save(fullfile(subject_path,"Source_Activations_Alpha.mat"),"Source_Activations_Alpha");
-        % Saving Full Cross-Spectrum in ROIs-Space
-        Source_Cross_Full = source_act_cross.Cross.Full;
-        Participant.Source_Cross_Full = fullfile('Source_Cross_Full.mat');
-        save(fullfile(subject_path,"Source_Cross_Full.mat"),"Source_Cross_Full");
-        % Saving Xi-Process Cross-Spectrum in ROIs-Space
-        Source_Cross_Xi = source_act_cross.Cross.Xi;
-        Participant.Source_Cross_Xi = fullfile('Source_Cross_Xi.mat');
-        save(fullfile(subject_path,"Source_Cross_Xi.mat"),"Source_Cross_Xi");
-        % Saving Alpha-Process Cross-Spectrum in ROIs-Space
-        Source_Cross_Alpha = source_act_cross.Cross.Alpha;
-        Participant.Source_Cross_Alpha = fullfile('Source_Cross_Alpha.mat');
-        save(fullfile(subject_path,"Source_Cross_Alpha.mat"),"Source_Cross_Alpha");
+        %Saving Transfer Function from Source to Scalp
+        Transfer_Function = T;
+        Participant.Transfer_Function = fullfile('Transfer_Function.mat');
+        save(fullfile(subject_path,"Transfer_Function.mat"),"Transfer_Function");
+        % % Map Solution into Source  Activation and Crosspectrum on the Frequency Domain
+        % [source_act_cross] = eval_source_conn(x.Solution, data.freq,T,parameters.Model.K,parameters.Model.R,properties);
+        % % Saving  Full Activation
+        % Source_Activations_Full = source_act_cross.Activations.Full;
+        % Participant.Source_Activations_Full = fullfile('Source_Activations_Full.mat');
+        % save(fullfile(subject_path,"Source_Activations_Full.mat"),"Source_Activations_Full");
+        % % Saving Xi-Process Activation
+        % Source_Activations_Xi = source_act_cross.Activations.Xi;
+        % Participant.Source_Activations_Xi = fullfile('Source_Activations_Xi.mat');
+        % save(fullfile(subject_path,"Source_Activations_Xi.mat"),"Source_Activations_Xi");
+        % % Saving Alpha-Process Activation
+        % Source_Activations_Alpha = source_act_cross.Activations.Xi;
+        % Participant.Source_Activations_Alpha = fullfile('Source_Activations_Alpha.mat');
+        % save(fullfile(subject_path,"Source_Activations_Alpha.mat"),"Source_Activations_Alpha");
+        % % Saving Full Cross-Spectrum in ROIs-Space
+        % Source_Cross_Full = source_act_cross.Cross.Full;
+        % Participant.Source_Cross_Full = fullfile('Source_Cross_Full.mat');
+        % save(fullfile(subject_path,"Source_Cross_Full.mat"),"Source_Cross_Full");
+        % % Saving Xi-Process Cross-Spectrum in ROIs-Space
+        % Source_Cross_Xi = source_act_cross.Cross.Xi;
+        % Participant.Source_Cross_Xi = fullfile('Source_Cross_Xi.mat');
+        % save(fullfile(subject_path,"Source_Cross_Xi.mat"),"Source_Cross_Xi");
+        % % Saving Alpha-Process Cross-Spectrum in ROIs-Space
+        % Source_Cross_Alpha = source_act_cross.Cross.Alpha;
+        % Participant.Source_Cross_Alpha = fullfile('Source_Cross_Alpha.mat');
+        % save(fullfile(subject_path,"Source_Cross_Alpha.mat"),"Source_Cross_Alpha");
         % Saving Status
         Participant.Status = "Completed";
         saveJSON(Participant,fullfile(subject_path ,strcat(SubID,'.json')));
