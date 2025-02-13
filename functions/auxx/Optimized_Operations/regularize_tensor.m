@@ -1,4 +1,4 @@
-function [A_reg, lambda_final] = regularize_tensor(A)
+function [A_reg] = regularize_tensor(A)
 % This function regularizes each slice of the tensor A using Tikhonov regularization.
 % It finds the optimal lambda for each slice to make it positive definite.
 % If the slice is already positive definite, no regularization is applied.

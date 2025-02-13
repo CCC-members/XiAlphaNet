@@ -25,7 +25,7 @@ function log_det_A = logdet(A, epsilon)
             % Increase epsilon until the matrix becomes positive definite
             epsilon = epsilon * 2;  % Double epsilon each time
             A_reg = A + epsilon * eye(size(A));  % Re-regularize the matrix
-            warning('Matrix not positive definite, increasing epsilon to %.5f', epsilon);
+            %warning('Matrix not positive definite, increasing epsilon to %.5f', epsilon);
         end
     end
 

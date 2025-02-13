@@ -49,6 +49,7 @@ else
     % Cross
     data.Cross = data.CrossM(:,:,1:Nw);
     data.Cross = aveReference(data.Cross);
+    data.Cross = regularize_tensor(data.Cross);
     data.freq = data.freqrange(1:Nw); 
     data = rmfield(data,{'CrossM','freqrange'});
 end
