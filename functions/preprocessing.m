@@ -205,8 +205,8 @@ parameters.Compact_Model.R = R;
 % Model Dimensions
 parameters.Dimensions.Ne = Ne;  % Number of electrodes 
 parameters.Dimensions.Nr = Nr;  % Number of ROI's
-parameters.Dimensions.Nv =Nv;   % Number of Voxels
-parameters.Dimensions.Nw =  properties.general_params.data.nFreqs; % Number of frequencies
+parameters.Dimensions.Nv = Nv;   % Number of Voxels
+parameters.Dimensions.Nw = properties.model_params.nFreqs; % Number of frequencies
 
 mkdir(fullfile(properties.general_params.output_path,'structural'))
 save(fullfile(properties.general_params.output_path,'structural/parameters.mat'),'-struct','parameters');

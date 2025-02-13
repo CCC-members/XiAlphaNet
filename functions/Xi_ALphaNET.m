@@ -5,7 +5,7 @@ disp('-->> Initializing Model Parameters...')
 Nr = parameters.Dimensions.Nr;
 Nv = parameters.Dimensions.Nv;
 Ne = parameters.Dimensions.Ne;
-Nw = properties.general_params.data.nFreqs;
+Nw = properties.model_params.nFreqs;
 BayesIter_Delay = properties.model_params.BayesIter_Delay;
 BayesIter_Reg1 = properties.model_params.BayesIter_Reg1;
 BayesIter_Reg2 = properties.model_params.BayesIter_Reg2;
