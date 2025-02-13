@@ -15,7 +15,7 @@ if(properties.model_params.tensor_field.default)
     end
     filename = {'Tensor_Field_9.5ms.zip','Tensor_Field_11ms.zip'};    
     disp(strcat("-->> Downloading Tensor Field files......."));
-    urls = properties.general_params.tensor_field.urls;
+    urls = properties.model_params.tensor_field.urls;
     for i=1:length(urls)
         url = urls{i};
         if(~isfolder(tmp_path,filename{i}))

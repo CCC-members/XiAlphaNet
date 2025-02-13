@@ -90,7 +90,7 @@ for s=1:length(subjects)
     %%
     %% Saving Participant file
     %%
-    [Participant] = xan_save(properties,SubID,'subject',x,T,Participant);
+    [Participant] = xan_save(properties,SubID,'subject',x,T,parameters,Participant);
 
 
     %% Save the computed x to the corresponding group folder in Model_Parameters
