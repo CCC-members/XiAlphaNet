@@ -6,16 +6,16 @@ Nr = parameters.Dimensions.Nr;
 Nv = parameters.Dimensions.Nv;
 Ne = parameters.Dimensions.Ne;
 Nw = properties.general_params.data.nFreqs;
-BayesIter_Delay = properties.general_params.model.BayesIter_Delay;
-BayesIter_Reg1 = properties.general_params.model.BayesIter_Reg1;
-BayesIter_Reg2 = properties.general_params.model.BayesIter_Reg2;
-Nrand1 = properties.general_params.model.Nrand1;
-Nrand2 = properties.general_params.model.Nrand2;
-lambda_space_cd = properties.general_params.delay.lambda_space_cd;
+BayesIter_Delay = properties.model_params.BayesIter_Delay;
+BayesIter_Reg1 = properties.model_params.BayesIter_Reg1;
+BayesIter_Reg2 = properties.model_params.BayesIter_Reg2;
+Nrand1 = properties.model_params.Nrand1;
+Nrand2 = properties.model_params.Nrand2;
+lambda_space_cd = properties.model_params.delay.lambda_space_cd;
 conn_delay = properties.general_params.parallel.conn_delay;
-stoch1 = properties.general_params.model.stoch1;
-stoch2 = properties.general_params.model.stoch2;
-tf_default = properties.general_params.tensor_field.default;
+stoch1 = properties.model_params.stoch1;
+stoch2 = properties.model_params.stoch2;
+tf_default = properties.model_params.tensor_field.default;
 
 
 parameters.Dimensions.Nv = Nr;

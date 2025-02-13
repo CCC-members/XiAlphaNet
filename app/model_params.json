@@ -1,14 +1,12 @@
 {
-    "model":{
-        "description":"",
-        "BayesIter_Delay":30,
-        "Nrand1":1,
-        "Nrand2":1,
-        "BayesIter_Reg1":10,
-        "BayesIter_Reg2":10,
-        "stoch1":true,
-        "stoch2":false
-    },
+    "description":"",
+    "BayesIter_Delay":30,
+    "Nrand1":1,
+    "Nrand2":1-100,
+    "BayesIter_Reg1":20,
+    "BayesIter_Reg2":20,
+    "stoch1":true,
+    "stoch2":false,
     "tensor_field":{
         "description":"",
         "default":true,
