@@ -43,13 +43,17 @@ function [solution] = eval_source_conn(x, freq,T,K,R,properties)
             % Compute the transformed covariance matrices for xi and alpha
             c_xi(:,:,j) = computeTDT(Tj_cross, xi_omega);
             c_alpha(:,:,j) = computeTDT(Tj_cross, alpha_omega);
-            c_full(:,:,j) = computeTDT(Tj_cross, xi_omega+alpha_omega);
+            c_full(:,:,j) = c_xi(:,:,j)+c_alpha(:,:,j) ;
             j_xi(:,j) = Tj_act*xi_omega;
             j_alpha(:,j) = Tj_act*alpha_omega;
-            j_full(:,j) = Tj_act*(xi_omega+alpha_omega);
+            j_full(:,j) = j_xi(:,j)+j_alpha(:,j);
         end
     end
     toc
-    solution.Cross = c;
-    solution.Activations = j_xi;
+    solution.Cross.Full = c_full;
+    solution.Cross.Xi = c_xi;
+    solution.Cross.Alpha = c_alpha;
+    solution.Activations.Full = j_full;
+    solution.Activations.Xi = j_xi;
+    solution.Activations.Alpha = j_alpha;
 end
