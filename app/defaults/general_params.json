@@ -2,6 +2,10 @@
     "description":"",
     "input_path":"/mnt/Data/Ronaldo/MultinationalNorms",
     "output_path":"/mnt/Data/Ronaldo/Result",
+    "save_mode":{
+        "description":"",
+        "extended":false
+    },
     "dataset":{
         "Name":"MultinationalNorms",
         "Description":[

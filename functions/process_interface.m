@@ -100,10 +100,10 @@ for s=1:length(subjects)
     %% Save the computed x to the corresponding group folder in Model_Parameters
 
     disp('-->> Saving XiAlphaNet Information file.')
-    XIALPHANET.Participants(iPart).SubID = Participant.SubID;
-    XIALPHANET.Participants(iPart).Age = Participant.Age;
-    XIALPHANET.Participants(iPart).Status = "Completed";
-    XIALPHANET.Participants(iPart).Errors = Participant.Errors;
+    XIALPHANET.Participants(iPart).SubID        = Participant.SubID;
+    XIALPHANET.Participants(iPart).Age          = Participant.Age;
+    XIALPHANET.Participants(iPart).Status       = "Completed";
+    XIALPHANET.Participants(iPart).Errors       = Participant.Errors;
     XIALPHANET.Participants(iPart).FileInfo     = strcat(SubID,".json");
     saveJSON(XIALPHANET,XAN_file);
     disp('---------------------------------------------------------------------');
