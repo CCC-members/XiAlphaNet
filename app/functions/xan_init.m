@@ -9,7 +9,7 @@ if(~isfolder(XANDatasetsdir))
     mkdir(XANDatasetsdir);
 end
 
-XANDatasetsfile = fullfile(XANdir,'Datasets','Datastes.json');
+XANDatasetsfile = fullfile(XANdir,'Datasets','Datasets.json');
 if(~isfile(XANDatasetsfile))
     Datasets = struct([]);
     saveJSON(Datasets,XANDatasetsfile);
