@@ -30,7 +30,7 @@ end
 age = data.age;
 
 
-disp('-->> Estimating Connectivity & Delays Strengths...')
+disp('-->> Estimating Connectivity & Delays Weights...')
 Cross = data.Cross;
 freq = data.freq;
 K = parameters.Compact_Model.K;
@@ -57,15 +57,13 @@ parameters.Data.freq = freq;
 T = Teval(parameters);
 disp('-->> Estimating Number of Batchs to StochFISTA...')
 
-k_min = 30;%findMinimumK(parameters, 10, 10);
-
-index_parall_bayes= 1;
-Nsfreq = k_min;
-
-Lipschitz = 0.01;
+k_min = findMinimumK(freq,T,Cross, 5, 20,conn_delay);
 
 disp('-->> Initializing Bayesian Optimization On Regularization...')
-lambda_space  = [100,1000,1000];
+index_parall_bayes= 1;
+Nsfreq = k_min;
+Lipschitz = 0.01;%estimateLipschitzConstant(freq,T,Cross,1,Nsfreq,stoch1, 0.1, 20);
+lambda_space  = [100,1000,1000];%lambda_regspace(freq,T,Cross,Lipschitz,stoch1,Nsfreq);
 
 [lambda_opt] = bayesianOptSearch(lambda_space,Ne,Nr,T,freq,stoch1,0,index_parall_bayes,Nsfreq,Cross,Nrand1,Lipschitz,BayesIter_Reg2);
 
@@ -91,4 +89,6 @@ x.Solution = x_opt.Solution;
 x.Lambda_DC = lambda_opt_dc;
 x.Lambda_reg = lambda_opt;
 x.Age = data.age;
+x.kmin = k_min;
+x.Reg_Space = lambda_space;
 end

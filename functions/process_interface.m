@@ -89,19 +89,46 @@ for s=1:length(subjects)
     %% Analysis level XXXXXX
     %%
     [x,T] =  Xi_ALphaNET(properties,data,parameters);
-
+   
     %%
     %% Saving Participant file
     %%
     disp('-->> Saving Participant Information file.')
+    [e,a,~] = x2v(x.Solution);
+    Age = x.Age;
+    Participant.Age = fullfile('Age.mat');
+    save(fullfile(subject_path,"Age.mat"),"Age");
+    Mod_Weights = x.Lambda_DC;
+    Participant.Mod_Weights = fullfile('Mod_Weights.mat');
+    save(fullfile(subject_path,"Mod_Weights.mat"),"Mod_Weights");
+    Xi_estimate.Power = e(:,1);
+    Xi_estimate.Width = e(:,2);
+    Xi_estimate.Exponent = e(:,3);
+    Participant.Xi_estimate = fullfile('Xi_estimate.mat');
+    save(fullfile(subject_path,"Xi_estimate.mat"),'-struct',"Xi_estimate");
+    Alpha_estimate.Power = a(:,1);
+    Alpha_estimate.Width = a(:,2);
+    Alpha_estimate.Exponent = a(:,3);
+    Alpha_estimate.PAF = a(:,4);
+    Participant.Alpha_estimate = fullfile('Alpha_estimate.mat');
+    save(fullfile(subject_path,"Alpha_estimate.mat"),'-struct',"Alpha_estimate");
+    Delay_Matrix = x.Lambda_DC(1)*parameters.Compact_Model.D;
+    Participant.Delay_Matrix = fullfile('Delay_Matrix.mat');
+    save(fullfile(subject_path,"Delay_Matrix.mat"),"Delay_Matrix");
+    Conn_Matrix = x.Lambda_DC(2)*parameters.Compact_Model.C;
+    Participant.Conn_Matrix = fullfile('Conn_Matrix.mat');
+    save(fullfile(subject_path,"Conn_Matrix.mat"),"Conn_Matrix");
+    [source_act_cross] = eval_source_conn(x.Solution, data.freq,T,parameters.Model.K,parameters.Model.R,properties); 
+    Source_Activations = source_act_cross.Activations;
+    Participant.Conn_Matrix = fullfile('Source_Activations.mat');
+    save(fullfile(subject_path,"Source_Activations.mat"),"Source_Activations");
+    Source_Cross = source_act_cross.Cross;
+    Participant.Conn_Matrix = fullfile('Source_Cross.mat');
+    save(fullfile(subject_path,"Source_Cross.mat"),"Source_Cross");
     Participant.Status = "Completed";
-    Participant.Estimations = fullfile('x_source_estimations.mat');
-    save(fullfile(subject_path,"x_source_estimations.mat"),'-struct',"x");
-    Participant.TransferFunction = fullfile('transfer_function.mat');
-    save(fullfile(subject_path,'transfer_function.mat'),"T");
     saveJSON(Participant,fullfile(subject_path ,strcat(SubID,'.json')));
     
-    % [x] = np_ref_solution(x);
+     %[x] = np_ref_solution(x);
     %[x] = global_scale_factor(x,parameters1);
     
    
