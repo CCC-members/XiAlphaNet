@@ -35,7 +35,7 @@ function [F] = evaluateF(x,Ne,T,sw,sp,nsf_band,Sw)%;parameters)
         Sigma_omega = sigma2 * I +  computeTDT(T_omega, xi_omega + alpha_omega); 
         
         % Regularize Sigma
-        Sigma_omega = Sigma_omega+10^(-3)*eye(size(Sigma_omega));
+        Sigma_omega = Sigma_omega+10^(-2)*eye(size(Sigma_omega));
         
 
         % Compute trace and determinant terms

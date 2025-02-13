@@ -1,4 +1,4 @@
-function [Participant] = xan_save(properties,SubID,claf,x,T,Participant)
+function [Participant] = xan_save(properties,SubID,claf,x,T,parameters,Participant)
 
 switch lower(claf)
     case 'subject'
