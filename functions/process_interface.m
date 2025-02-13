@@ -34,6 +34,9 @@ end
 subjects = dir(input_path);
 subjects(ismember({subjects.name},{'..','.','structural'})) = [];
 subjects([subjects.isdir]==0) = [];
+if(~isempty(XIALPHANET.Participants))
+    subjects = subjects(find(ismember({subjects.name}, XIALPHANET.Participants),1));
+end
 for s=1:length(subjects)
     if(isfile(XAN_file))
         XIALPHANET              = jsondecode(fileread(XAN_file));
@@ -52,6 +55,7 @@ for s=1:length(subjects)
             iPart = length(XIALPHANET.Participants) + 1;
         end
     end
+    disp('---------------------------------------------------------------------');
     disp(strcat("-->> Processing subject: ", SubID));
     disp('---------------------------------------------------------------------');
 
@@ -96,10 +100,10 @@ for s=1:length(subjects)
     %% Save the computed x to the corresponding group folder in Model_Parameters
 
     disp('-->> Saving XiAlphaNet Information file.')
-    XIALPHANET.Participants(iPart).SubID = Participant.SubID;
-    XIALPHANET.Participants(iPart).Age = Participant.Age;
-    XIALPHANET.Participants(iPart).Status = "Completed";
-    XIALPHANET.Participants(iPart).Errors = Participant.Errors;
+    XIALPHANET.Participants(iPart).SubID        = Participant.SubID;
+    XIALPHANET.Participants(iPart).Age          = Participant.Age;
+    XIALPHANET.Participants(iPart).Status       = "Completed";
+    XIALPHANET.Participants(iPart).Errors       = Participant.Errors;
     XIALPHANET.Participants(iPart).FileInfo     = strcat(SubID,".json");
     saveJSON(XIALPHANET,XAN_file);
     disp('---------------------------------------------------------------------');

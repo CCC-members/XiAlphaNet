@@ -208,6 +208,7 @@ parameters.Dimensions.Nr = Nr;  % Number of ROI's
 parameters.Dimensions.Nv = Nv;   % Number of Voxels
 parameters.Dimensions.Nw = properties.model_params.nFreqs; % Number of frequencies
 
+disp("-->> Saving Structural outputs");
 mkdir(fullfile(properties.general_params.output_path,'structural'))
 save(fullfile(properties.general_params.output_path,'structural/parameters.mat'),'-struct','parameters');
 
