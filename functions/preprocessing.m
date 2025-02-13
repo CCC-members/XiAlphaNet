@@ -7,7 +7,7 @@ function parameters = preprocessing(properties)
 %%
 %%  Tensor Field
 %%
-if(properties.general_params.tensor_field.default)
+if(properties.model_params.tensor_field.default)
     % Download the Tensor Field files
     TF_path = fullfile(properties.general_params.tmp.path,'TensorField');
     if(~isfolder(TF_path))
