@@ -40,24 +40,11 @@ function  [dF,F,smoothF] = evaluatedF(x,Ne,Nv,T,sw,sp,nsf_band,Sw)%parameters)
         % Compute derivatives
         [dXi_de(:, :, j), dAlpha_da(:, :, j)] = dXiAlpha_deda(e, a, omega);
 
-
         % Construct Sigma_omega
-       % Define Sigma_omega
         Sigma_omega = sigma2 * I +  computeTDT(T_omega, xi_omega + alpha_omega);
-        
-        % % Perform Singular Value Decomposition (SVD)
-         [U, S, V] = svd(Sigma_omega);
-        % % 
-        % % % Regularize Sigma by ensuring the singular values are not too close to zero
-        tol = 1e-2; % Regularization tolerance
-        S = diag(max(diag(S), tol));
-        Sigma_omega = U*S*V';
-        % 
-        % % Reconstruct the regularized Sigma
-        Sigma_omega= regularization(Sigma_omega);
-        
-        % Invert the regularized Sigma
-        %Omega_omega = inv(Sigma_omega+10^(-1)*eye(size(Sigma_omega)));
+    
+        % Regularize Sigma
+        Sigma_omega = Sigma_omega+10^(-3)*eye(size(Sigma_omega));
         SO_omega = S_omega / Sigma_omega;
         OISO = Sigma_omega \ (I-SO_omega);
         TOISOT(:,j) = computeDiagonalElements(T_omega',OISO);

@@ -57,7 +57,7 @@ function [LL_val] = modelObjective(lambda,Ne,Nr,Nw,freq,Cross,BayesIter,K,D,C)
     T = Teval(temp_parameters);
     clear temp_parameters;
     % Estimate the number of frequencies that approximate the f and dF with a relative error less than 5%
-    k_min = 30;%findMinimumK(temp_parameters, 10, 5);
+    k_min = 30;%findMinimumK(freq,T,Cross, 5, 20,0);
     index_stoch = 1;
     index_parall_fist = 0;
     index_parall_bayes= 0;

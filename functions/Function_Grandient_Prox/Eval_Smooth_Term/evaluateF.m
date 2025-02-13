@@ -33,19 +33,9 @@ function [F] = evaluateF(x,Ne,T,sw,sp,nsf_band,Sw)%;parameters)
 
         % Define Sigma_omega
         Sigma_omega = sigma2 * I +  computeTDT(T_omega, xi_omega + alpha_omega); 
-        % % Perform Singular Value Decomposition (SVD)
-         [U, S, V] = svd(Sigma_omega);
-        % % 
-        % % % Regularize Sigma by ensuring the singular values are not too close to zero
-        tol = 1e-2; % Regularization tolerance
-        S = diag(max(diag(S), tol));
-        Sigma_omega = U*S*V';
         
-        % Reconstruct the regularized Sigma
-        Sigma_omega = regularization(Sigma_omega);
-        
-        % Invert the regularized Sigma
-        %Omega_omega = inv(Sigma_omega+10^(-1)*eye(size(Sigma_omega)));
+        % Regularize Sigma
+        Sigma_omega = Sigma_omega+10^(-3)*eye(size(Sigma_omega));
         
 
         % Compute trace and determinant terms
