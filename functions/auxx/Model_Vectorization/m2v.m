@@ -6,12 +6,7 @@ function v = m2v(M)
     %
     % Output:
     %   v - A vector containing the upper (or lower) triangular part of M.
-
-    % Ensure M is symmetric
-    if ~issymmetric(M)
-        error('Input matrix must be symmetric.');
-    end
-    
+    M = (M+M')/2;
     % Get the upper triangular part of the matrix, including the diagonal
     v = M(triu(true(size(M))));
 end

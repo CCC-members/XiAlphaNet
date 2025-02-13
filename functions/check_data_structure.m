@@ -1,6 +1,6 @@
 function [data,status,Participant] = check_data_structure(properties, Participant, subject)
 
-Nw = properties.general_params.data.nFreqs;
+Nw = properties.model_params.nFreqs;
 ref_file = properties.general_params.data.ref_file;
 errors = {};
 status = true;

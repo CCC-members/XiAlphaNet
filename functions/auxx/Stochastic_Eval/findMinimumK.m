@@ -1,63 +1,89 @@
-function k_min = findMinimumK(parameters, RE_tol, Nxrand)
+function k_min = findMinimumK(freq, T, Sw, RE_tol, Nxrand, index_parallel)
     % Parameters:
-    % parameters: structure containing all required settings
     % RE_tol: Relative Error percentage
     % Nxrand: number of random x trials
+    % index_parallel: Whether to use parallel processing (1: parallel, 0: serial)
 
-    Nv = parameters.Dimensions.Nv;
+    [Ne, Nv, ~] = size(T);
     xdim = 7 * Nv + 1;
 
     % Initialize variables
-    max_k = length(parameters.Data.freq); % Upper bound for k to prevent infinite loops
+    max_k = length(freq); % Upper bound for k to prevent infinite loops
     relative_error_threshold = RE_tol / 100; % Error < relative error threshold
     k_min = max_k; % Start with the largest k and decrease if possible
-
     % Preallocate array to store mean relative errors for each k
     mean_relative_errors = zeros(1, max_k);
 
     % Generate a random x sample for the entire computation
-    x = generateRandomSample(parameters, 10); % Generate random x
-    x,Ne,T,sw,sp,nsf_band,Sw
+    x = generateRandomSample(Ne, Nv, Sw, T, freq, 10); % Generate random x
     % Evaluate F fully without stochastic sampling
-    parameters.Stochastic.stoch = 1;
-    parameters.Stochastic.Nsfreq = 47; % Set current k
-    parameters = sample_frequencies(parameters);
-    F_full = evaluateF(x, parameters);
-    [dF_full, ~, ~] = evaluatedF(x, parameters);
+    index_stoch = 0;
+    Nsfreq = 47; % Set current k
+    [nsf_band, sw, sp] = sample_frequencies(freq, index_stoch, Nsfreq);
+    F_full = evaluateF(x, Ne, T, sw, sp, nsf_band, Sw);
+    [dF_full, ~, ~] = evaluatedF(x, Ne, Nv, T, sw, sp, nsf_band, Sw);
 
     % Outer loop over k
     tic
     for k = 1:max_k
         relative_errors = zeros(1, Nxrand); % Track relative errors for current k
 
-        % Parallelized inner loop for Nxrand random trials
-        for trial = 1:Nxrand
+        if index_parallel == 1
+            % Parallelized inner loop for Nxrand random trials
+            parfor trial = 1:Nxrand
+                % Adjust parameters for stochastic evaluation
+                index_stoch = 1;
+                Nsfreq_trial = k; % Set current k
+                [nsf_band_trial, sw_trial, sp_trial] = sample_frequencies(freq, index_stoch, Nsfreq_trial);
 
-            % Adjust parameters for stochastic evaluation
-            param_trial = parameters; % Create a local copy for parallel safety
-            param_trial.Stochastic.stoch = 1; % Enable stochastic evaluation
-            param_trial.Stochastic.Nsfreq = k; % Set current k
-            param_trial = sample_frequencies(param_trial);
+                % Stochastic evaluation of F
+                F_stoch = evaluateF(x, Ne, T, sw_trial, sp_trial, nsf_band_trial, Sw);
+                [dF_stoch, ~, ~] = evaluatedF(x, Ne, Nv, T, sw_trial, sp_trial, nsf_band_trial, Sw);
 
-            % Stochastic evaluation of F
-            F_stoch = evaluateF(x, param_trial);
-            [dF_stoch, ~, ~] = evaluatedF(x, param_trial);
+                % Calculate relative absolute error
+                if norm(F_full) ~= 0 && norm(dF_full) ~= 0
+                    relative_error = abs(F_full - F_stoch) / abs(F_full);
+                    df_relative_error = norm(dF_full - dF_stoch, 'fro') / norm(dF_full, 'fro');
+                else
+                    % Handle the case where F_full or dF_full is zero to avoid division by zero
+                    relative_error = abs(F_full - F_stoch) / 1e-10;
+                    df_relative_error = norm(dF_full - dF_stoch, 'fro') / 1e-10;
+                end
 
-            % Calculate relative absolute error
-            if norm(F_full) ~= 0 && norm(dF_full) ~= 0
-                relative_error = abs(F_full - F_stoch) / abs(F_full);
-                df_relative_error = norm(dF_full - dF_stoch, 'fro') / norm(dF_full, 'fro');
-            else
-                % Handle the case where F_full or dF_full is zero to avoid division by zero
-                relative_error = abs(F_full - F_stoch) / 1e-10;
-                df_relative_error = norm(dF_full - dF_stoch, 'fro') / 1e-10;
+                % Average the relative errors
+                relative_error = (relative_error + df_relative_error) / 2;
+
+                % Store the relative error for this trial
+                relative_errors(trial) = relative_error;
             end
+        else
+            % If parallelization is not used, use a regular for loop
+            for trial = 1:Nxrand
+                % Adjust parameters for stochastic evaluation
+                index_stoch = 1;
+                Nsfreq_trial = k; % Set current k
+                [nsf_band_trial, sw_trial, sp_trial] = sample_frequencies(freq, index_stoch, Nsfreq_trial);
 
-            % Average the relative errors
-            relative_error = (relative_error + df_relative_error) / 2;
+                % Stochastic evaluation of F
+                F_stoch = evaluateF(x, Ne, T, sw_trial, sp_trial, nsf_band_trial, Sw);
+                [dF_stoch, ~, ~] = evaluatedF(x, Ne, Nv, T, sw_trial, sp_trial, nsf_band_trial, Sw);
 
-            % Store the relative error for this trial
-            relative_errors(trial) = relative_error;
+                % Calculate relative absolute error
+                if norm(F_full) ~= 0 && norm(dF_full) ~= 0
+                    relative_error = abs(F_full - F_stoch) / abs(F_full);
+                    df_relative_error = norm(dF_full - dF_stoch, 'fro') / norm(dF_full, 'fro');
+                else
+                    % Handle the case where F_full or dF_full is zero to avoid division by zero
+                    relative_error = abs(F_full - F_stoch) / 1e-10;
+                    df_relative_error = norm(dF_full - dF_stoch, 'fro') / 1e-10;
+                end
+
+                % Average the relative errors
+                relative_error = (relative_error + df_relative_error) / 2;
+
+                % Store the relative error for this trial
+                relative_errors(trial) = relative_error;
+            end
         end
 
         % Calculate and store the mean relative error for this k
@@ -70,16 +96,9 @@ function k_min = findMinimumK(parameters, RE_tol, Nxrand)
         end
     end
 
-    % Output the minimum k or an error if no solution is found within bounds
-    if k_min == max_k
-        error('Failed to achieve the desired accuracy with k up to %d\n', max_k);
-    endlambda2
-toc
-    % Optional: Plot the mean relative errors for each k (can be uncommented)
-    % figure;
-    % plot(1:max_k, movmean(mean_relative_errors * 100, 1), '-o');
-    % xlabel('k');
-    % ylabel('Mean Relative Error (%)');
-    % title('Mean Relative Error across Simulations for each k');
-    % grid on;
+    % % Output the minimum k or an error if no solution is found within bounds
+    % if k_min == max_k
+    %     error('Failed to achieve the desired accuracy with k up to %d\n', max_k);
+    % end
+    toc
 end
