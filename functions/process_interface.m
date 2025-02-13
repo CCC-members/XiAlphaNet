@@ -95,9 +95,6 @@ for s=1:length(subjects)
     %%
     disp('-->> Saving Participant Information file.')
     [e,a,~] = x2v(x.Solution);
-    Age = x.Age;
-    Participant.Age = fullfile('Age.mat');
-    save(fullfile(subject_path,"Age.mat"),"Age");
     Mod_Weights = x.Lambda_DC;
     Participant.Mod_Weights = fullfile('Mod_Weights.mat');
     save(fullfile(subject_path,"Mod_Weights.mat"),"Mod_Weights");
