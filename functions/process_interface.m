@@ -34,6 +34,9 @@ end
 subjects = dir(input_path);
 subjects(ismember({subjects.name},{'..','.','structural'})) = [];
 subjects([subjects.isdir]==0) = [];
+if(~isempty(XIALPHANET.Participants))
+    subjects = subjects(find(ismember({subjects.name}, XIALPHANET.Participants),1));
+end
 for s=1:length(subjects)
     if(isfile(XAN_file))
         XIALPHANET              = jsondecode(fileread(XAN_file));
