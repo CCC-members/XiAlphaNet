@@ -8,8 +8,12 @@ function [solution] = eval_source_conn(x, freq,T,K,R,properties)
     % Unpack the input vector x into e, a, and sigma^2 components
     [e, a, ~] = x2v(x);
     %R = R*pinv(K);
-    c = zeros(Nr,Nr,Nsw);
-    act = zeros(Nv,Nsw);
+    c_full = zeros(Nr,Nr,Nsw);
+    c_xi = zeros(Nr,Nr,Nsw);
+    c_alpha = zeros(Nr,Nr,Nsw);
+    j_full = zeros(Nv,Nsw);
+    j_xi = zeros(Nv,Nsw);
+    j_alpha = zeros(Nv,Nsw);
     % Iterate over each frequency and compute cxi and calpha
     tic
     if conn_delay == 1
@@ -24,7 +28,7 @@ function [solution] = eval_source_conn(x, freq,T,K,R,properties)
             sources_par = xi_omega+alpha_omega;
             % Compute the transformed covariance matrices for xi and alpha
             c(:,:,j) = (computeTDT(Tj_cross, sources_par));
-            act(:,j) = Tj_act*sources_par;
+            j_xi(:,j) = Tj_act*sources_par;
         end
     else
         for j = 1:Nsw
@@ -35,13 +39,17 @@ function [solution] = eval_source_conn(x, freq,T,K,R,properties)
             % Calculate xi_omega and alpha_omega based on the model parameters
             xi_omega = e(:,1) ./ (1 + e(:,2) .* omega.^2).^e(:,3);
             alpha_omega = a(:,1) ./ (1 + a(:,2) .* (omega - a(:,4)).^2).^a(:,3);
-            sources_par = xi_omega+alpha_omega;
+            %sources_par = xi_omega+alpha_omega;
             % Compute the transformed covariance matrices for xi and alpha
-            c(:,:,j) = (computeTDT(Tj_cross, sources_par));
-            act(:,j) = Tj_act*sources_par;
+            c_xi(:,:,j) = computeTDT(Tj_cross, xi_omega);
+            c_alpha(:,:,j) = computeTDT(Tj_cross, alpha_omega);
+            c_full(:,:,j) = computeTDT(Tj_cross, xi_omega+alpha_omega);
+            j_xi(:,j) = Tj_act*xi_omega;
+            j_alpha(:,j) = Tj_act*alpha_omega;
+            j_full(:,j) = Tj_act*(xi_omega+alpha_omega);
         end
     end
     toc
     solution.Cross = c;
-    solution.Activations = act;
+    solution.Activations = j_xi;
 end
