@@ -19,8 +19,7 @@
     },
     "data":{
         "description":"",
-        "ref_file":"SubID.mat",
-        "nFreqs":47
+        "ref_file":"SubID.mat"
     },    
     "tmp":{
         "description":"",
