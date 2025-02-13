@@ -38,35 +38,13 @@ if(isequal(tmp_path,'local'))
     end
     properties.general_params.tmp.path = tmp_path;
 else
-<<<<<<< HEAD
-    if(~isfolder(properties.general_params.tmp.path))
-        fprintf(2,strcat('\n-->> Error: The param tmp_path defined on app/general_params.json file: \n'));
+    [status,values] = fileattrib(properties.general_params.tmp.path);
+    if(~values.UserWrite)
+        fprintf(2,strcat('\n-->> Error: The current user do not have write permissions on: \n'));
         disp(properties.general_params.tmp.path);
-=======
-    if(~isfolder(tmp_path))
-        fprintf(2,strcat('\n-->> Error: The param tmp.path defined on app/general_params.json file: \n'));
-        disp(tmp_path);
->>>>>>> 9a785dafd021eb740467665c93604aeb8d8b669e
-        fprintf(2,strcat('It is not a correct adreess directory. \n'));
-        disp('Please verify the location path.');
+        disp('Please check the folder permission.');
         status = false;
         return;
-    else
-<<<<<<< HEAD
-        [status,values] = fileattrib(properties.general_params.tmp.path);
-        if(~values.UserWrite)
-            fprintf(2,strcat('\n-->> Error: The current user do not have write permissions on: \n'));
-            disp(properties.general_params.tmp.path);
-=======
-        [status,values] = fileattrib(tmp_path);
-        if(~values.UserWrite)
-            fprintf(2,strcat('\n-->> Error: The current user do not have write permissions on: \n'));
-            disp(tmp_path);
->>>>>>> 9a785dafd021eb740467665c93604aeb8d8b669e
-            disp('Please check the folder permission.');
-            status = false;
-            return;
-        end
     end
 end
 
