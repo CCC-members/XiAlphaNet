@@ -1,7 +1,6 @@
 {
     "description":"",
     "input_path":"/mnt/Data/Ronaldo/MultinationalNorms",
-    "data_type":"cross",
     "output_path":"/mnt/Data/Ronaldo/Result",
     "dataset":{
         "Name":"MultinationalNorms",
@@ -19,7 +18,8 @@
     },
     "data":{
         "description":"",
-        "ref_file":"SubID.mat"
+        "ref_file":"SubID.mat",
+        "type":"cross"
     },    
     "tmp":{
         "description":"",
