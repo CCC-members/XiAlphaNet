@@ -48,6 +48,7 @@ disp("==========================================================================
 %%
 %% Starting mode
 %%
+xan_init();
 setGlobalGuimode(true);
 for i=1:length(varargin)
     if(isequal(varargin{i},'nogui'))

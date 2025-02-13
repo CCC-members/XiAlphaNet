@@ -12,8 +12,8 @@ XAN_file = fullfile(XAN_path,XAN_filename);
 if(isfile(XAN_file))
     XIALPHANET = jsondecode(fileread(XAN_file));
     parameters = load(fullfile(output_path,XIALPHANET.Structural));
-else   
-    XIALPHANET.Name             = properties.general_params.dataset.Name;    
+else
+    XIALPHANET.Name             = properties.general_params.dataset.Name;
     TempUUID                    = java.util.UUID.randomUUID;
     XIALPHANET.UUID             = char(TempUUID.toString);
     XIALPHANET.Description      = properties.general_params.dataset.Description;
@@ -27,7 +27,7 @@ else
     %%
     %% Preprocessing
     %%
-    parameters = preprocessing(properties);    
+    parameters = preprocessing(properties);
 end
 
 %% Loop through each .mat file in the subjects
@@ -46,7 +46,7 @@ for s=1:length(subjects)
     else
         iPart = find(ismember({XIALPHANET.Participants.SubID},SubID),1);
         if(~isempty(iPart) && isequal(XIALPHANET.Participants(iPart).Status,"Completed"))
-            continue; 
+            continue;
         end
         if(isempty(iPart))
             iPart = length(XIALPHANET.Participants) + 1;
@@ -54,13 +54,13 @@ for s=1:length(subjects)
     end
     disp(strcat("-->> Processing subject: ", SubID));
     disp('---------------------------------------------------------------------');
-    
+
     %%
     %% Check data structure
-    %%    
+    %%
     [data,status,Participant] = check_data_structure(properties,Participant,subject);
-    if(~status)        
-        XIALPHANET.Participants(iPart).SubID = Participant.SubID;  
+    if(~status)
+        XIALPHANET.Participants(iPart).SubID = Participant.SubID;
         XIALPHANET.Participants(iPart).Age = Participant.Age;
         XIALPHANET.Participants(iPart).Status = Participant.Status;
         XIALPHANET.Participants(iPart).Errors = Participant.Errors;
@@ -68,9 +68,9 @@ for s=1:length(subjects)
         saveJSON(XIALPHANET,XAN_file);
         disp('---------------------------------------------------------------------');
         continue;
-    end   
-    
-    
+    end
+
+
 
     %%
     %% Analysis level base
@@ -86,7 +86,7 @@ for s=1:length(subjects)
     %% Analysis level XXXXXX
     %%
     [x,T] =  Xi_ALphaNET(properties,data,parameters);
-   
+
     %%
     %% Saving Participant file
     %%
@@ -94,12 +94,12 @@ for s=1:length(subjects)
 
 
     %% Save the computed x to the corresponding group folder in Model_Parameters
-    
+
     disp('-->> Saving XiAlphaNet Information file.')
-    XIALPHANET.Participants(iPart).SubID = Participant.SubID;  
-        XIALPHANET.Participants(iPart).Age = Participant.Age;
-        XIALPHANET.Participants(iPart).Status = "Completed";
-        XIALPHANET.Participants(iPart).Errors = Participant.Errors;
+    XIALPHANET.Participants(iPart).SubID = Participant.SubID;
+    XIALPHANET.Participants(iPart).Age = Participant.Age;
+    XIALPHANET.Participants(iPart).Status = "Completed";
+    XIALPHANET.Participants(iPart).Errors = Participant.Errors;
     XIALPHANET.Participants(iPart).FileInfo     = strcat(SubID,".json");
     saveJSON(XIALPHANET,XAN_file);
     disp('---------------------------------------------------------------------');
@@ -119,6 +119,34 @@ h.close
 %%
 %%  Updating XiAlphaNet datasets
 %%
+if(isfile(XAN_file))
+    % Loading existed Datasets
+    
+    Datasets_file = xan_get('datasets_file');
+    if(isfile(Datasets_file))
+        TempDatasets = jsondecode(fileread(Datasets_file));
+        if(~isempty(TempDatasets))
+            Datasets = TempDatasets;
+        else
+            Datasets = struct([]);
+        end
+    else
+        Datasets = struct([]);
+    end
 
+    % Including new dataset
+    XIALPHANET = jsondecode(fileread(XAN_file));
+    if(isempty(Datasets))
+        Datasets            = XIALPHANET;
+    else
+        Datasets(end + 1) = XIALPHANET;
+    end
+    disp("-->> Dataset saved");
+    saveJSON(Datasets,Datasets_file);
+    h = matlab.desktop.editor.openDocument(Datasets_file);
+    h.smartIndentContents
+    h.save
+    h.close
+end
 
 end
