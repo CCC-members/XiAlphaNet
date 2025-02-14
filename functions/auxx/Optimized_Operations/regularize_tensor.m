@@ -25,9 +25,9 @@ lambda_optimal = zeros(1, p);
 
 % Regularization parameter range or starting value
 lambda_initial = 1e-6;  % Start with a small lambda value
-lambda_increase_factor = 1.5;  % Factor to increase lambda if needed
+lambda_increase_factor = 10;  % Factor to increase lambda if needed
 max_iterations = 50;  % Max iterations to search for positive definiteness
-epsilon = 1e-6;  % Small value to add to the matrix to ensure positive definiteness
+epsilon = 1e-2;  % Small value to add to the matrix to ensure positive definiteness
 
 % Loop through each slice A(:,:,j)
 for j = 1:p
@@ -71,10 +71,10 @@ for j = 1:p
 
         % If the matrix is still not positive definite after max iterations
         if iteration == max_iterations %|| min(eig(A_j_re))<0 || min(imag(eig(A_j_re))>10^(-3))
-            disp(['Warning: Slice ', num2str(j), ' could not be made positive definite']);
+            %disp(['Warning: Slice ', num2str(j), ' could not be made positive definite']);
             % Find the minimum eigenvalue and make it positive by adding epsilon
             min_eigenvalue_reg = min(eigvals);
-            lambda_optimal(j) = abs(min_eigenvalue_reg) + epsilon;  % Record the regularization term
+            lambda_optimal(j) = abs(min_eigenvalue_reg) + 10*epsilon;  % Record the regularization term
             A_j = A_j + lambda_optimal(j) * eye(m);  % Make it positive definite
         end
     end
@@ -87,7 +87,7 @@ lambda_final = max(lambda_optimal);
 for j = 1:p
     A(:,:,j) = 0.5 * (A(:,:,j)+A(:,:,j)');
     A(:,:,j) = A(:,:,j) + lambda_final * eye(m); % Regularize each slice with lambda_final
-    %imag(min(eig(A(:,:,j))))
+    %(min(eig(A(:,:,j))))
 end
 
 % If A was originally a 2D matrix, return the regularized 2D matrix

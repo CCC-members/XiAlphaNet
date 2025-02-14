@@ -42,14 +42,15 @@ function  [dF,F,smoothF] = evaluatedF(x,Ne,Nv,T,sw,sp,nsf_band,Sw)%parameters)
 
         % Construct Sigma_omega
         Sigma_omega = sigma2 * I +  computeTDT(T_omega, xi_omega + alpha_omega);
-    
+       
         % Regularize Sigma
-        Sigma_omega = Sigma_omega+10^(-2)*eye(size(Sigma_omega));
-        SO_omega = S_omega / Sigma_omega;
+        Sigma_omega = regularize_tensor(Sigma_omega);
+        %
+        SO_omega = S_omega * pinv(Sigma_omega);
         OISO = Sigma_omega \ (I-SO_omega);
         TOISOT(:,j) = computeDiagonalElements(T_omega',OISO);
         % Compute trace and determinant terms
-        term3 = term3 + real(+log(det(Sigma_omega)) + trace(SO_omega))* sw(2,j)/nsf_band;
+        term3 = term3 + real(+logdet(Sigma_omega) + trace(SO_omega))* sw(2,j)/nsf_band;
         dFs2 = dFs2 +real(trace(OISO) )* sw(2,j)/nsf_band;
     end
 

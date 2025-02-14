@@ -37,7 +37,7 @@ function log_det_A = logdet(A, epsilon)
             log_det_A = 2 * sum(log(diag(R)));  % log(det(A)) = 2 * sum(log(diag(R)))
         catch
             % If Cholesky fails, fall back to SVD
-            warning('Cholesky failed, using SVD for log-determinant.');
+            %warning('Cholesky failed, using SVD for log-determinant.');
             [U, S, V] = svd(A_reg);
             log_det_A = sum(log(diag(S)));  % Use the singular values from SVD
         end
