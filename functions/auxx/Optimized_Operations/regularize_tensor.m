@@ -27,6 +27,7 @@ lambda_optimal = zeros(1, p);
 lambda_initial = 1e-6;  % Start with a small lambda value
 lambda_increase_factor = 1.5;  % Factor to increase lambda if needed
 max_iterations = 50;  % Max iterations to search for positive definiteness
+epsilon = 1e-6;  % Small value to add to the matrix to ensure positive definiteness
 
 % Loop through each slice A(:,:,j)
 for j = 1:p
@@ -71,7 +72,10 @@ for j = 1:p
         % If the matrix is still not positive definite after max iterations
         if iteration == max_iterations
             disp(['Warning: Slice ', num2str(j), ' could not be made positive definite']);
-            lambda_optimal(j) = lambda;  % Still record the last lambda tried
+            % Find the minimum eigenvalue and make it positive by adding epsilon
+            min_eigenvalue_reg = min(eigvals);
+            A_j = A_j + abs(min_eigenvalue_reg) + epsilon;  % Make it positive definite
+            lambda_optimal(j) = abs(min_eigenvalue_reg) + epsilon;  % Record the regularization term
         end
     end
 end
