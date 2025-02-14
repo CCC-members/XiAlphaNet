@@ -1,7 +1,19 @@
-function [Participant] = xan_save(properties,SubID,claf,x,T,parameters,Participant)
+function [Participant] = xan_save(properties,SubID,claf,varargin)
+
+for i=1:length(varargin)
+    eval([inputname(i+3) '= varargin{i};']);
+end
 
 switch lower(claf)
-    case 'subject'
+    case 'create_subject'
+        subject_path                    = fullfile(properties.general_params.output_path,SubID);
+        if(~isfolder(subject_path))
+            mkdir(subject_path);
+        end
+        Participant.Data = fullfile(strcat(SubID,'_desc-prep_eeg.mat'));
+        save(fullfile(subject_path,strcat(SubID,'_desc-prep_eeg.mat')),'-struct','data');
+
+    case 'subject' 
         subject_path                    = fullfile(properties.general_params.output_path,SubID);
         if(~isfolder(subject_path))
             mkdir(subject_path);

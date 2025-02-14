@@ -5,10 +5,10 @@ ref_file = properties.general_params.data.ref_file;
 errors = {};
 status = true;
 try
-    data = load(fullfile(subject.folder,subject.name,strrep(ref_file,'SubID',Participant.SubID)));
+    data = load(fullfile(subject.folder,subject.name,strrep(ref_file,'SubID',Participant.SubID)));    
     while isfield(data,'data_struct')
         data = data.data_struct;
-    end
+    end    
 catch Ex
     Participant.Age = '';
     Participant.Status = "Rejected";
@@ -58,7 +58,11 @@ Participant.Age = data.age;
 Participant.Errors = errors;
 Participant.FileInfo = "";
 
-if(~status)
+if(status)
+    disp("-->> Saving subject data");
+    SubID = Participant.SubID;
+    [Participant] = xan_save(properties,SubID,'create_subject',data,Participant);
+else    
     fprintf(2,strcat('\n-->> Error: The folder structure for subject: ',subject.name,' \n'));
     fprintf(2,strcat('-->> Have the folows errors.\n'));
     for j=1:length(errors)

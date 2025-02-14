@@ -34,8 +34,8 @@ end
 subjects = dir(input_path);
 subjects(ismember({subjects.name},{'..','.','structural'})) = [];
 subjects([subjects.isdir]==0) = [];
-if(~isempty(XIALPHANET.Participants))
-    subjects = subjects(find(ismember({subjects.name}, XIALPHANET.Participants),1));
+if(~isempty(properties.general_params.participants))
+    subjects = subjects(ismember({subjects.name}, properties.general_params.participants));
 end
 for s=1:length(subjects)
     if(isfile(XAN_file))
@@ -49,6 +49,10 @@ for s=1:length(subjects)
     else
         iPart = find(ismember({XIALPHANET.Participants.SubID},SubID),1);
         if(~isempty(iPart) && isequal(XIALPHANET.Participants(iPart).Status,"Completed"))
+            disp('---------------------------------------------------------------------');
+            disp(strcat("-->> The analysis of subject: ", SubID, " has been completed."));
+            disp(strcat("-->> Jumping to the next subject."));
+            disp('---------------------------------------------------------------------');
             continue;
         end
         if(isempty(iPart))
@@ -74,8 +78,6 @@ for s=1:length(subjects)
         continue;
     end
 
-
-
     %%
     %% Analysis level base
     %%
@@ -94,7 +96,7 @@ for s=1:length(subjects)
     %%
     %% Saving Participant file
     %%
-    [Participant] = xan_save(properties,SubID,'subject',x,T,parameters,Participant);
+    [Participant] = xan_save(properties,SubID,'subject',x,T,parameters,data,Participant);
 
 
     %% Save the computed x to the corresponding group folder in Model_Parameters
@@ -106,6 +108,8 @@ for s=1:length(subjects)
     XIALPHANET.Participants(iPart).Errors       = Participant.Errors;
     XIALPHANET.Participants(iPart).FileInfo     = strcat(SubID,".json");
     saveJSON(XIALPHANET,XAN_file);
+    disp('---------------------------------------------------------------------');
+    disp(strcat("-->> The analysis of subject: ", SubID, " has been completed."));
     disp('---------------------------------------------------------------------');
 end
 

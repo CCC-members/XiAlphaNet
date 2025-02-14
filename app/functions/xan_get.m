@@ -11,13 +11,15 @@ switch contextName
     case 'xan_dir'
         output1 = fullfile(getUserDir(),'.XiAlphaNet');    
     case 'defaults_dir'
-        cfs_db_dir = fullfile(getUserDir(),'.XiAlphaNet');
-        output1 =  fullfile(cfs_db_dir,'defaults','anatomy');
-        output2 =  fullfile(cfs_db_dir,'defaults','eeg');
-        output3 =  fullfile(cfs_db_dir,'defaults','meg');
+        xan_db_dir = xan_get('xan_db_dir');
+        output1 =  fullfile(xan_db_dir,'defaults','anatomy');
+        output2 =  fullfile(xan_db_dir,'defaults','eeg');
+        output3 =  fullfile(xan_db_dir,'defaults','meg');
+    case 'xan_db_dir'
+        output1 = fullfile(getUserDir(),'.XiAlphaNet','Datasets');
     case 'datasets'
-        cfs_db_dir = fullfile(getUserDir(),'.XiAlphaNet','Datasets');        
-        datasets_file =  fullfile(cfs_db_dir,'Datasets','Datasets.json');
+        xan_db_dir = xan_get('xan_db_dir');        
+        datasets_file =  fullfile(xan_db_dir,'Datasets.json');
         if(isfile(datasets_file))
             output1 = jsondecode(fileread(datasets_file));
         else
