@@ -87,7 +87,7 @@ lambda_final = max(lambda_optimal);
 for j = 1:p
     A(:,:,j) = 0.5 * (A(:,:,j)+A(:,:,j)');
     A(:,:,j) = A(:,:,j) + lambda_final * eye(m); % Regularize each slice with lambda_final
-    imag(min(eig(
+    %imag(min(eig(A(:,:,j))))
 end
 
 % If A was originally a 2D matrix, return the regularized 2D matrix
