@@ -70,12 +70,12 @@ for j = 1:p
         end
 
         % If the matrix is still not positive definite after max iterations
-        if iteration == max_iterations
+        if iteration == max_iterations %|| min(eig(A_j_re))<0 || min(imag(eig(A_j_re))>10^(-3))
             disp(['Warning: Slice ', num2str(j), ' could not be made positive definite']);
             % Find the minimum eigenvalue and make it positive by adding epsilon
             min_eigenvalue_reg = min(eigvals);
-            A_j = A_j + abs(min_eigenvalue_reg) + epsilon;  % Make it positive definite
             lambda_optimal(j) = abs(min_eigenvalue_reg) + epsilon;  % Record the regularization term
+            A_j = A_j + lambda_optimal(j) * eye(m);  % Make it positive definite
         end
     end
 end
@@ -85,7 +85,9 @@ lambda_final = max(lambda_optimal);
 
 % Apply the final regularization to all slices with the same lambda
 for j = 1:p
+    A(:,:,j) = 0.5 * (A(:,:,j)+A(:,:,j)');
     A(:,:,j) = A(:,:,j) + lambda_final * eye(m); % Regularize each slice with lambda_final
+    imag(min(eig(
 end
 
 % If A was originally a 2D matrix, return the regularized 2D matrix
