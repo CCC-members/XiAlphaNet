@@ -31,8 +31,8 @@ function [lambda_opt_dc] = bayes_search_conn_delay(lambda_space, Ne,Nr,Nw,freq,C
     lambda_opt_dc(1) = results.XAtMinObjective.l1;
     lambda_opt_dc(2) = results.XAtMinObjective.l2;
 
-    close Figure 1
-    close Figure 2
+    % close Figure 1
+    % close Figure 2
 end
 
 % Model objective function that computes the AIC and solution for given lambda
