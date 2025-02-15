@@ -16,7 +16,7 @@ function [lambda_opt_dc] = bayes_search_conn_delay(lambda_space, Ne,Nr,Nw,freq,C
                            'MaxObjectiveEvaluations', BayesIter_Delay, ...
                            'IsObjectiveDeterministic', false, ...
                            'NumSeedPoints', 5, ...
-                           'Verbose', 0,'UseParallel','PlotFcn',[]);
+                           'Verbose', 0,'UseParallel',true,'PlotFcn',[]);
     else 
        results = bayesopt(objectiveFunc, [ld_domain,lc_domain], ...
                        'AcquisitionFunctionName', 'expected-improvement-plus', ...
@@ -57,7 +57,7 @@ function [LL_val] = modelObjective(lambda,Ne,Nr,Nw,freq,Cross,BayesIter,K,D,C)
     T = Teval(temp_parameters);
     clear temp_parameters;
     % Estimate the number of frequencies that approximate the f and dF with a relative error less than 5%
-    k_min = 30;%findMinimumK(freq,T,Cross, 5, 20,0);
+    k_min = findMinimumK(freq,T,Cross, 5, 20,0);
     index_stoch = 1;
     index_parall_fist = 0;
     index_parall_bayes= 0;
