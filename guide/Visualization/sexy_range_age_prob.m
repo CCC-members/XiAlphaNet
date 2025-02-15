@@ -1,12 +1,23 @@
-clc;
-clear all;
-
+function sexy_range_age_prob(age_range) 
 % Paths
 DataPath = 'Data\Scalp_Density_Matrix';
-modelParametersPath = 'Data\Model_Parameters';
 
-% Subfolders within the main folder
-subFolders = {'Control2'};
+age_min = age_range(1);
+age_max = age_range(2);
+dataset = jsondecode(fileread('/home/ronaldo/Documents/Example/Results/XIALPHANET.json'));
+ages = [];
+for i=1:length(dataset.Participants)
+
+    participant = dataset.Participants(i);
+    participant_age = participant.Age;
+    if(isequal(participant.Status,'Completed')) && age_min<parti
+       ages = [ages,participant_age];
+       Part_Info = jsondecode(fileread(fullfile(dataset.Location,participant.SubID,participant.FileInfo)));
+
+       alpha = load(fullfile(dataset.Location,participant.SubID,Part_Info.Alpha_estimate));
+       
+    end
+end
 
 % Load parameters
 load('Data\Model_Parameters\parameters.mat');
