@@ -10,7 +10,7 @@ for i=1:length(dataset.Participants)
 
     participant = dataset.Participants(i);
     participant_age = participant.Age;
-    if(isequal(participant.Status,'Completed')) && age_min<parti
+    if(isequal(participant.Status,'Completed')) && age_min <= participant_age && participant_age <= age_max
        ages = [ages,participant_age];
        Part_Info = jsondecode(fileread(fullfile(dataset.Location,participant.SubID,participant.FileInfo)));
 

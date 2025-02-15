@@ -68,11 +68,12 @@ lambda_space  = [100,1000,1000];%lambda_regspace(freq,T,Cross,Lipschitz,stoch1,N
 [lambda_opt] = bayesianOptSearch(lambda_space,Ne,Nr,T,freq,stoch1,0,index_parall_bayes,Nsfreq,Cross,Nrand1,Lipschitz,BayesIter_Reg2);
 
 disp('-->> Estimating Transfer Function...')
+parameters.Dimensions.Nv = Nv;
 if(tf_default)
     TF_path = fullfile(properties.general_params.tmp.path,'TensorField');
     T = read_tensor_field(lambda1,lambda2,age,TF_path);
 else
-    parameters.Parallel.T = 1;
+    parameters.Parallel.T = 0;
     T = Teval(parameters);
 end
 clear parameters;
