@@ -210,6 +210,8 @@ parameters.Dimensions.Nw = properties.model_params.nFreqs; % Number of frequenci
 
 disp("-->> Saving Structural outputs");
 mkdir(fullfile(properties.general_params.output_path,'structural'))
+save(fullfile(properties.general_params.output_path,'structural/cortex.mat'),'-struct','Cortex');
+save(fullfile(properties.general_params.output_path,'structural/leadfield.mat'),'-struct','Leadfield');
 save(fullfile(properties.general_params.output_path,'structural/parameters.mat'),'-struct','parameters');
 
 end
