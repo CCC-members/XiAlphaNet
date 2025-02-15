@@ -9,7 +9,7 @@ function [lambda_opt_dc] = bayes_search_conn_delay(lambda_space, Ne,Nr,Nw,freq,C
    
     
     % Run Bayesian Optimization
-    tic;
+    
     if indx_parallel
         results = bayesopt(objectiveFunc, [ld_domain,lc_domain], ...
                            'AcquisitionFunctionName', 'expected-improvement-plus', ...
@@ -25,7 +25,7 @@ function [lambda_opt_dc] = bayes_search_conn_delay(lambda_space, Ne,Nr,Nw,freq,C
                        'NumSeedPoints', 5, ...
                        'Verbose', 0,'UseParallel',false,'PlotFcn',[]);
     end
-    toc;
+    
     
     % Extract optimal lambda values and the corresponding solution
     lambda_opt_dc(1) = results.XAtMinObjective.l1;

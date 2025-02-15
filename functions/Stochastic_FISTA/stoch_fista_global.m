@@ -34,7 +34,7 @@ function [x_opt, History] = stoch_fista_global(lambda, Ne,Nv,T,freq,index_stoch,
     % To store results from parallel execution
     x_opts = cell(1, Nrand); 
     F_vals = inf(1, Nrand); 
-   tic
+   
     % Iterate over each random simulation in parallel
     if index_parll == 1
         parfor j = 1:Nrand
@@ -72,7 +72,7 @@ function [x_opt, History] = stoch_fista_global(lambda, Ne,Nv,T,freq,index_stoch,
     % After the parallel loop, find the best solution
     [~, best_idx] = min(F_vals);
     x_opt = x_opts{best_idx};
-toc
+
 end
 
 
