@@ -26,7 +26,7 @@ lambda_optimal = zeros(1, p);
 % Regularization parameter range or starting value
 lambda_initial = 1e-6;  % Start with a small lambda value
 lambda_increase_factor = 10;  % Factor to increase lambda if needed
-max_iterations = 100;  % Max iterations to search for positive definiteness
+max_iterations = 200;  % Max iterations to search for positive definiteness
 epsilon = 1e-2;  % Small value to add to the matrix to ensure positive definiteness
 
 % Loop through each slice A(:,:,j)
