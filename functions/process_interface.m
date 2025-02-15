@@ -11,17 +11,19 @@ XAN_path = fullfile(output_path);
 XAN_file = fullfile(XAN_path,XAN_filename);
 if(isfile(XAN_file))
     XIALPHANET = jsondecode(fileread(XAN_file));
-    parameters = load(fullfile(output_path,XIALPHANET.Structural));
+    parameters = load(fullfile(output_path,XIALPHANET.Structural.parameters));
 else
-    XIALPHANET.Name             = properties.general_params.dataset.Name;
-    TempUUID                    = java.util.UUID.randomUUID;
-    XIALPHANET.UUID             = char(TempUUID.toString);
-    XIALPHANET.Description      = properties.general_params.dataset.Description;
-    XIALPHANET.Task             = properties.general_params.dataset.descriptors.task;
-    XIALPHANET.Status           = "Processing";
-    XIALPHANET.Location         = XAN_path;
-    XIALPHANET.general_params   = properties.general_params;
-    XIALPHANET.Structural       = "structural/parameters.mat";
+    XIALPHANET.Name                     = properties.general_params.dataset.Name;
+    TempUUID                            = java.util.UUID.randomUUID;
+    XIALPHANET.UUID                     = char(TempUUID.toString);
+    XIALPHANET.Description              = properties.general_params.dataset.Description;
+    XIALPHANET.Task                     = properties.general_params.dataset.descriptors.task;
+    XIALPHANET.Status                   = "Processing";
+    XIALPHANET.Location                 = XAN_path;
+    XIALPHANET.general_params           = properties.general_params;
+    XIALPHANET.Structural.Cortex        = "structural/cortex.mat";
+    XIALPHANET.Structural.Leadfield     = "structural/leadfield.mat";
+    XIALPHANET.Structural.parameters    = "structural/parameters.mat";
     XIALPHANET.Participants     = [];
 
     %%

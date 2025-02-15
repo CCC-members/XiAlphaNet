@@ -56,7 +56,7 @@ for i=1:length(varargin)
     end
 end
 if(getGlobalGuimode())
-    XiAlphaNet
+    XiAlphaNetUI;
 else
     properties = get_properties();
     [status, properties] = check_properties(properties);
