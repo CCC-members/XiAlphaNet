@@ -47,8 +47,9 @@ function  [dF,F,smoothF] = evaluatedF(x,Ne,Nv,T,sw,sp,nsf_band,Sw)%parameters)
         %Sigma_omega = Sigma_omega+10^(-2)*eye(size(Sigma_omega));
         Sigma_omega = regularize_tensor(Sigma_omega);
         %
-        SO_omega = S_omega*pinv(Sigma_omega);
-        OISO = Sigma_omega \ (I-SO_omega);
+        inv_Sigma_omega = pinv(Sigma_omega);
+        SO_omega = S_omega * inv_Sigma_omega;
+        OISO = inv_Sigma_omega * (I-SO_omega);
         TOISOT(:,j) = computeDiagonalElements(T_omega',OISO);
         % Compute trace and determinant terms
         term3 = term3 + real(+logdet(Sigma_omega) + trace(SO_omega))* sw(2,j)/nsf_band;

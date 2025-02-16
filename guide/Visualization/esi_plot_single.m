@@ -7,7 +7,7 @@ disp("-->> Starting process");
 
 %% Load test data
 Cortex                  = load("templates/Cortex.mat");
-
+%parameters = load('/home/ronaldo/Documents/Example/Results/structural/parameters.mat');
 template                = load("template/axes.mat");
 colorMap                = load("template/mycolormap_brain_basic_conn.mat");
 currentAxes             = template.axes;
@@ -23,11 +23,11 @@ J(iHideVert)            = [];
 
 % Apply smoothing to J using 'movmean' (moving average) or 'gaussian'
 J_smoothed              = J;%smoothdata(J, 'movmean', 20);  % 5 is the window size, adjust as needed
-%L = parameters.Model.L;
-%sigma = 1;
-%K = exp(-L.^2/(2*sigma^2));
-%K = K./sum(K,2);
-%J_smoothed = K*J_smoothed;
+% L = parameters.Model.L;
+% sigma = 50;
+% K = exp(-L.^2/(2*sigma^2));
+% K = K./sum(K,2);
+% J_smoothed = K*J_smoothed;
 sources_iv = J_smoothed;%_star;
 sources_iv              = sources_iv/max(sources_iv(:));
 %%
