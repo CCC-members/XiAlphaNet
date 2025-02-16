@@ -24,10 +24,14 @@ function [solution] = eval_source_conn(x, freq,T,K,R,properties)
             % Calculate xi_omega and alpha_omega based on the model parameters
             xi_omega = e(:,1) ./ (1 + e(:,2) .* omega.^2).^e(:,3);
             alpha_omega = a(:,1) ./ (1 + a(:,2) .* (omega - a(:,4)).^2).^a(:,3);
-            sources_par = xi_omega+alpha_omega;
+            %sources_par = xi_omega+alpha_omega;
             % Compute the transformed covariance matrices for xi and alpha
-            c(:,:,j) = (computeTDT(Tj_cross, sources_par));
-            j_xi(:,j) = Tj_act*sources_par;
+            c_xi(:,:,j) = computeTDT(Tj_cross, xi_omega);
+            c_alpha(:,:,j) = computeTDT(Tj_cross, alpha_omega);
+            c_full(:,:,j) = c_xi(:,:,j)+c_alpha(:,:,j) ;
+            j_xi(:,j) = Tj_act*xi_omega;
+            j_alpha(:,j) = Tj_act*alpha_omega;
+            j_full(:,j) = j_xi(:,j)+j_alpha(:,j);
         end
     else
         for j = 1:Nsw
