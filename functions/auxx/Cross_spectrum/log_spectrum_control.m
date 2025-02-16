@@ -53,9 +53,9 @@ for k = 1:length(subFolders)
        % age = load(filePath_Age);
         %
         xx=data.x(1:end-1);
-        tic
+        
         [c] = eval_source_conn(xx, parameters);
-        toc
+        
         log_spec = log_spectrum(c,parameters);
         All_Data{1,index}=  log_spec;
         All_Data{2,index}= data.x(end);

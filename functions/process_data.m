@@ -67,11 +67,11 @@ for k = 1:length(subFolders)
        parameters1.Age = age;
         %% 
         
-        tic
+        
         [x] =  Xi_ALphaNET(parameters1);
        % [x] = np_ref_solution(x);
         %[x] = global_scale_factor(x,parameters1);
-        toc
+        
         x.Age=age;
    
         %% Save the computed x to the corresponding group folder in Model_Parameters

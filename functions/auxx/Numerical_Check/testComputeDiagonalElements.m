@@ -26,14 +26,13 @@ function testComputeDiagonalElements
         D_diag = diag(rand(m, 1));
 
         % Test with diagonal D
-        tic;
+        
         disp('-->Optimize time')
         computed_diag_elements_diag = computeDiagonalElements(T, D_diag, 1);
-        toc;
-        tic
+        
         disp('-->Brute time')
         expected_diag_elements_diag = diag(T * D_diag * T');
-        toc;
+        
         errors_diagonal(sim) = norm(computed_diag_elements_diag - expected_diag_elements_diag, 'fro');
     end
 

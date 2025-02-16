@@ -11,7 +11,7 @@ function L_est = estimateLipschitzConstant(freq,T,Sw,index_stoch,Nsfreq,index_pa
     [Ne,Nv,~] = size(T);
     [nsf_band, sw, sp] = sample_frequencies(freq, index_stoch, Nsfreq);
     maxRatio = 0;  % Initialize the maximum ratio
-    tic
+    
     if index_parall == 0
         for i = 1:numSamples
             %fprintf('-->Lipschitz step %d\n',i)
@@ -61,7 +61,7 @@ function L_est = estimateLipschitzConstant(freq,T,Sw,index_stoch,Nsfreq,index_pa
             end
         end
     end
-    toc
+    
     % The estimated Lipschitz constant is the maximum ratio found
     L_est = maxRatio;
     fprintf('-->Lipschitz constant found %d\n',L_est)

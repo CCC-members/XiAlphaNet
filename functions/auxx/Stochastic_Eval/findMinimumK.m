@@ -24,7 +24,7 @@ function k_min = findMinimumK(freq, T, Sw, RE_tol, Nxrand, index_parallel)
     [dF_full, ~, ~] = evaluatedF(x, Ne, Nv, T, sw, sp, nsf_band, Sw);
 
     % Outer loop over k
-    tic
+    
     for k = 1:max_k
         relative_errors = zeros(1, Nxrand); % Track relative errors for current k
 
@@ -100,5 +100,5 @@ function k_min = findMinimumK(freq, T, Sw, RE_tol, Nxrand, index_parallel)
     % if k_min == max_k
     %     error('Failed to achieve the desired accuracy with k up to %d\n', max_k);
     % end
-    toc
+    
 end

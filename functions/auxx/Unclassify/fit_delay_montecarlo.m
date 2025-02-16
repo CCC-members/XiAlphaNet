@@ -50,7 +50,7 @@ parfor a = 1:length(age_stars)
     age_star = age_stars(a);
     
     % Monte Carlo Optimization
-    tic
+    
     % Vectorized sampling: generate all random samples at once
     sampling_mean = (ub + lb) / 2; % Centered within the bounds
     sampling_variance = ((ub - lb) / 12).^2; % Variance proportional to the range, adjust as needed
@@ -60,13 +60,13 @@ parfor a = 1:length(age_stars)
 
     % Ensure the samples stay within the bounds [lb, ub]
     dSamples = max(min(dSamples, ub), lb);
-    toc
+    
 
     % Initialize the best objective value and corresponding sample
     bestObjectiveValue = inf;
     bestV = [];
     
-    tic
+    
     % Evaluate the objective function for each sample
     for i = 1:numSamples
         objectiveValue = delay_objective_function(dSamples(i, :), age_star, h, batch, parameters);
@@ -77,7 +77,7 @@ parfor a = 1:length(age_stars)
             bestV = dSamples(i, :);
         end
     end
-    toc
+   
     
     % Store the best results for this age_star
     bestVs{a} = bestV;

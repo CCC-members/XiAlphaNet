@@ -46,12 +46,11 @@ for k = 1:length(subFolders)
         %
 
         %%
-        tic
         log_spec = log_spectrum(c,parameters);
 
         All_Data_dummy{1,j} = log_spec;
         All_Data_dummy{2,j} =  age.a;
-       toc
+       
     end
 end
 All_Data = All_Data_dummy;

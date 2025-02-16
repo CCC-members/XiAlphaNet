@@ -37,7 +37,6 @@ for k = 1:length(subFolders)
         c = data_struct.CrossM;
   
         %%
-        tic
         J = source_cross_dummy(c,parameters);
         log_spec = log_spectrum(J,parameters);
 
@@ -54,7 +53,7 @@ for k = 1:length(subFolders)
         All_Data_dummy{1,index} = log_spec;
         All_Data_dummy{2,index} =  age;
         index  =  index   + 1; 
-       toc
+       
     end
 end
 All_Data = All_Data_dummy;

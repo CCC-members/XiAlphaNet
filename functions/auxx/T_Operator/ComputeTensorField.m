@@ -19,9 +19,8 @@ lambda_D_space = linspace(lambda_D_min,lambda_D_max,num_D);
 lambda_C_space = linspace(lambda_C_min,lambda_C_max,num_C);
 % Generate Tensor Field
 for i = 1:num_D
-    i
     for j=1:num_C
-        tic
+        
         % Extract current point in the field 
         lambda_D = lambda_D_space(i);
         lambda_C = lambda_C_space(j);
@@ -38,7 +37,7 @@ for i = 1:num_D
         save(filepath,'T','-v7.3');
         clear  T
         clear current_parameters
-        toc
+        
     end
 end
 

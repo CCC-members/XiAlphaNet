@@ -15,7 +15,6 @@ function [solution] = eval_source_conn(x, freq,T,K,R,properties)
     j_xi = zeros(Nv,Nsw);
     j_alpha = zeros(Nv,Nsw);
     % Iterate over each frequency and compute cxi and calpha
-    tic
     if conn_delay == 1
         parfor j = 1:Nsw
             %fprintf('Processing frequency %d of %d\n', j, Nsw);
@@ -49,7 +48,7 @@ function [solution] = eval_source_conn(x, freq,T,K,R,properties)
             j_full(:,j) = j_xi(:,j)+j_alpha(:,j);
         end
     end
-    toc
+
     solution.Cross.Full = c_full;
     solution.Cross.Xi = c_xi;
     solution.Cross.Alpha = c_alpha;
