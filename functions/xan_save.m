@@ -49,22 +49,27 @@ switch lower(claf)
         Transfer_Function = T;
         Participant.Transfer_Function = fullfile('Transfer_Function.mat');
         save(fullfile(subject_path,"Transfer_Function.mat"),"Transfer_Function");
+        % Map Solution into Source  Activation and Crosspectrum on the Frequency Domain
+        [source_act_cross] = eval_source_conn(x.Solution, data.freq,T,parameters.Model.K,parameters.Model.R,properties);
+        % Saving  Full Activation
+        Source_Activations_Full = source_act_cross.Activations.Full;
+        Participant.Source_Activations_Full = fullfile('Source_Activations_Full.mat');
+        save(fullfile(subject_path,"Source_Activations_Full.mat"),"Source_Activations_Full");
+        % Saving Xi-Process Activation
+        Source_Activations_Xi = source_act_cross.Activations.Xi;
+        Participant.Source_Activations_Xi = fullfile('Source_Activations_Xi.mat');
+        save(fullfile(subject_path,"Source_Activations_Xi.mat"),"Source_Activations_Xi");
+        % Saving Alpha-Process Activation
+        Source_Activations_Alpha = source_act_cross.Activations.Xi;
+        Participant.Source_Activations_Alpha = fullfile('Source_Activations_Alpha.mat');
+        save(fullfile(subject_path,"Source_Activations_Alpha.mat"),"Source_Activations_Alpha");
+        % Saving Full Cross-Spectrum in ROIs-Space
+        Source_Cross_Full = source_act_cross.Cross.Full;
+        [Source_PSD,freq]= log_spectrum(Source_Cross_Full,data.freq);
+        Participant.Source_PSD = fullfile('Source_PSD.mat');
+        save(fullfile(subject_path,"Source_PSD.mat"),"Source_PSD",'freq');
 
-        if(properties.general_params.save_mode.extended)
-            % Map Solution into Source  Activation and Crosspectrum on the Frequency Domain
-            [source_act_cross] = eval_source_conn(x.Solution, data.freq,T,parameters.Model.K,parameters.Model.R,properties);
-            % Saving  Full Activation
-            Source_Activations_Full = source_act_cross.Activations.Full;
-            Participant.Source_Activations_Full = fullfile('Source_Activations_Full.mat');
-            save(fullfile(subject_path,"Source_Activations_Full.mat"),"Source_Activations_Full");
-            % Saving Xi-Process Activation
-            Source_Activations_Xi = source_act_cross.Activations.Xi;
-            Participant.Source_Activations_Xi = fullfile('Source_Activations_Xi.mat');
-            save(fullfile(subject_path,"Source_Activations_Xi.mat"),"Source_Activations_Xi");
-            % Saving Alpha-Process Activation
-            Source_Activations_Alpha = source_act_cross.Activations.Xi;
-            Participant.Source_Activations_Alpha = fullfile('Source_Activations_Alpha.mat');
-            save(fullfile(subject_path,"Source_Activations_Alpha.mat"),"Source_Activations_Alpha");
+        if(properties.general_params.save_mode.extended) 
             % Saving Full Cross-Spectrum in ROIs-Space
             Source_Cross_Full = source_act_cross.Cross.Full;
             Participant.Source_Cross_Full = fullfile('Source_Cross_Full.mat');
