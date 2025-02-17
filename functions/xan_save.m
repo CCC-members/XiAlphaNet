@@ -45,10 +45,10 @@ switch lower(claf)
         Conn_Matrix = x.Lambda_DC(2)*parameters.Compact_Model.C;
         Participant.Conn_Matrix = fullfile('Conn_Matrix.mat');
         save(fullfile(subject_path,"Conn_Matrix.mat"),"Conn_Matrix");
-        %Saving Transfer Function from Source to Scalp
-        Transfer_Function = T;
-        Participant.Transfer_Function = fullfile('Transfer_Function.mat');
-        save(fullfile(subject_path,"Transfer_Function.mat"),"Transfer_Function");
+        % %Saving Transfer Function from Source to Scalp
+        % Transfer_Function = T;
+        % Participant.Transfer_Function = fullfile('Transfer_Function.mat');
+        % save(fullfile(subject_path,"Transfer_Function.mat"),"Transfer_Function");
         % Map Solution into Source  Activation and Crosspectrum on the Frequency Domain
         [source_act_cross] = eval_source_conn(x.Solution, data.freq,T,parameters.Model.K,parameters.Model.R,properties);
         % Saving  Full Activation
