@@ -20,7 +20,6 @@ function [lambda_opt] = bayesianOptSearch(lambda_space,Ne,Nv,T,freq,index_stoch,
     l3_domain = optimizableVariable('l3', [10^(-10), lambda_space(3)], 'Transform', 'log'); % a
     
     % Run Bayesian Optimization
-    tic;
     if index_parall_bayes == 1
        results = bayesopt(objectiveFunc, [l1_domain, l2_domain, l3_domain], ...
                        'AcquisitionFunctionName', 'expected-improvement-plus', ...
@@ -38,8 +37,6 @@ function [lambda_opt] = bayesianOptSearch(lambda_space,Ne,Nv,T,freq,index_stoch,
                        'Verbose', 0,'PlotFcn',[]);
     end 
 
-
-    toc;
     % Extract optimal lambda values and the corresponding solution
     lambda_opt(1) = results.XAtMinObjective.l1;
     lambda_opt(2) = results.XAtMinObjective.l2;

@@ -20,7 +20,7 @@ freq = parameters.Data.freq;
 
 I = eye(size(C));
 T = zeros(Ne,Nv,Nw);
-tic
+
 if parameters.Parallel.T == 1
     parfor w = 1:Nw
        %fprintf('-->Frequency %d/%d\n',w,Nw)
@@ -34,6 +34,5 @@ else
        T(:,:,w) = (K/Ts);
     end
 end 
-toc
 
 end

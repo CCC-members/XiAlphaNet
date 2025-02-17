@@ -16,14 +16,14 @@ function [lambda_opt_dc] = bayes_search_conn_delay(lambda_space, Ne,Nr,Nw,freq,C
                            'MaxObjectiveEvaluations', BayesIter_Delay, ...
                            'IsObjectiveDeterministic', false, ...
                            'NumSeedPoints', 5, ...
-                           'Verbose', 0,'UseParallel',true);
+                           'Verbose', 0,'UseParallel',true,'PlotFcn',[]);
     else 
        results = bayesopt(objectiveFunc, [ld_domain,lc_domain], ...
                        'AcquisitionFunctionName', 'expected-improvement-plus', ...
                        'MaxObjectiveEvaluations', BayesIter_Delay, ...
                        'IsObjectiveDeterministic', false, ...
                        'NumSeedPoints', 5, ...
-                       'Verbose', 0,'UseParallel',false);
+                       'Verbose', 0,'UseParallel',false,'PlotFcn',[]);
     end
     toc;
     
@@ -31,8 +31,8 @@ function [lambda_opt_dc] = bayes_search_conn_delay(lambda_space, Ne,Nr,Nw,freq,C
     lambda_opt_dc(1) = results.XAtMinObjective.l1;
     lambda_opt_dc(2) = results.XAtMinObjective.l2;
 
-    close Figure 1
-    close Figure 2
+    % close Figure 1
+    % close Figure 2
 end
 
 % Model objective function that computes the AIC and solution for given lambda

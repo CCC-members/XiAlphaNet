@@ -18,16 +18,16 @@ function testComputeTDT
         D = diag(rand(1, m));
 
         % Compute TDT' using the custom function
-        tic;
+        
         disp('--> Optimal time')        
         TDT = computeTDT(T, D);
-        toc;
+        
 
         % Compute TDT' using direct matrix multiplication for verification
-        tic;
+        
         disp('-->Brute Time')
         TDT_direct = T * D* T';
-        toc;
+        
 
         % Compute the error as the Frobenius norm of the difference
         errors(sim) = norm(TDT - TDT_direct, 'fro');

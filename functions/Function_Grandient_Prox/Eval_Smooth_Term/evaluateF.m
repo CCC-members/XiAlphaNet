@@ -33,13 +33,11 @@ function [F] = evaluateF(x,Ne,T,sw,sp,nsf_band,Sw)%;parameters)
 
         % Define Sigma_omega
         Sigma_omega = sigma2 * I +  computeTDT(T_omega, xi_omega + alpha_omega); 
-        
         % Regularize Sigma
-        Sigma_omega = Sigma_omega+10^(-2)*eye(size(Sigma_omega));
-        
+        Sigma_omega = regularize_tensor(Sigma_omega);
 
         % Compute trace and determinant terms
-        term3 = term3 + real(+log(det(Sigma_omega)) + trace(S_omega/Sigma_omega))* sw(2,j)/nsf_band;
+        term3 = term3 + real(+logdet(Sigma_omega) + trace(S_omega*pinv(Sigma_omega)))* sw(2,j)/nsf_band;
     end
 
 

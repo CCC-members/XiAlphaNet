@@ -32,16 +32,16 @@ Nsfreq = 18;
 Cross = parameters.Data.Cross;
 Nrand = 10;
 Lipschitz = 400;
-% tic;
+
 disp('-->> Initializing Stochastic FISTA  global optimazer...')
 [lambda_opt] = [100,1000,1000];%bayesianOptSearch(lambda_space, parameters);
 parameters.Stochastic.stoch = 1; 
-tic
+
 [x_opt,hist] = stoch_fista_global(lambda, Ne,Nv,T,freq,index_stoch,index_parll,Nsfreq,Cross,Nrand,Lipschitz);
-toc
+
 x_opt = np_ref_solution(x_opt);
 x = x_opt.Solution;
-%toc;
+
 [e,a,s2] = x2v(x);
 
 % Create a single figure for all subplots
