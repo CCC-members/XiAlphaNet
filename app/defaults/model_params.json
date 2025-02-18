@@ -10,9 +10,7 @@
     "stoch2":false,
     "tensor_field":{
         "description":"",
-        "default":false,
-        "urls":[
-        ]
+        "default":false
     },
     "delay":{
         "description":"%std_lambdad = 0.57;% The ratio between the standar deviation of the conduction delays over the mean across the lifespan",
