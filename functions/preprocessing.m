@@ -13,23 +13,37 @@ if(properties.model_params.tensor_field.default)
     if(~isfolder(TF_path))
         mkdir(TF_path);
     end
-    filename = {'Tensor_Field_9.5ms.zip','Tensor_Field_11ms.zip'};    
-    disp(strcat("-->> Downloading Tensor Field files......."));
-    urls = properties.model_params.tensor_field.urls;
-    for i=1:length(urls)
-        url = urls{i};
-        if(~isfolder(tmp_path,filename{i}))
-            matlab.net.http.HTTPOptions.VerifyServerName = false;
-            options = weboptions('Timeout',Inf,'RequestMethod','auto');
-            downladed_file = websave(fullfile(TF_path,filename{i}),url,options);
-            pause(1);
-            %% Unzip lasted version
-            disp(strcat("-->> Unziping files......."));
-            exampleFiles = unzip(fullfile(TF_path,filename{i}),tmp_path);
-            pause(1);
-            delete(fullfile(TF_path,filename{i}));
-        end
+    disp(strcat("-->> Downloading Tensor Field files......."));  
+    TF9_5_dir = fullfile(TF_path,'Tensor_Field_9.5ms');
+    TF9_5_files = dir(TF9_5_dir);
+    TF9_5_files(ismember({TF9_5_files.name},{'.','..'})) = [];
+    if(~isfolder(TF9_5_dir) || isempty(TF9_5_files))
+        url = properties.test_data.tensor_field9;
+        matlab.net.http.HTTPOptions.VerifyServerName = false;
+        options = weboptions('Timeout',Inf,'RequestMethod','auto');
+        downladed_file = websave(fullfile(TF_path,strcat('Tensor_Field_9.5ms.zip')),url,options);
+        pause(1);
+        %% Unzip lasted version
+        disp(strcat("-->> Unziping files......."));
+        exampleFiles = unzip(fullfile(TF_path,strcat('Tensor_Field_9.5ms.zip')),TF_path);
+        pause(1);
+        delete(fullfile(TF_path,strcat('Tensor_Field_9.5ms.zip')));
     end
+    TF11_dir = fullfile(TF_path,'Tensor_Field_11ms');
+    TF11_files = dir(TF11_dir);
+    TF11_files(ismember({TF11_files.name},{'.','..'})) = [];
+    if(~isfolder(TF11_dir) || isempty(TF11_files))
+        url = properties.test_data.tensor_field11;
+        matlab.net.http.HTTPOptions.VerifyServerName = false;
+        options = weboptions('Timeout',Inf,'RequestMethod','auto');
+        downladed_file = websave(fullfile(TF_path,strcat('Tensor_Field_11ms.zip')),url,options);
+        pause(1);
+        %% Unzip lasted version
+        disp(strcat("-->> Unziping files......."));
+        exampleFiles = unzip(fullfile(TF_path,strcat('Tensor_Field_11ms.zip')),TF_path);
+        pause(1);
+        delete(fullfile(TF_path,strcat('Tensor_Field_11ms.zip')));
+    end    
 else
     % Compute the Tensor Field
 
