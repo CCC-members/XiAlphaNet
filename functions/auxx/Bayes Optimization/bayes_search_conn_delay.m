@@ -6,10 +6,8 @@ function [lambda_opt_dc] = bayes_search_conn_delay(lambda_space, Ne,Nr,Nw,freq,C
     % Set up the domain for lambda parameters
     ld_domain = optimizableVariable('l1', [lambda_space(1,1), lambda_space(1,2)], 'Transform', 'log'); % s
     lc_domain = optimizableVariable('l2', [lambda_space(2,1), lambda_space(2,2)], 'Transform', 'log'); % e
-   
-    
+       
     % Run Bayesian Optimization
-    tic;
     if indx_parallel
         results = bayesopt(objectiveFunc, [ld_domain,lc_domain], ...
                            'AcquisitionFunctionName', 'expected-improvement-plus', ...
@@ -24,15 +22,11 @@ function [lambda_opt_dc] = bayes_search_conn_delay(lambda_space, Ne,Nr,Nw,freq,C
                        'IsObjectiveDeterministic', false, ...
                        'NumSeedPoints', 5, ...
                        'Verbose', 0,'UseParallel',false,'PlotFcn',[]);
-    end
-    toc;
+    end   
     
     % Extract optimal lambda values and the corresponding solution
     lambda_opt_dc(1) = results.XAtMinObjective.l1;
     lambda_opt_dc(2) = results.XAtMinObjective.l2;
-
-    % close Figure 1
-    % close Figure 2
 end
 
 % Model objective function that computes the AIC and solution for given lambda
