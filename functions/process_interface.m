@@ -85,7 +85,7 @@ for s=1:length(subjects)
 
     %%
     %% Initializing Model Parameters
-    %%
+    %
     disp('-->> Initializing Model Parameters...');
     Nr                          = parameters.Dimensions.Nr;
     Nv                          = parameters.Dimensions.Nv;
@@ -117,14 +117,10 @@ for s=1:length(subjects)
     D                           = parameters.Compact_Model.D;
     C                           = parameters.Compact_Model.C;
 
-    %%
-    %% Estimating Number of Batchs to StochFISTA
-    %%
-    disp('-->> Estimating Number of Batchs to StochFISTA...');
     [lambda_opt_dc]             = bayes_search_conn_delay(lambda_space_cd, Ne,Nr,Nw,freq,Cross,BayesIter_Reg1,K,D,C,conn_delay,BayesIter_Delay);
     lambda1                     = lambda_opt_dc(1); % Estimated delay strenght
     lambda2                     = lambda_opt_dc(2); % Estimated connectivity delay
-    
+
     % Use the lambda values to updata connectivity and delays
     parameters.Model.D          = lambda1 * parameters.Model.D;
     parameters.Model.C          = lambda2 * parameters.Model.C;
@@ -133,16 +129,21 @@ for s=1:length(subjects)
     parameters.Parallel.T       = 0;
     parameters.Data.freq        = freq;
     T                           = Teval(parameters);
-    k_min                       = findMinimumK(freq,T,Cross, 5, 20,conn_delay);
 
-    %%
-    %% Initializing Bayesian Optimization On Regularization
-    %%
+    %
+    % Estimating Number of Batchs to StochFISTA
+    %
+    disp('-->> Estimating Number of Batchs to StochFISTA...');
+    k_min                       = 30;%findMinimumK(freq,T,Cross, 5, 20,conn_delay);
+
+    %
+    %bInitializing Bayesian Optimization On Regularization
+    %
     disp('-->> Initializing Bayesian Optimization On Regularization...');
     index_parall_bayes          = 1;
     Nsfreq                      = k_min;
-    Lipschitz                   = 0.01;             %estimateLipschitzConstant(freq,T,Cross,1,Nsfreq,stoch1, 0.1, 20);
-    lambda_space                = [100,1000,1000];  %lambda_regspace(freq,T,Cross,Lipschitz,stoch1,Nsfreq);
+    Lipschitz                   = estimateLipschitzConstant(freq,T,Cross,1,Nsfreq,stoch1, 2, 100);
+    lambda_space                = lambda_regspace(freq,T,Cross,Lipschitz,stoch1,Nsfreq);
     [lambda_opt]                = bayesianOptSearch(lambda_space,Ne,Nr,T,freq,stoch1,0,index_parall_bayes,Nsfreq,Cross,Nrand1,Lipschitz,BayesIter_Reg2);
 
     disp('-->> Estimating Transfer Function...');
@@ -155,15 +156,16 @@ for s=1:length(subjects)
         T                       = Teval(parameters);
     end
 
-    %%
-    %% Initializing Stochastic FISTA global optimizer
-    %%
+    %
+    % Initializing Stochastic FISTA global optimizer
+    %
     disp('-->> Initializing Stochastic FISTA global optimizer...');
-    [x_opt, ~]                  = stoch_fista_global(lambda_opt, Ne,Nv,T,freq,stoch2,conn_delay,Nsfreq,Cross,Nrand2,Lipschitz);
+    [x_opt, hist]                  = stoch_fista_global(lambda_opt, Ne,Nv,T,freq,stoch2,conn_delay,Nsfreq,Cross,Nrand2,Lipschitz);
     [e,a,s2]                    = x2v(x_opt.Solution);
     e(:,1)                      = e(:,1)/scale;
     a(:,1)                      = a(:,1)/scale;
     s2                          = s2/scale;
+    data.Cross                  = data.Cross/scale;
     x_opt.Solution              = v2x(e,a,s2);
     x.Solution                  = x_opt.Solution;
     x.Lambda_DC                 = lambda_opt_dc;

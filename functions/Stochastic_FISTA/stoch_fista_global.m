@@ -16,7 +16,7 @@ function [x_opt, History] = stoch_fista_global(lambda, Ne,Nv,T,freq,index_stoch,
     
     %Nrand = parameters.Stochastic.Niter;
     [nsf_band,sw,sp] = sample_frequencies(freq,index_stoch,Nsfreq);
-    max_backtracking_iter = 60;
+    max_backtracking_iter = 50;
     L0 = Lipschitz;
     max_iter = 100;
     tol = 1e-2;
@@ -72,6 +72,7 @@ function [x_opt, History] = stoch_fista_global(lambda, Ne,Nv,T,freq,index_stoch,
     % After the parallel loop, find the best solution
     [~, best_idx] = min(F_vals);
     x_opt = x_opts{best_idx};
+    best_idx
 
 end
 

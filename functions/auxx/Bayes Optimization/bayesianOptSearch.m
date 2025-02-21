@@ -16,8 +16,8 @@ function [lambda_opt] = bayesianOptSearch(lambda_space,Ne,Nv,T,freq,index_stoch,
     
     % Set up the domain for lambda parameters
     l1_domain = optimizableVariable('l1', [10^(-10), lambda_space(1)], 'Transform', 'log'); % s
-    l2_domain = optimizableVariable('l2', [10^(-10), lambda_space(2)], 'Transform', 'log'); % e
-    l3_domain = optimizableVariable('l3', [10^(-10), lambda_space(3)], 'Transform', 'log'); % a
+    l2_domain = optimizableVariable('l2', [20, lambda_space(2)], 'Transform', 'log'); % e
+    l3_domain = optimizableVariable('l3', [20, lambda_space(3)], 'Transform', 'log'); % a
     
     % Run Bayesian Optimization
     if index_parall_bayes == 1
