@@ -16,7 +16,7 @@ function [x_opt, History] = stoch_fista_global(lambda, Ne,Nv,T,freq,index_stoch,
     
     %Nrand = parameters.Stochastic.Niter;
     [nsf_band,sw,sp] = sample_frequencies(freq,index_stoch,Nsfreq);
-    max_backtracking_iter = 50;
+    max_backtracking_iter = 60;
     L0 = Lipschitz;
     max_iter = 100;
     tol = 1e-2;
