@@ -72,7 +72,7 @@ function [x_opt, History] = stoch_fista_global(lambda, Ne,Nv,T,freq,index_stoch,
     % After the parallel loop, find the best solution
     [~, best_idx] = min(F_vals);
     x_opt = x_opts{best_idx};
-    best_idx
+    %best_idx
 
 end
 
