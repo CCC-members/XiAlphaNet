@@ -192,6 +192,10 @@ for s=1:length(subjects)
     disp('---------------------------------------------------------------------');
     disp(strcat("-->> The analysis of subject: ", SubID, " has been completed."));
     disp('---------------------------------------------------------------------');
+    if(getGlobalGuimode())
+        properties.dlg.Value = length(subjects)/s;
+        drawnow;
+    end
 end
 
 %%

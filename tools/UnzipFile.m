@@ -1,4 +1,4 @@
-function unzipped = UnzipFile(filename,folder)
+function unzipped = UnzipFile(folder,filename)
 unzipped = false;
 exampleFiles = unzip(fullfile(folder,filename),folder);
 pause(1);
