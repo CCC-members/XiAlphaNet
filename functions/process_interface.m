@@ -137,13 +137,13 @@ for s=1:length(subjects)
     k_min                       = 30;%findMinimumK(freq,T,Cross, 5, 20,conn_delay);
 
     %
-    %bInitializing Bayesian Optimization On Regularization
+    % Initializing Bayesian Optimization On Regularization
     %
     disp('-->> Initializing Bayesian Optimization On Regularization...');
     index_parall_bayes          = 1;
     Nsfreq                      = k_min;
-    Lipschitz                   = estimateLipschitzConstant(freq,T,Cross,1,Nsfreq,stoch1, 2, 100);
-    lambda_space                = lambda_regspace(freq,T,Cross,Lipschitz,stoch1,Nsfreq);
+    Lipschitz                   = 0.01;%estimateLipschitzConstant(freq,T,Cross,1,Nsfreq,stoch1, 2, 100);
+    lambda_space                = [100,1000,1000];%lambda_regspace(freq,T,Cross,Lipschitz,stoch1,Nsfreq);
     [lambda_opt]                = bayesianOptSearch(lambda_space,Ne,Nr,T,freq,stoch1,0,index_parall_bayes,Nsfreq,Cross,Nrand1,Lipschitz,BayesIter_Reg2);
 
     disp('-->> Estimating Transfer Function...');
@@ -160,7 +160,7 @@ for s=1:length(subjects)
     % Initializing Stochastic FISTA global optimizer
     %
     disp('-->> Initializing Stochastic FISTA global optimizer...');
-    [x_opt, hist]                  = stoch_fista_global(lambda_opt, Ne,Nv,T,freq,stoch2,conn_delay,Nsfreq,Cross,Nrand2,Lipschitz);
+    [x_opt, hist]               = stoch_fista_global(lambda_opt, Ne,Nv,T,freq,stoch2,conn_delay,Nsfreq,Cross,Nrand2,Lipschitz);
     [e,a,s2]                    = x2v(x_opt.Solution);
     e(:,1)                      = e(:,1)/scale;
     a(:,1)                      = a(:,1)/scale;
