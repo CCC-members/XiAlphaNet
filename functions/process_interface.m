@@ -197,6 +197,10 @@ for s=1:length(subjects)
         drawnow;
     end
 end
+%%
+%% Group analysis
+%%
+XIALPHANET          = groupProcessing(properties,XIALPHANET);
 
 %%
 %% Saving XIALPHANET file

@@ -20,11 +20,9 @@ disp('==========================================================================
 %% Preparing properties
 %%
 addpath(genpath(fullfile(pwd,'app')));
-addpath(fullfile(pwd,'dependencies'));
 addpath(genpath(fullfile(pwd,'functions')));
 addpath(genpath(fullfile(pwd,'guide')));
 addpath(genpath(fullfile(pwd,'report')));
-
 addpath(genpath(fullfile(pwd,'tools')));
 
 %%
