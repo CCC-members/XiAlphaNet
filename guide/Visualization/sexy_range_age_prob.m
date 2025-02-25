@@ -1,37 +1,80 @@
 clc;
 clear all;
+% 
+% % Paths
+% DataPath = 'Data\Scalp_Density_Matrix';
+% modelParametersPath = 'Data\Model_Parameters';
+% 
+% % Subfolders within the main folder
+% subFolders = {'Control2'};
+% 
+% % Load parameters
+% load('Data\Model_Parameters\parameters.mat');
+% Ne = parameters.Dimensions.Ne;
+% Nr = parameters.Dimensions.Nr;
+% Nv = parameters.Dimensions.Nv;
+% Nw = parameters.Dimensions.Nw;
+% %
+% All_Data = {};  % Initialize a cell array to store data
+% x_avg=zeros(7*Nv+1,1899);
+% % Loop through the subfolders and process the data
+% for k = 1:length(subFolders)
+%     folderPath_X = fullfile(modelParametersPath, subFolders{k});
+%     matFiles_X = dir(fullfile(folderPath_X, '*.mat'));
+% 
+%     for j = 1:length(matFiles_X)
+%         filePath_X = fullfile(folderPath_X, matFiles_X(j).name);
+%         data_X = load(filePath_X);
+% 
+%         % Extract and store the data
+%         %x_avg(:,j) =  data_X.x.Solution;
+%         All_Data{1,j} = data_X.x.Solution;
+%         All_Data{2,j} = data_X.x.Age;
+%     end
+% end
 
-% Paths
-DataPath = 'Data\Scalp_Density_Matrix';
-modelParametersPath = 'Data\Model_Parameters';
-
-% Subfolders within the main folder
-subFolders = {'Control2'};
-
-% Load parameters
-load('Data\Model_Parameters\parameters.mat');
-Ne = parameters.Dimensions.Ne;
-Nr = parameters.Dimensions.Nr;
-Nv = parameters.Dimensions.Nv;
-Nw = parameters.Dimensions.Nw;
-%
-All_Data = {};  % Initialize a cell array to store data
-x_avg=zeros(7*Nv+1,1899);
-% Loop through the subfolders and process the data
-for k = 1:length(subFolders)
-    folderPath_X = fullfile(modelParametersPath, subFolders{k});
-    matFiles_X = dir(fullfile(folderPath_X, '*.mat'));
-   
-    for j = 1:length(matFiles_X)
-        filePath_X = fullfile(folderPath_X, matFiles_X(j).name);
-        data_X = load(filePath_X);
-        
-        % Extract and store the data
-        %x_avg(:,j) =  data_X.x.Solution;
-        All_Data{1,j} = data_X.x.Solution;
-        All_Data{2,j} = data_X.x.Age;
+age_min = 0;%age_range(1);
+age_max = 100;%age_range(2);
+dataset = jsondecode(fileread('/home/ronaldo/Documents/dev/Data/Results/XIALPHANET.json'));
+parameters = load('/home/ronaldo/Documents/dev/Data/Results/structural/parameters.mat');
+ages = [];
+All_Data = {}; 
+for i=1:length(dataset.Participants)
+    participant = dataset.Participants(i);
+    participant_age = participant.Age;
+    if(isequal(participant.Status,'Completed')) && age_min <= participant_age && participant_age <= age_max
+       ages = [ages,participant_age];
+       All_Data{2,i} =  participant_age;
+       Part_Info = jsondecode(fileread(fullfile(dataset.Location,participant.SubID,participant.FileInfo)));
+       alpha_process = load(fullfile(dataset.Location,participant.SubID,Part_Info.Alpha_estimate));
+       a(:,1) = alpha_process.Power;
+       a(:,2) = alpha_process.Width;
+       a(:,3) = alpha_process.Exponent;
+       a(:,4) = alpha_process.PAF;
+       xi_process = load(fullfile(dataset.Location,participant.SubID,Part_Info.Xi_estimate));
+       e(:,1) = xi_process.Power;
+       e(:,2) = xi_process.Width;
+       e(:,3) = xi_process.Exponent;
+       s2 = 1;
+       x = v2x(e,a,s2);
+       All_Data{1,i} = x;
+       % if (isequal(Process,'Alpha'))
+       %     spec_process = load(fullfile(dataset.Location,participant.SubID,Part_Info.Alpha_estimate));
+       % elseif (isequal(Process,'Xi'))
+       %     spec_process = load(fullfile(dataset.Location,participant.SubID,Part_Info.Xi_estimate));
+       % end
+       % if isequal(variable,'Power')
+       %      All_Data{1,i} = spec_process.Power;
+       % elseif (isequal(variable,'Width'))
+       %      All_Data{1,i} = spec_process.Width;
+       % elseif (isequal(variable,'Exponent'))
+       %      All_Data{1,i} = spec_process.Exponent;
+       % elseif (isequal(variable,'PAF')) && (isequal(Process,'Alpha'))
+       %      All_Data{1,i} = spec_process.PAF;
+       % end
     end
 end
+
 
 %% Simple Counting 
 % Initialize storage for Peak Alpha Frequency (a(:,4)), Amplitude of the Alpha (a(:,1)), and Amplitude of Xi
@@ -42,30 +85,41 @@ XiAmp_all = [];
 % Convert each data.x to [e, a, s2] and store PAF (a(:,4)), Alpha Amplitude (a(:,1)), and Xi Amplitude
 for j = 1:length(All_Data(1,:))
     [e, a, s2] = x2v(All_Data{1,j});  % Assuming x2v returns [e, a, s2]
-    PAF_all(:,j) = a(:,4).*(a(:,1)>1.8632);            % Store Peak Alpha Frequency
-    AlphaAmp_all(:,j) = a(:,1).*(a(:,1)>1.8632);       % Store Amplitude of the Alpha
-    XiAmp_all(:,j) = e(:,1);         % Store Amplitude of the Xi
+    PAF_all(:,j) = a(:,4);            % Store Peak Alpha Frequency
+    AlphaAmp_all(:,j) = a(:,1);       % Store Amplitude of the Alpha
+    XiAmp_all(:,j) = e(:,1);                                % Store Amplitude of the Xi
 end
 
 % Calculate sparse index (optional, can be used for any of the measures)
-sparse_index_PAF = sum(PAF_all(:)==0)/length(PAF_all(:))*100;
-sparse_index_AlphaAmp = sum(AlphaAmp_all(:)==0)/length(AlphaAmp_all(:))*100;
-sparse_index_XiAmp = sum(XiAmp_all(:)==0)/length(XiAmp_all(:))*100;
+sparse_index_PAF = sum(PAF_all(:) == 0) / numel(PAF_all) * 100;
+sparse_index_AlphaAmp = sum(AlphaAmp_all(:) == 0) / numel(AlphaAmp_all) * 100;
+sparse_index_XiAmp = sum(XiAmp_all(:) == 0) / numel(XiAmp_all) * 100;
 
-% Define threshold for each measure
-threshold_PAF = 7;%set_threshold_em(PAF_all(:));
-threshold_AlphaAmp = 1.8632;%set_threshold_em(AlphaAmp_all(:));
-threshold_XiAmp =1.8632;%set_threshold_em(XiAmp_all(:));
+% Define threshold for each measure use set_threshold_em for recalculate this value
+threshold_PAF = 7;             % Example threshold for PAF
+threshold_AlphaAmp = 0.19;   % Example threshold for Alpha Amplitude
+threshold_XiAmp = 0.19;      % Example threshold for Xi Amplitude
 
-% Threshold and binary mask for each measure
+% Convert each data.x to [e, a, s2] and store PAF (a(:,4)), Alpha Amplitude (a(:,1)), and Xi Amplitude
 for j = 1:length(All_Data(1,:))
     j
-    [e, a, s2] = x2v(All_Data{1,j});  % Assuming x2v returns [e, a, s2]
-    PAF_all(:,j) = a(:,4) > threshold_PAF;         % Apply threshold for PAF
-    threshold_AlphaAmp =  1.8632;
-    AlphaAmp_all(:,j) = a(:,1) > threshold_AlphaAmp; % Apply threshold for Alpha Amplitude
-    XiAmp_all(:,j) = e(:,1) > threshold_AlphaAmp;%threshold_XiAmp;     % Apply threshold for Xi Amplitude
+    %[e, a, s2] = x2v(All_Data{1,j});  % Assuming x2v returns [e, a, s2]
+    threshold_AlphaAmp   =  prctile(AlphaAmp_all(:,j),75);
+    PAF_all(:,j) = PAF_all(:,j).*(AlphaAmp_all(:,j)>threshold_AlphaAmp);            % Store Peak Alpha Frequency
+    AlphaAmp_all(:,j) = AlphaAmp_all(:,j).*(AlphaAmp_all(:,j)>threshold_AlphaAmp);       % Store Amplitude of the Alpha
+    XiAmp_all(:,j) = XiAmp_all(:,j);         % Store Amplitude of the Xi
 end
+
+
+% Apply threshold and create binary masks for each measure
+for j = 1:length(All_Data(1,:))
+    fprintf('Processing subject %d\n', j);
+    [e, a, s2] = x2v(All_Data{1,j});  % Assuming x2v returns [e, a, s2]
+    PAF_all(:,j) = PAF_all(:,j) > threshold_PAF;             % Apply threshold for PAF
+    AlphaAmp_all(:,j) = AlphaAmp_all(:,j) > threshold_AlphaAmp;   % Apply threshold for Alpha Amplitude
+    XiAmp_all(:,j) =  XiAmp_all(:,j) > threshold_XiAmp;         % Apply threshold for Xi Amplitude
+end
+
 
 % Get unique ages
 ages = cell2mat(All_Data(2,:));  % Get the ages
@@ -97,7 +151,7 @@ for i = 1:length(age_intervals)-1
     nf_va_XiAmp = sum(age_mask);  % Number of subjects in this age group
     XiAmp_avg_intervals(:, i) = f_va_XiAmp / nf_va_XiAmp;
 end
-
+%%
 % Create a single large figure for all subplots
 %figure('Position', [100, 100, 1500, 900]);  % Adjust figure size for better visibility
 
@@ -190,8 +244,8 @@ XiAmp_all = [];
 % Convert each data.x to [e, a, s2] and store PAF (a(:,4)), Alpha Amplitude (a(:,1)), and Xi Amplitude
 for j = 1:length(All_Data(1,:))
     [e, a, s2] = x2v(All_Data{1,j});  % Assuming x2v returns [e, a, s2]
-    PAF_all(:,j) = a(:,4) .* (a(:,1) > 1.8632);            % Store Peak Alpha Frequency
-    AlphaAmp_all(:,j) = a(:,1) .* (a(:,1) > 1.8632);       % Store Amplitude of the Alpha
+    PAF_all(:,j) = a(:,4);            % Store Peak Alpha Frequency
+    AlphaAmp_all(:,j) = a(:,1);       % Store Amplitude of the Alpha
     XiAmp_all(:,j) = e(:,1);                                % Store Amplitude of the Xi
 end
 
@@ -202,16 +256,25 @@ sparse_index_XiAmp = sum(XiAmp_all(:) == 0) / numel(XiAmp_all) * 100;
 
 % Define threshold for each measure use set_threshold_em for recalculate this value
 threshold_PAF = 7;             % Example threshold for PAF
-threshold_AlphaAmp = 1.8632;   % Example threshold for Alpha Amplitude
-threshold_XiAmp = 1.8632;      % Example threshold for Xi Amplitude
+threshold_AlphaAmp = 0.19;   % Example threshold for Alpha Amplitude
+threshold_XiAmp = 0.19;      % Example threshold for Xi Amplitude
+
+% Convert each data.x to [e, a, s2] and store PAF (a(:,4)), Alpha Amplitude (a(:,1)), and Xi Amplitude
+for j = 1:length(All_Data(1,:))
+    %[e, a, s2] = x2v(All_Data{1,j});  % Assuming x2v returns [e, a, s2]
+    PAF_all(:,j) = PAF_all(:,j).*(AlphaAmp_all(:,j)>threshold_AlphaAmp);            % Store Peak Alpha Frequency
+    AlphaAmp_all(:,j) = AlphaAmp_all(:,j).*(AlphaAmp_all(:,j)>threshold_AlphaAmp);       % Store Amplitude of the Alpha
+    XiAmp_all(:,j) = XiAmp_all(:,j);         % Store Amplitude of the Xi
+end
+
 
 % Apply threshold and create binary masks for each measure
 for j = 1:length(All_Data(1,:))
     fprintf('Processing subject %d\n', j);
     [e, a, s2] = x2v(All_Data{1,j});  % Assuming x2v returns [e, a, s2]
-    PAF_all(:,j) = a(:,4) > threshold_PAF;             % Apply threshold for PAF
-    AlphaAmp_all(:,j) = a(:,1) > threshold_AlphaAmp;   % Apply threshold for Alpha Amplitude
-    XiAmp_all(:,j) = e(:,1) > threshold_XiAmp;         % Apply threshold for Xi Amplitude
+    PAF_all(:,j) = PAF_all(:,j) > threshold_PAF;             % Apply threshold for PAF
+    AlphaAmp_all(:,j) = AlphaAmp_all(:,j) > threshold_AlphaAmp;   % Apply threshold for Alpha Amplitude
+    XiAmp_all(:,j) =  XiAmp_all(:,j) > threshold_XiAmp;         % Apply threshold for Xi Amplitude
 end
 
 % Get unique ages
@@ -219,7 +282,7 @@ ages = cell2mat(All_Data(2,:));  % Get the ages
 ages(isnan(ages)) = mean(ages(~isnan(ages)));  % Replace NaNs with mean age
 
 % Define a grid of age values for estimation
-age_grid = linspace(min(ages), max(ages), 30);  % 30 points for smoothness
+age_grid = linspace(min(ages), max(ages), 50);  % 30 points for smoothness
 
 % Define kernel parameters
 % Assuming 'L' is a precomputed distance matrix of size [num_voxels x num_voxels]
@@ -237,8 +300,8 @@ h_s_XiAmp = 1;        % Spatial bandwidth for Xi Amplitude
 % Temporal bandwidths (assuming they are the same as spatial for simplicity)
 % You can define separate temporal bandwidths if needed
 % Alternatively, define h_t differently for each measure
-h_t_PAF = 4.46;
-h_t_AlphaAmp = 3.37;
+h_t_PAF = 1.73;
+h_t_AlphaAmp = 1.73;
 h_t_XiAmp = 1.73;
 
 % Precompute spatial kernel matrices for each measure
@@ -325,7 +388,7 @@ for i = 1:num_age_points
 end
 %% Marginalization 
 % Define age group edges (0-20, 20-40, ..., 80-100)
-age_group_edges = 0:20:97;
+age_group_edges = 0:20:100;
 num_groups = length(age_group_edges) - 1;
 
 % Extract and preprocess ages
@@ -339,9 +402,9 @@ ages(isnan(ages)) = mean(ages(~isnan(ages)));
 kernel = @(u) (3/4)*(1 - u.^2) .* (abs(u) < 1);
 
 % Define optimal bandwidths
-h_s_PAF = 4.46;
-h_s_AlphaAmp = 3.37;
-h_s_XiAmp = 1.73;
+h_t_PAF = 1.73;
+h_t_AlphaAmp = 1.73;
+h_t_XiAmp = 1.73;
 
 % Initialize storage for marginalized kernel estimates
 PAF_marginalized = zeros(size(PAF_all, 1), num_groups);
@@ -491,11 +554,10 @@ AlphaAmp_all = [];
 XiAmp_all = [];
 
 % Convert each data.x to [e, a, s2] and store PAF (a(:,4)), Alpha Amplitude (a(:,1)), and Xi Amplitude
-numSubjects = length(All_Data(1,:));
-for j = 1:numSubjects
+for j = 1:length(All_Data(1,:))
     [e, a, s2] = x2v(All_Data{1,j});  % Assuming x2v returns [e, a, s2]
-    PAF_all(:,j) = a(:,4) .* (a(:,1) > 1.8632);            % Store Peak Alpha Frequency
-    AlphaAmp_all(:,j) = a(:,1) .* (a(:,1) > 1.8632);       % Store Amplitude of the Alpha
+    PAF_all(:,j) = a(:,4);            % Store Peak Alpha Frequency
+    AlphaAmp_all(:,j) = a(:,1);       % Store Amplitude of the Alpha
     XiAmp_all(:,j) = e(:,1);                                % Store Amplitude of the Xi
 end
 
@@ -504,18 +566,27 @@ sparse_index_PAF = sum(PAF_all(:) == 0) / numel(PAF_all) * 100;
 sparse_index_AlphaAmp = sum(AlphaAmp_all(:) == 0) / numel(AlphaAmp_all) * 100;
 sparse_index_XiAmp = sum(XiAmp_all(:) == 0) / numel(XiAmp_all) * 100;
 
-% Define threshold for each measure
+% Define threshold for each measure use set_threshold_em for recalculate this value
 threshold_PAF = 7;             % Example threshold for PAF
-threshold_AlphaAmp = 1.8632;  % Example threshold for Alpha Amplitude
-threshold_XiAmp = 1.8632;     % Example threshold for Xi Amplitude
+threshold_AlphaAmp = 0.19;   % Example threshold for Alpha Amplitude
+threshold_XiAmp = 0.19;      % Example threshold for Xi Amplitude
 
-% Apply thresholds and create binary masks for each measure
-for j = 1:numSubjects
+% Convert each data.x to [e, a, s2] and store PAF (a(:,4)), Alpha Amplitude (a(:,1)), and Xi Amplitude
+for j = 1:length(All_Data(1,:))
+    %[e, a, s2] = x2v(All_Data{1,j});  % Assuming x2v returns [e, a, s2]
+    PAF_all(:,j) = PAF_all(:,j).*(AlphaAmp_all(:,j)>threshold_AlphaAmp);            % Store Peak Alpha Frequency
+    AlphaAmp_all(:,j) = AlphaAmp_all(:,j).*(AlphaAmp_all(:,j)>threshold_AlphaAmp);       % Store Amplitude of the Alpha
+    XiAmp_all(:,j) = XiAmp_all(:,j);         % Store Amplitude of the Xi
+end
+
+
+% Apply threshold and create binary masks for each measure
+for j = 1:length(All_Data(1,:))
     fprintf('Processing subject %d\n', j);
     [e, a, s2] = x2v(All_Data{1,j});  % Assuming x2v returns [e, a, s2]
-    PAF_all(:,j) = a(:,4) > threshold_PAF;             % Apply threshold for PAF
-    AlphaAmp_all(:,j) = a(:,1) > threshold_AlphaAmp;   % Apply threshold for Alpha Amplitude
-    XiAmp_all(:,j) = e(:,1) > threshold_XiAmp;         % Apply threshold for Xi Amplitude
+    PAF_all(:,j) = PAF_all(:,j) > threshold_PAF;             % Apply threshold for PAF
+    AlphaAmp_all(:,j) = AlphaAmp_all(:,j) > threshold_AlphaAmp;   % Apply threshold for Alpha Amplitude
+    XiAmp_all(:,j) =  XiAmp_all(:,j) > threshold_XiAmp;         % Apply threshold for Xi Amplitude
 end
 
 % Get unique ages
@@ -545,12 +616,12 @@ data.ages = ages;
 data.PAF = PAF_all(:);
 data.AlphaAmp = AlphaAmp_all(:);
 data.XiAmp = XiAmp_all(:);
-
+numSubjects = 1965;
 % Create K-fold indices
 cv = cvpartition(numSubjects, 'KFold', K);
 
 % Iterate over each candidate bandwidth
-for b = 1:length(bandwidths)
+parfor b = 1:length(bandwidths)
     bandwidth = bandwidths(b);
     
     % Initialize temporary error accumulators
