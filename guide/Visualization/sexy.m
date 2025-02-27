@@ -1,65 +1,65 @@
 clc;
-clear all;
+clear all
 
-% Paths
-DataPath = 'Data/Scalp_Density_Matrix';
-modelParametersPath = 'Data/Model_Parameters';
-%dataAge =  'Data\Age';
-
-% Subfolders within the main folder
-subFolders = {'Control'};
-
-% Load parameters
-load('Data/Model_Parameters/parameters.mat');
-Ne = parameters.Dimensions.Ne;
-Nr = parameters.Dimensions.Nr;
-Nv = parameters.Dimensions.Nv;
-Nw = parameters.Dimensions.Nw;
-
-%load('Data/RinvT/RinvT_G.mat', 'RinvT');
-
-All_Data = {};  % Initialize a cell array to store data
-
-% Loop through the subfolders and process the data
-for k = 1:length(subFolders)
-    %folderPath_D = fullfile(DataPath, subFolders{k});
-    folderPath_X = fullfile(modelParametersPath, subFolders{k});
-    %folderPath_Age = fullfile(dataAge, subFolders{k});
-
-    % Get a list of all .mat files in the subfolder
-    %matFiles_D = dir(fullfile(folderPath_D, '*.mat'));
-    matFiles_X = dir(fullfile(folderPath_X, '*.mat'));
-    %matFiles_Age = dir(fullfile(folderPath_Age, '*.mat'));
-   
-    for j = 1:length(matFiles_X)
-        %filePath_D = fullfile(folderPath_D, matFiles_D(j).name);
-        filePath_X = fullfile(folderPath_X, matFiles_X(j).name);
-        %filePath_Age = fullfile(folderPath_Age, matFiles_Age(j).name);
-        
-        % Load the .mat files
-        %data_D = load(filePath_D);
-        data_X = load(filePath_X);
-       % age = load(filePath_Age);
-        
-        % Extract and store the data
-        All_Data{1,j} = data_X.x.Solution;
-        All_Data{2,j} = data_X.x.Age;
+age_min = 0;%age_range(1);
+age_max = 20;%age_range(2);
+dataset = jsondecode(fileread('/home/ronaldo/Documents/dev/Data/Results/XIALPHANET.json'));
+parameters = load('/home/ronaldo/Documents/dev/Data/Results/structural/parameters.mat');
+ages = [];
+All_Data = {}; 
+index = 1;
+for i=1:length(dataset.Participants)
+    participant = dataset.Participants(i);
+    participant_age = participant.Age;
+    if(isequal(participant.Status,'Completed')) && age_min <= participant_age && participant_age <= age_max
+       ages = [ages,participant_age];
+       All_Data{2,index} =  participant_age;
+       Part_Info = jsondecode(fileread(fullfile(dataset.Location,participant.SubID,participant.FileInfo)));
+       alpha_process = load(fullfile(dataset.Location,participant.SubID,Part_Info.Alpha_estimate));
+       a(:,1) = alpha_process.Power;
+       a(:,2) = alpha_process.Width;
+       a(:,3) = alpha_process.Exponent;
+       a(:,4) = alpha_process.PAF;
+       xi_process = load(fullfile(dataset.Location,participant.SubID,Part_Info.Xi_estimate));
+       e(:,1) = xi_process.Power;
+       e(:,2) = xi_process.Width;
+       e(:,3) = xi_process.Exponent;
+       s2 = 1;
+       x = v2x(e,a,s2);
+       All_Data{1,index} = x;
+       index = index +1;
+       % if (isequal(Process,'Alpha'))
+       %     spec_process = load(fullfile(dataset.Location,participant.SubID,Part_Info.Alpha_estimate));
+       % elseif (isequal(Process,'Xi'))
+       %     spec_process = load(fullfile(dataset.Location,participant.SubID,Part_Info.Xi_estimate));
+       % end
+       % if isequal(variable,'Power')
+       %      All_Data{1,i} = spec_process.Power;
+       % elseif (isequal(variable,'Width'))
+       %      All_Data{1,i} = spec_process.Width;
+       % elseif (isequal(variable,'Exponent'))
+       %      All_Data{1,i} = spec_process.Exponent;
+       % elseif (isequal(variable,'PAF')) && (isequal(Process,'Alpha'))
+       %      All_Data{1,i} = spec_process.PAF;
+       % end
     end
 end
 
+
+%%
 % Initialize storage for a(:,4) for all subjects
 a_all = [];
 
 % Convert each data.x to [e, a, s2] and store a(:,4)
 for j = 1:length(All_Data(1,:))
     [e, a, s2] = x2v(All_Data{1,j});  % Assuming x2v returns [e, a, s2]
-    a_all(:,j) = a(:,4);  % Store the fourth column of a in a_all
+    a_all(:,j) = a(:,1);  % Store the fourth column of a in a_all
 end
-threshold = 8;%prctile(a_all(:),95);
 %
 for j = 1:length(All_Data(1,:))
     [e, a, s2] = x2v(All_Data{1,j});  % Assuming x2v returns [e, a, s2]
-    a_all(:,j) = e(:,1)>threshold;  % Store the fourth column of a in a_all
+    threshold = prctile(a_all(:,j),80);
+    a_all(:,j) = a(:,1)>threshold;  % Store the fourth column of a in a_all
 end
 
 % Get unique ages
@@ -99,11 +99,12 @@ figure;
 ax = axes;  % Create an axis for plotting
 
 for i = 1:length(unique_ages)
+    i
     J_age = a_smooth(:,i);  % Get the smoothed a(:,4) at this age
     
     % Use the esi_plot function for plotting with fixed color limits
     esi_plot(ax, J_age, colorLimits);
-    colormap("hot");
+    %colormap("hot");
     title(ax, sprintf('Age: %.2f', unique_ages(i)));
     
     % Capture the frame for the video

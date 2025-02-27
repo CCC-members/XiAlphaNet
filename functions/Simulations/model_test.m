@@ -4,13 +4,16 @@
 
 clear all 
 clc;
-load("Data\Model_Parameters\parameters.mat")
-load('Data\Model_Parameters\x_avg.mat');
+% Direction to the output path that contain the parameters
+load("/home/ronaldo/Documents/dev/Data/Results/structural/parameters.mat")
+% Direction to the scalp cross-spectrum data 
+Scalp_Cross_Path = '/home/ronaldo/Documents/dev/Data/norms';
 % Setting initialiation of te simulations  
-Ne=19;
+Ne=18;
 Nr= 360;
-Nf = 49;
-Nsim = 1;
+Nv= 360;
+Nw = 49;
+Nsim = 1; 
 %
 Svv_cross=zeros(Ne,Ne,Nf,Nsim);  % structure to safe the cross 
 Sjj_cross=zeros(Nr,Nr,Nf,Nsim);  % structure to safe the cross 
@@ -19,18 +22,18 @@ lcmv_Sjj_cross= zeros(Nr,Nr,Nf,Nsim);
 XA_Sjj_cross= zeros(Nr,Nr,Nf,Nsim);
 higgs_Sjj_cross = zeros(Nr,Nr,Nf,Nsim);
 %
-R = voxel_roi_map;
-preprocessing_velocity;
-K= parameters.Model.K;
-L=K;
-T = parameters.Model.T;
-K =pinv(K);
-U_map =K;
-for j=1:Nf
-     T_omega(:,:,j) = U_map*T(:,:,j);
-end
-parameters.Model.U= T_omega;
-load('Data/Average_Velocity_ROISpace/GPfit_Delay_Mean.mat');
+% R = voxel_roi_map;
+% preprocessing_velocity;
+% K= parameters.Model.K;
+% L=K;
+% T = parameters.Model.T;
+% K =pinv(K);
+% U_map =K;
+% for j=1:Nf
+%      T_omega(:,:,j) = U_map*T(:,:,j);
+% end
+% parameters.Model.U= T_omega;
+% load('Data/Average_Velocity_ROISpace/GPfit_Delay_Mean.mat');
 %
 % x_mean = mean(x_avg,2);
 % x_std  = std(x_avg',1)';
@@ -65,7 +68,9 @@ for j=1:Nsim
     j
     tic
     parameters.Data.Cross = Svv_cross(:,:,:,j);
-    [S,~] =  Xi_ALphaNET(parameters);
+    [x,T] =  Xi_ALphaNET(properties,data,parameters);
+    [source_act_cross] = eval_source_conn(x.Solution, data.freq,T,parameters.Model.K,parameters.Model.R,properties);
+    Source_Cross_Full = source_act_cross.Cross.Full;
     XA_Sjj_cross(:,:,:,j) = S;
     for i=1:8
         i
