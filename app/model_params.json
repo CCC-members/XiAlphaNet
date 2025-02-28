@@ -12,6 +12,16 @@
         "description":"",
         "default":true        
     },
+    "group":{
+        "description":"",
+        "age_range":[
+            [0,20,"Something"],
+            [20,40,"Other"],
+            [40,60,"Something else"],
+            [60,80,"More"],
+            [80,100,"Then"]
+        ]
+    },
     "delay":{
         "description":"%std_lambdad = 0.57;% The ratio between the standar deviation of the conduction delays over the mean across the lifespan",
         "lambda_space_cd":[
