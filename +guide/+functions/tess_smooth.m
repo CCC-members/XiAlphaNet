@@ -1,4 +1,10 @@
 function [Vertices_sm, A] = tess_smooth(Vertices, a, nIterations, VertConn, isKeepSize, Faces)
+import app.*
+import app.functions.*
+import functions.*
+import guide.*
+import guide.functions.*
+import tools.*
 % TESS_SMOOTH: Smooths a surface.
 % 
 % USAGE:  [Vertices_sm, A] = tess_smooth(Vertices, a, nIterations, VertConn, isKeepSize)
