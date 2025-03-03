@@ -30,7 +30,7 @@ for i=1:size(germ,1)
             EEG.ref, age, sex, country, eeg_device);
       
         test_folder([savepath,country]);
-        save([savepath,country,'\',data_code],'data_struct','error_msg');
+        save([savepath,country,'\',data_code],'-struct','data_struct','error_msg');
     catch ME
         fprintf('organize fail for #%s: %s\n', data_code,ME.message);
     end
