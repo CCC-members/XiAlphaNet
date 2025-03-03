@@ -1,40 +1,9 @@
 clc;
 clear all;
-% 
-% % Paths
-% DataPath = 'Data\Scalp_Density_Matrix';
-% modelParametersPath = 'Data\Model_Parameters';
-% 
-% % Subfolders within the main folder
-% subFolders = {'Control2'};
-% 
-% % Load parameters
-% load('Data\Model_Parameters\parameters.mat');
-% Ne = parameters.Dimensions.Ne;
-% Nr = parameters.Dimensions.Nr;
-% Nv = parameters.Dimensions.Nv;
-% Nw = parameters.Dimensions.Nw;
-% %
-% All_Data = {};  % Initialize a cell array to store data
-% x_avg=zeros(7*Nv+1,1899);
-% % Loop through the subfolders and process the data
-% for k = 1:length(subFolders)
-%     folderPath_X = fullfile(modelParametersPath, subFolders{k});
-%     matFiles_X = dir(fullfile(folderPath_X, '*.mat'));
-% 
-%     for j = 1:length(matFiles_X)
-%         filePath_X = fullfile(folderPath_X, matFiles_X(j).name);
-%         data_X = load(filePath_X);
-% 
-%         % Extract and store the data
-%         %x_avg(:,j) =  data_X.x.Solution;
-%         All_Data{1,j} = data_X.x.Solution;
-%         All_Data{2,j} = data_X.x.Age;
-%     end
-% end
+
 
 age_min = 0;%age_range(1);
-age_max = 20;%age_range(2);
+age_max = 100;%age_range(2);
 dataset = jsondecode(fileread('/home/ronaldo/Documents/dev/Data/Results/XIALPHANET.json'));
 parameters = load('/home/ronaldo/Documents/dev/Data/Results/structural/parameters.mat');
 ages = [];
@@ -60,177 +29,9 @@ for i=1:length(dataset.Participants)
        x = v2x(e,a,s2);
        All_Data{1,index} = x;
        index = index +1;
-       % if (isequal(Process,'Alpha'))
-       %     spec_process = load(fullfile(dataset.Location,participant.SubID,Part_Info.Alpha_estimate));
-       % elseif (isequal(Process,'Xi'))
-       %     spec_process = load(fullfile(dataset.Location,participant.SubID,Part_Info.Xi_estimate));
-       % end
-       % if isequal(variable,'Power')
-       %      All_Data{1,i} = spec_process.Power;
-       % elseif (isequal(variable,'Width'))
-       %      All_Data{1,i} = spec_process.Width;
-       % elseif (isequal(variable,'Exponent'))
-       %      All_Data{1,i} = spec_process.Exponent;
-       % elseif (isequal(variable,'PAF')) && (isequal(Process,'Alpha'))
-       %      All_Data{1,i} = spec_process.PAF;
-       % end
     end
 end
-
-
-%% Simple Counting 
-% Initialize storage for Peak Alpha Frequency (a(:,4)), Amplitude of the Alpha (a(:,1)), and Amplitude of Xi
-% PAF_all = [];
-% AlphaAmp_all = [];
-% XiAmp_all = [];
-% 
-% % Convert each data.x to [e, a, s2] and store PAF (a(:,4)), Alpha Amplitude (a(:,1)), and Xi Amplitude
-% for j = 1:length(All_Data(1,:))
-%     [e, a, s2] = x2v(All_Data{1,j});  % Assuming x2v returns [e, a, s2]
-%     PAF_all(:,j) = a(:,4);            % Store Peak Alpha Frequency
-%     AlphaAmp_all(:,j) = a(:,1);       % Store Amplitude of the Alpha
-%     XiAmp_all(:,j) = e(:,1);                                % Store Amplitude of the Xi
-% end
-% 
-% 
-% % Define threshold for each measure use set_threshold_em for recalculate this value
-% threshold_PAF = 7;             % Example threshold for PAF
-% % threshold_AlphaAmp = 0.19;   % Example threshold for Alpha Amplitude
-% % threshold_XiAmp = 0.19;      % Example threshold for Xi Amplitude
-% 
-% % Convert each data.x to [e, a, s2] and store PAF (a(:,4)), Alpha Amplitude (a(:,1)), and Xi Amplitude
-% for j = 1:length(All_Data(1,:))
-%     %[e, a, s2] = x2v(All_Data{1,j});  % Assuming x2v returns [e, a, s2]
-%     threshold   =  prctile(AlphaAmp_all(:,j),75);
-%     PAF_all(:,j) = PAF_all(:,j).*(AlphaAmp_all(:,j)>threshold);            % Store Peak Alpha Frequency
-%     AlphaAmp_all(:,j) = AlphaAmp_all(:,j).*(AlphaAmp_all(:,j)>threshold);       % Store Amplitude of the Alpha
-%     XiAmp_all(:,j) = XiAmp_all(:,j);         % Store Amplitude of the Xi
-% end
-% 
-% 
-% % Apply threshold and create binary masks for each measure
-% for j = 1:length(All_Data(1,:))
-%     fprintf('Processing subject %d\n', j);
-%     %[e, a, s2] = x2v(All_Data{1,j});  % Assuming x2v returns [e, a, s2]
-%     threshold   =  prctile(AlphaAmp_all(:,j),75);
-%     PAF_all(:,j) = PAF_all(:,j) > threshold_PAF;             % Apply threshold for PAF
-%     AlphaAmp_all(:,j) = AlphaAmp_all(:,j) > threshold;   % Apply threshold for Alpha Amplitude
-%     XiAmp_all(:,j) =  XiAmp_all(:,j) > threshold;         % Apply threshold for Xi Amplitude
-% end
-% 
-% 
-% % Get unique ages
-% ages = cell2mat(All_Data(2,:));  % Get the ages
-% 
-% % Define age intervals
-% age_intervals = linspace(age_min, age_max, floor((age_max-age_min)/20)+1);  % 5 intervals, 6 edges
-% 
-% % Initialize storage for the averaged values
-% PAF_avg_intervals = zeros(size(PAF_all, 1), length(age_intervals)-1);
-% AlphaAmp_avg_intervals = zeros(size(AlphaAmp_all, 1), length(age_intervals)-1);
-% XiAmp_avg_intervals = zeros(size(XiAmp_all, 1), length(age_intervals)-1);
-% 
-% % Average values for each age interval
-% for i = 1:length(age_intervals)-1
-%     age_mask = (ages >= age_intervals(i)) & (ages < age_intervals(i+1));
-% 
-%     % For PAF
-%     f_va_PAF = sum(PAF_all(:, age_mask), 2);
-%     nf_va_PAF = sum(age_mask);  % Number of subjects in this age group
-%     PAF_avg_intervals(:, i) = f_va_PAF / (1+nf_va_PAF);
-% 
-%     % For Alpha Amplitude
-%     f_va_AlphaAmp = sum(AlphaAmp_all(:, age_mask), 2);
-%     nf_va_AlphaAmp = sum(age_mask);  % Number of subjects in this age group
-%     AlphaAmp_avg_intervals(:, i) = f_va_AlphaAmp / (1+nf_va_AlphaAmp);
-% 
-%     % For Xi Amplitude
-%     f_va_XiAmp = sum(XiAmp_all(:, age_mask), 2);
-%     nf_va_XiAmp = sum(age_mask);  % Number of subjects in this age group
-%     XiAmp_avg_intervals(:, i) = f_va_XiAmp / (1+nf_va_XiAmp);
-% end
-% %%
-% % Create a single large figure for all subplots
-% %figure('Position', [100, 100, 1500, 900]);  % Adjust figure size for better visibility
-% 
-% % Plotting for Peak Alpha Frequency (PAF) in the first row
-% for i = 1:length(age_intervals)-1
-%     J_age_interval = 1.*PAF_avg_intervals(:,i) ;
-%     J = J_age_interval;
-%    % subplot(3, 5, i);  % 3 rows, 5 columns, first row for PAF
-%     %esi_plot(gca, J_age_interval, [0, max(PAF_avg_intervals(:))]);
-%     esi_plot_single
-%     title(sprintf('Alpha Peak Amplitud vs Age %.2f - %.2f', age_intervals(i), age_intervals(i+1)));
-% end
-% 
-% % Plotting for Alpha Amplitude in the second row
-% for i = 1:length(age_intervals)-1
-%     J_age_interval = 1.*AlphaAmp_avg_intervals(:,i) ;
-% 
-%     %subplot(3, 5, i + 5);  % 3 rows, 5 columns, second row for Alpha Amplitude
-%     %esi_plot(gca, J_age_interval, [0, max(AlphaAmp_avg_intervals(:))]);
-%     J = J_age_interval;
-%     esi_plot_single
-%     % colormap("magma");
-%     title(sprintf('Alpha Amplitud vs Age %.2f - %.2f', age_intervals(i), age_intervals(i+1)));
-% end
-% 
-% % Plotting for Xi Amplitude in the third row
-% for i = 1:length(age_intervals)-1
-%     J_age_interval = 1.*XiAmp_avg_intervals(:,i) ;
-% 
-%     %subplot(3, 5, i + 10);  % 3 rows, 5 columns, third row for Xi Amplitude
-%     %esi_plot(gca, J_age_interval, [0, max(XiAmp_avg_intervals(:))]);
-%     %colormap("hot");
-%     J = J_age_interval;
-%     esi_plot_single
-%     title(sprintf('Xi Amplitud vs Age %.2f - %.2f', age_intervals(i), age_intervals(i+1)));
-% end
-% 
-% % Adjust layout and appearance
-% sgtitle('Lifespan Mapping of Probability Distribution');  % Overall title
-% 
-% % Create a single large figure for all subplots
-% figure('Position', [100, 100, 1500, 900]);  % Adjust figure size for better visibility
-% 
-% % % Plotting for Peak Alpha Frequency (PAF) in the first row
-% % for i = 1:length(age_intervals)-1
-% %     J_age_interval = 1.*(PAF_avg_intervals(:,i) > 0.90);
-% %     J = J_age_interval;
-% %    % subplot(3, 5, i);  % 3 rows, 5 columns, first row for PAF
-% %    % esi_plot(gca, J_age_interval, [0, max(PAF_avg_intervals(:))]);
-% %    esi_plot_single
-% %     %colormap("hot");
-% %     title(sprintf('Alpha Peak Freq vs Age %.2f - %.2f', age_intervals(i), age_intervals(i+1)));
-% % end
-% 
-% % Plotting for Alpha Amplitude in the second row
-% for i = 1:length(age_intervals)-1
-%     J_age_interval = 1.*AlphaAmp_avg_intervals(:,i) > 0.99;
-%     J = J_age_interval;
-%     %subplot(3, 5, i + 5);  % 3 rows, 5 columns, second row for Alpha Amplitude
-%     %esi_plot(gca, J_age_interval, [0, max(AlphaAmp_avg_intervals(:))]);
-%     esi_plot_single
-%     title(sprintf('Alpha Peak Freq vs Age %.2f - %.2f', age_intervals(i), age_intervals(i+1)));
-%     %colormap("hot");
-% end
-% 
-% % Plotting for Xi Amplitude in the third row
-% for i = 1:length(age_intervals)-1
-%     J_age_interval = 1.*(XiAmp_avg_intervals(:,i) > 0.95);
-%     J = J_age_interval;
-%     %subplot(3, 5, i + 5);  % 3 rows, 5 columns, second row for Alpha Amplitude
-%     %esi_plot(gca, J_age_interval, [0, max(AlphaAmp_avg_intervals(:))]);
-%     esi_plot_single
-%     title(sprintf('Xi Amplitude vs Age %.2f - %.2f', age_intervals(i), age_intervals(i+1)));
-% end
-% 
-% % Adjust layout and appearance
-% sgtitle('Lifespan Mapping of High-Probability Voxel Activity (p>0.5)');  % Overall title
-% 
-% % Create a single large figure for all subplots
-% figure('Position', [100, 100, 1500, 900]);  % Adjust figure size for better visibility
-%%
+prc = 50;
 %% Cross Validation
 % Initialize storage for Peak Alpha Frequency (PAF), Amplitude of the Alpha, and Amplitude of Xi
 PAF_all = [];
@@ -248,7 +49,7 @@ end
 % Convert each data.x to [e, a, s2] and store PAF (a(:,4)), Alpha Amplitude (a(:,1)), and Xi Amplitude
 for j = 1:length(All_Data(1,:))
     %[e, a, s2] = x2v(All_Data{1,j});  % Assuming x2v returns [e, a, s2]
-    threshold   =  prctile(AlphaAmp_all(:,j),25);
+    threshold   =  prctile(AlphaAmp_all(:,j),prc);
     PAF_all(:,j) = PAF_all(:,j).*(AlphaAmp_all(:,j)>threshold);            % Store Peak Alpha Frequency
     AlphaAmp_all(:,j) = AlphaAmp_all(:,j).*(AlphaAmp_all(:,j)>threshold);       % Store Amplitude of the Alpha
     XiAmp_all(:,j) = XiAmp_all(:,j);         % Store Amplitude of the Xi
@@ -259,7 +60,7 @@ end
 threshold_PAF = 8;
 for j = 1:length(All_Data(1,:))
     %[e, a, s2] = x2v(All_Data{1,j});  % Assuming x2v returns [e, a, s2]
-    threshold   =  prctile(AlphaAmp_all(:,j),25);
+    threshold   =  prctile(AlphaAmp_all(:,j),prc);
     PAF_all(:,j) = PAF_all(:,j) > threshold_PAF;             % Apply threshold for PAF
     AlphaAmp_all(:,j) = AlphaAmp_all(:,j) > threshold;   % Apply threshold for Alpha Amplitude
     XiAmp_all(:,j) =  XiAmp_all(:,j) > threshold;         % Apply threshold for Xi Amplitude
@@ -399,8 +200,9 @@ end
 
 % Convert each data.x to [e, a, s2] and store PAF (a(:,4)), Alpha Amplitude (a(:,1)), and Xi Amplitude
 for j = 1:length(All_Data(1,:))
+    j
     %[e, a, s2] = x2v(All_Data{1,j});  % Assuming x2v returns [e, a, s2]
-    threshold   =  prctile(AlphaAmp_all(:,j),25);
+    threshold   =  prctile(AlphaAmp_all(:,j),prc);
     PAF_all(:,j) = PAF_all(:,j).*(AlphaAmp_all(:,j)>threshold);            % Store Peak Alpha Frequency
     AlphaAmp_all(:,j) = AlphaAmp_all(:,j).*(AlphaAmp_all(:,j)>threshold);       % Store Amplitude of the Alpha
     XiAmp_all(:,j) = XiAmp_all(:,j);         % Store Amplitude of the Xi
@@ -412,7 +214,7 @@ threshold_PAF = 8;
 for j = 1:length(All_Data(1,:))
     fprintf('Processing subject %d\n', j);
     %[e, a, s2] = x2v(All_Data{1,j});  % Assuming x2v returns [e, a, s2]
-    threshold   =  prctile(AlphaAmp_all(:,j),25);
+    threshold   =  prctile(AlphaAmp_all(:,j),prc);
     PAF_all(:,j) = PAF_all(:,j) > threshold_PAF;             % Apply threshold for PAF
     AlphaAmp_all(:,j) = AlphaAmp_all(:,j) > threshold;   % Apply threshold for Alpha Amplitude
     XiAmp_all(:,j) =  XiAmp_all(:,j) > threshold;         % Apply threshold for Xi Amplitude
@@ -423,7 +225,7 @@ ages = cell2mat(All_Data(2,:));  % Get the ages
 ages(isnan(ages)) = mean(ages(~isnan(ages)));  % Replace NaNs with mean age
 
 % Define a grid of age values for estimation
-age_grid = linspace(min(ages), max(ages), floor((max(ages)-min(ages))/100*30)+1);  % 30 points for smoothness
+age_grid = linspace(min(ages), max(ages), 40);  % 30 points for smoothness
 
 % Define kernel parameters
 % Assuming 'L' is a precomputed distance matrix of size [num_voxels x num_voxels]
@@ -434,9 +236,9 @@ kernel_epanechnikov = @(u) (3/4)*(1 - u.^2) .* (abs(u) < 1);  % Epanechnikov Ker
 
 % Define bandwidths for spatial and temporal kernels
 % Optimal Bandwidths (you can adjust these as needed)
-h_s_PAF = 100;          % Spatial bandwidth for PAF 
-h_s_AlphaAmp = 100;     % Spatial bandwidth for Alpha Amplitude 
-h_s_XiAmp = 100;        % Spatial bandwidth for Xi Amplitude 
+h_s_PAF = 0.1;          % Spatial bandwidth for PAF 
+h_s_AlphaAmp = 0.1;     % Spatial bandwidth for Alpha Amplitude 
+h_s_XiAmp = 0.1;        % Spatial bandwidth for Xi Amplitude 
 
 
 % Precompute spatial kernel matrices for each measure
@@ -545,7 +347,7 @@ XiAmp_marginalized = zeros(size(XiAmp_all, 1), num_groups);
 group_centers = (age_group_edges(1:end-1) + age_group_edges(2:end)) / 2;
 
 % Loop through each entity and age group
-for j = 1:size(PAF_all, 1)
+parfor j = 1:size(PAF_all, 1)
     for g = 1:num_groups
         a = group_centers(g);
         group_idx = (age_groups == g);
@@ -601,7 +403,6 @@ num_groups = 1;
 % === Step 3: Create the Plots ===
 %figure('Position', [100, 100, 1500, 900]);  % Adjust figure size as needed
 
-%%
 % === Plot PAF ===
 for i = 1:num_groups
    % subplot(3, num_groups, i);  % First row for PAF
@@ -660,177 +461,6 @@ for i = 1:num_groups
     ylabel('Xi Amp');
     
 end
-
-% === Add Overall Title ===
-sgtitle('Lifespan Mapping of Probability Distribution');  % Overall title
-
-% === Optional: Adjust Layout ===
-% MATLAB does not have a built-in 'tight_layout' like Python's matplotlib.
-% To improve spacing, you can adjust subplot parameters manually.
-% Alternatively, use the 'sgtitle' to minimize overlap.
-
-% Example: Adjust subplot positions
-% for idx = 1:(3*num_groups)
-%     subplot_handles(idx) = subplot(3, num_groups, idx);
-%     set(subplot_handles(idx), 'LooseInset', get(gca, 'TightInset'));
-% end
-
-
-
-
-
-%Optimal Bandwidths:
-%PAF: 4.46
-%AlphaAmp: 3.37
-%XiAmp: 1.73
-
-%%
-% ----------------------------
-% Spatio-Temporal Density Estimation using Nadaraya-Watson Estimator
-% ----------------------------
-
-% Initialize storage for Peak Alpha Frequency (PAF), Amplitude of the Alpha, and Amplitude of Xi
-PAF_all = [];
-AlphaAmp_all = [];
-XiAmp_all = [];
-
-% Convert each data.x to [e, a, s2] and store PAF (a(:,4)), Alpha Amplitude (a(:,1)), and Xi Amplitude
-for j = 1:length(All_Data(1,:))
-    [e, a, s2] = x2v(All_Data{1,j});  % Assuming x2v returns [e, a, s2]
-    PAF_all(:,j) = a(:,4) .* (a(:,1) > 1.8632);            % Store Peak Alpha Frequency
-    AlphaAmp_all(:,j) = a(:,1) .* (a(:,1) > 1.8632);       % Store Amplitude of the Alpha
-    XiAmp_all(:,j) = e(:,1);                                % Store Amplitude of the Xi
-end
-
-% Calculate sparse index (optional, can be used for any of the measures)
-sparse_index_PAF = sum(PAF_all(:) == 0) / numel(PAF_all) * 100;
-sparse_index_AlphaAmp = sum(AlphaAmp_all(:) == 0) / numel(AlphaAmp_all) * 100;
-sparse_index_XiAmp = sum(XiAmp_all(:) == 0) / numel(XiAmp_all) * 100;
-
-% Define threshold for each measure use set_threshold_em for recalculate this value
-threshold_PAF = 7;             % Example threshold for PAF
-threshold = 1.8632;   % Example threshold for Alpha Amplitude
-threshold_XiAmp = 1.8632;      % Example threshold for Xi Amplitude
-
-% Apply threshold and create binary masks for each measure
-for j = 1:length(All_Data(1,:))
-    fprintf('Processing subject %d\n', j);
-    [e, a, s2] = x2v(All_Data{1,j});  % Assuming x2v returns [e, a, s2]
-    PAF_all(:,j) = a(:,4) > threshold_PAF;             % Apply threshold for PAF
-    AlphaAmp_all(:,j) = a(:,1) > threshold;   % Apply threshold for Alpha Amplitude
-    XiAmp_all(:,j) = e(:,1) > threshold_XiAmp;         % Apply threshold for Xi Amplitude
-end
-
-% Get unique ages
-ages = cell2mat(All_Data(2,:));  % Get the ages
-ages(isnan(ages)) = mean(ages(~isnan(ages)));  % Replace NaNs with mean age
-
-% Define a grid of age values for estimation
-age_grid = linspace(min(ages), max(ages), 30);  % 30 points for smoothness
-
-% Define kernel parameters
-% Assuming 'L' is a precomputed distance matrix of size [num_voxels x num_voxels]
-L = parameters.Model.L;  % Distance matrix between voxels
-
-% Define kernel functions
-kernel_epanechnikov = @(u) (3/4)*(1 - u.^2) .* (abs(u) < 1);  % Epanechnikov Kernel
-
-% Define bandwidths for spatial and temporal kernels
-% Optimal Bandwidths (you can adjust these as needed)
-h_s_PAF = 1;          % Spatial bandwidth for PAF 
-h_s_AlphaAmp = 1;     % Spatial bandwidth for Alpha Amplitude 
-h_s_XiAmp = 1.00;        % Spatial bandwidth for Xi Amplitude 
-
-% Temporal bandwidths (assuming they are the same as spatial for simplicity)
-% You can define separate temporal bandwidths if needed
-% Alternatively, define h_t differently for each measure
-h_t_PAF = 4.46;
-h_t_AlphaAmp = 3.37;
-h_t_XiAmp = 1.73;
-
-% Precompute spatial kernel matrices for each measure
-% These are [num_voxels x num_voxels] matrices
-spatial_kernel_PAF = kernel_epanechnikov(L / h_s_PAF);
-spatial_kernel_AlphaAmp = kernel_epanechnikov(L / h_s_AlphaAmp);
-spatial_kernel_XiAmp = kernel_epanechnikov(L / h_s_XiAmp);
-
-% Initialize storage for the kernel estimates
-num_voxels = size(PAF_all, 1);          % Number of voxels
-num_age_points = length(age_grid);      % Number of age grid points
-
-PAF_kernel = zeros(num_voxels, num_age_points);
-AlphaAmp_kernel = zeros(num_voxels, num_age_points);
-XiAmp_kernel = zeros(num_voxels, num_age_points);
-
-% Replace zeros with NaN initially to handle cases with no data
-PAF_kernel(:) = NaN;
-AlphaAmp_kernel(:) = NaN;
-XiAmp_kernel(:) = NaN;
-
-% ----------------------------
-% Spatio-Temporal Nadaraya-Watson Estimation
-% ----------------------------
-
-% Loop over each age in the age grid
-for i = 1:num_age_points
-    current_age = age_grid(i);
-    
-    % Compute temporal kernel weights for all subjects
-    % [1 x num_subjects]
-    u_t_PAF = (current_age - ages) / h_t_PAF;
-    weights_t_PAF = kernel_epanechnikov(u_t_PAF);
-    
-    u_t_AlphaAmp = (current_age - ages) / h_t_AlphaAmp;
-    weights_t_AlphaAmp = kernel_epanechnikov(u_t_AlphaAmp);
-    
-    u_t_XiAmp = (current_age - ages) / h_t_XiAmp;
-    weights_t_XiAmp = kernel_epanechnikov(u_t_XiAmp);
-    
-    % Compute the sum of temporal weights for normalization
-    sum_weights_t_PAF = sum(weights_t_PAF);
-    sum_weights_t_AlphaAmp = sum(weights_t_AlphaAmp);
-    sum_weights_t_XiAmp = sum(weights_t_XiAmp);
-    
-    % Handle cases where the sum of weights is zero to avoid division by zero
-    if sum_weights_t_PAF == 0
-        sum_weights_t_PAF = eps;  % A very small number
-    end
-    if sum_weights_t_AlphaAmp == 0
-        sum_weights_t_AlphaAmp = eps;
-    end
-    if sum_weights_t_XiAmp == 0
-        sum_weights_t_XiAmp = eps;
-    end
-    
-    % Compute the weighted sums for each measure
-    % [num_voxels x 1]
-    weighted_PAF = PAF_all * weights_t_PAF';           % [num_voxels x 1]
-    weighted_AlphaAmp = AlphaAmp_all * weights_t_AlphaAmp';
-    weighted_XiAmp = XiAmp_all * weights_t_XiAmp';
-    
-    % Compute the Nadaraya-Watson estimates by applying spatial kernels
-    % [num_voxels x 1] = [num_voxels x num_voxels] * [num_voxels x 1]
-    sum_weighted_PAF = spatial_kernel_PAF * weighted_PAF;
-    sum_weighted_AlphaAmp = spatial_kernel_AlphaAmp * weighted_AlphaAmp;
-    sum_weighted_XiAmp = spatial_kernel_XiAmp * weighted_XiAmp;
-    
-    % Compute the normalization factors
-    % [num_voxels x 1] = [num_voxels x num_voxels] * [1 x 1]
-    normalization_PAF = sum(spatial_kernel_PAF,2) * sum(weights_t_PAF);
-    normalization_AlphaAmp = sum(spatial_kernel_AlphaAmp,2) * sum(weights_t_AlphaAmp);
-    normalization_XiAmp = sum(spatial_kernel_XiAmp,2) * sum(weights_t_XiAmp);
-    
-    % Calculate the density estimates
-    PAF_estimate = sum_weighted_PAF ./ normalization_PAF;
-    AlphaAmp_estimate = sum_weighted_AlphaAmp ./ normalization_AlphaAmp;
-    XiAmp_estimate = sum_weighted_XiAmp ./ normalization_XiAmp;
-    
-    % Assign the estimates to the kernel storage matrices
-    PAF_kernel(:,i) = PAF_estimate;
-    AlphaAmp_kernel(:,i) = AlphaAmp_estimate;
-    XiAmp_kernel(:,i) = XiAmp_estimate;
-end
-
 
 
 
