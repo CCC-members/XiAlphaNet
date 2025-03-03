@@ -17,19 +17,21 @@ disp('-->> Starting process');
 disp('==========================================================================');
 
 %%
-%% Preparing properties
+%% Importing packages
 %%
-addpath(genpath(fullfile(pwd,'app')));
-addpath(genpath(fullfile(pwd,'functions')));
-addpath(genpath(fullfile(pwd,'guide')));
-addpath(genpath(fullfile(pwd,'report')));
-addpath(genpath(fullfile(pwd,'tools')));
+import app.*
+import app.functions.*
+import functions.*
+import guide.*
+import templates.*
+import tools.*
+
 
 %%
 %% Init processing
 %%
 try
-    properties = jsondecode(fileread(fullfile(pwd,'app','properties.json')));
+    properties = jsondecode(fileread(fullfile(pwd,'+app','properties.json')));
 catch EM
     fprintf(2,"\n ->> Error: The app/properties file do not have a correct format \n");
     disp("-->> Message error");
