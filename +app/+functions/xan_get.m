@@ -1,5 +1,9 @@
 function [output1, output2, output3]   = xan_get( varargin )
-
+import app.*
+import app.functions.*
+import functions.*
+import guide.*
+import tools.*
 if ((nargin >= 1) && ischar(varargin{1}))
     contextName = varargin{1};
     if(nargin >= 2)
