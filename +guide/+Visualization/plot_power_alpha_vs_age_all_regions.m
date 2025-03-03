@@ -1,7 +1,5 @@
-function plot_peak_freq_vs_age_all_regions2(dir_results)
-% dir_results its the folder that contain the results and the XIALPHANET.json
+function plot_power_alpha_vs_age_all_regions()
     % Define the list of regions in the desired order
-    addpath("+functions/+auxx/Zero-Inflated-Models/")
     regionList = {'Occipital','Parietal', 'Temporal', 'Prefrontal'};
     
     % Define hemispheres with associated colors
@@ -32,7 +30,7 @@ function plot_peak_freq_vs_age_all_regions2(dir_results)
             
             % Collect data for the current region and hemisphere
             [All_Data, all_voxel_activations, all_ages, voxel_positions] = ...
-                getDataForRegion(vertices,dir_results);
+                getDataForRegion(vertices);
             
             % Define the age range for evaluation
             age_range = linspace(1, 90, 100)';
@@ -104,7 +102,7 @@ function plot_peak_freq_vs_age_all_regions2(dir_results)
             title('E[Y|Y>0]', 'FontWeight', 'bold');
             xlabel('Age (Years)', 'FontWeight', 'bold');
             ylabel('APF (Hz)', 'FontWeight', 'bold');
-            ylim([7 9]);
+            %ylim([7 9]);
             xlim([0 90])
             %axis tight;
             set(gca, 'FontWeight', 'bold');
@@ -134,7 +132,7 @@ function plot_peak_freq_vs_age_all_regions2(dir_results)
             title( 'E[Y]', 'FontWeight', 'bold');
             xlabel('Age (Years)', 'FontWeight', 'bold');
             ylabel('APF (Hz)', 'FontWeight', 'bold');
-            ylim([2.5 7]);
+            %ylim([2.5 7]);
             xlim([0 90])
             %axis tight;
             set(gca, 'FontWeight', 'bold');
@@ -233,55 +231,62 @@ end
 % Helper function to collect data for the given set of vertices
 % --------------------------------------------------------------------
 function [All_Data, all_voxel_activations, all_ages, voxel_positions] = ...
-          getDataForRegion(vertices,dir_results)
-   
+          getDataForRegion(vertices)
+    
+    % Path where model parameters live
+    modelParametersPath = 'Data\Model_Parameters';
     
     % Load necessary parameters once (if not already loaded)
+    load('Data\Model_Parameters\parameters.mat'); 
+    
+    % Subfolder(s) containing subjects
+    subFolders = {'Control'}; 
     
     % Prepare storage
     All_Data = {};
     
     % Initialize index
     index = 1;
-
-   dataset = jsondecode(fileread(strcat(dir_results,'/XIALPHANET.json')));
-
-   for j =1:length(dataset.Participants)
-        j;
-        participant = dataset.Participants(j);
-        participant_age = participant.Age;
-        if(isequal(participant.Status,'Completed'))
-
-            %
-            All_Data{2,index} =  participant_age;
-            Part_Info = jsondecode(fileread(fullfile(dataset.Location,participant.SubID,participant.FileInfo)));
-            alpha_process = load(fullfile(dataset.Location,participant.SubID,Part_Info.Alpha_estimate));
-            a(:,1) = alpha_process.Power;
-            a(:,2) = alpha_process.Width;
-            a(:,3) = alpha_process.Exponent;
-            a(:,4) = alpha_process.PAF;
-
+    
+    % Iterate over each subfolder
+    for k = 1:length(subFolders)
+        folderPath_X = fullfile(modelParametersPath, subFolders{k});
+        matFiles_X = dir(fullfile(folderPath_X, '*.mat'));
+        
+        % Randomly sample up to 100 files
+        numSamples = min(length(matFiles_X), length(matFiles_X));
+        sampledIndices = randperm(length(matFiles_X), numSamples);
+        
+        for j = sampledIndices
+            j;
+            filePath_X = fullfile(folderPath_X, matFiles_X(j).name);
+            data = load(filePath_X);
+            
+            % Convert Solution to variables
+            [~, a, ~] = x2v(data.x.Solution);
+            
             % Apply the calculated threshold to find vertices
-            threshold = prctile(a(:,1), 90);
-            a(:,4) = a(:,4) .* (a(:,1) > threshold);
+            threshold = prctile(a(:,1), 45);
 
+            a(:,4) = a(:,1) .* (a(:,1) > threshold);
+            
             % Extract data from the region of interest
             J = a(vertices, 4);
             J = J(~isnan(J));  % Remove NaNs
+            
+            % Store the activation and age
+            All_Data{1, index} = J;
+            All_Data{2, index} = data.x.Age;
+            
+            index = index + 1;
         end
-        % Store the activation and age
-        All_Data{1, index} = J;
-        All_Data{2, index} = participant_age;
-
-        index = index + 1;
-   end
-
-
+    end
+    
     % Organize data for the model
     all_voxel_activations = [];
     all_ages             = [];
     voxel_positions      = [];
-
+    
     for idx = 1:length(All_Data(1, :))
         voxel_data  = All_Data{1, idx};   % Activation for subject
         subject_age = All_Data{2, idx};   % Age
