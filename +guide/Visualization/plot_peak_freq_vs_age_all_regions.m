@@ -1,4 +1,5 @@
-function plot_peak_freq_vs_age_all_regions()
+function plot_peak_freq_vs_age_all_regions(dir_results)
+% dir_results its the folder that contain the results and the XIALPHANET.json
     % Define the list of regions in the desired order
     regionList = {'Occipital','Parietal', 'Temporal', 'Prefrontal'};
     
@@ -30,7 +31,7 @@ function plot_peak_freq_vs_age_all_regions()
             
             % Collect data for the current region and hemisphere
             [All_Data, all_voxel_activations, all_ages, voxel_positions] = ...
-                getDataForRegion(vertices);
+                getDataForRegion(vertices,dir_results);
             
             % Define the age range for evaluation
             age_range = linspace(1, 90, 100)';
@@ -231,62 +232,52 @@ end
 % Helper function to collect data for the given set of vertices
 % --------------------------------------------------------------------
 function [All_Data, all_voxel_activations, all_ages, voxel_positions] = ...
-          getDataForRegion(vertices)
-    
-    % Path where model parameters live
-    modelParametersPath = 'Data\Model_Parameters';
+          getDataForRegion(vertices,dir_results)
+   
     
     % Load necessary parameters once (if not already loaded)
-    load('Data\Model_Parameters\parameters.mat'); 
-    
-    % Subfolder(s) containing subjects
-    subFolders = {'Control'}; 
     
     % Prepare storage
     All_Data = {};
     
     % Initialize index
     index = 1;
-    
-    % Iterate over each subfolder
-    for k = 1:length(subFolders)
-        folderPath_X = fullfile(modelParametersPath, subFolders{k});
-        matFiles_X = dir(fullfile(folderPath_X, '*.mat'));
-        
-        % Randomly sample up to 100 files
-        numSamples = min(length(matFiles_X), length(matFiles_X));
-        sampledIndices = randperm(length(matFiles_X), numSamples);
-        
-        for j = sampledIndices
-            j;
-            filePath_X = fullfile(folderPath_X, matFiles_X(j).name);
-            data = load(filePath_X);
-            
-            % Convert Solution to variables
-            [~, a, ~] = x2v(data.x.Solution);
-            
-            % Apply the calculated threshold to find vertices
-            threshold = prctile(a(:,1), 45);
 
-            a(:,4) = a(:,1) .* (a(:,1) > threshold);
-            
+   dataset = jsondecode(fileread(strcat(dir_results,'/XIALPHANET.json')));
+
+   for j =1:length(dataset.Participants)
+        j;
+        participant = dataset.Participants(j);
+        participant_age = participant.Age;
+        if(isequal(participant.Status,'Completed'))
+
+            %
+            All_Data{2,index} =  participant_age;
+            Part_Info = jsondecode(fileread(fullfile(dataset.Location,participant.SubID,participant.FileInfo)));
+            alpha_process = load(fullfile(dataset.Location,participant.SubID,Part_Info.Alpha_estimate));
+            a(:,4) = alpha_process.PAF;
+
+            % Apply the calculated threshold to find vertices
+            threshold = prctile(a(:,1), 90);
+            a(:,4) = a(:,4) .* (a(:,1) > threshold);
+
             % Extract data from the region of interest
             J = a(vertices, 4);
             J = J(~isnan(J));  % Remove NaNs
-            
-            % Store the activation and age
-            All_Data{1, index} = J;
-            All_Data{2, index} = data.x.Age;
-            
-            index = index + 1;
         end
+        % Store the activation and age
+        All_Data{1, index} = J;
+        All_Data{2, index} = participant_age;
+
+        index = index + 1;
     end
-    
+
+
     % Organize data for the model
     all_voxel_activations = [];
     all_ages             = [];
     voxel_positions      = [];
-    
+
     for idx = 1:length(All_Data(1, :))
         voxel_data  = All_Data{1, idx};   % Activation for subject
         subject_age = All_Data{2, idx};   % Age

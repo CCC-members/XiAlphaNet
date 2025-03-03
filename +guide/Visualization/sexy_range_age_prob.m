@@ -4,8 +4,8 @@ clear all;
 
 age_min = 0;%age_range(1);
 age_max = 100;%age_range(2);
-dataset = jsondecode(fileread('/home/ronaldo/Documents/dev/Data/Results/XIALPHANET.json'));
-parameters = load('/home/ronaldo/Documents/dev/Data/Results/structural/parameters.mat');
+dataset = jsondecode(fileread('D:/data/data/Results/XIALPHANET.json'));
+parameters = load('D:/data/data/Results/structural/parameters.mat');
 ages = [];
 All_Data = {}; 
 index = 1;

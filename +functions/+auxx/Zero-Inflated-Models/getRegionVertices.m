@@ -10,8 +10,8 @@ function vertices = getRegionVertices(regionName)
     %    vertices - Array of vertices corresponding to the regionName
     
     % Load the atlas structure
-    atlasFilePath = 'Data\Atlas_Anatomical\tess_cortex_mid_high_8000V_fix.mat';
-    loadedData = load(atlasFilePath);
+    import templates.*  
+    loadedData = load('+templates/Cortex.mat');
     
     % Assuming the atlas is stored in Atlas(8).Scouts
     atlas = loadedData.Atlas(8).Scouts;

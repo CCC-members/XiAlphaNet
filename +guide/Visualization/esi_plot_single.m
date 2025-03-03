@@ -4,12 +4,15 @@
 
 %%
 disp("-->> Starting process");
-
+import templates.*
+import guide.functions.split_hemisphere
+import guide.functions.tess_smooth
+import guide.functions.tess_hemisplit
 %% Load test data
 Cortex                  = load("templates/Cortex.mat");
 %parameters = load('/home/ronaldo/Documents/Example/Results/structural/parameters.mat');
-template                = load("template/axes.mat");
-colorMap                = load("template/mycolormap_brain_basic_conn.mat");
+template                = load("templates/axes.mat");
+colorMap                = load("templates/mycolormap_brain_basic_conn.mat");
 currentAxes             = template.axes;
 hemis                   = []; % left or right or []
 [Cortex, iHideVert]     = split_hemisphere(Cortex,hemis);
