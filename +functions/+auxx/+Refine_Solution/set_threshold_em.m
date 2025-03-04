@@ -4,7 +4,7 @@ function threshold = set_threshold_em(V)
     V = V(:);
 
     % Filter out near-zero values
-    V = V(abs(V) > 1e-6);
+    V = V(abs(V) > 1e-10);
 
     % Fit a two-component GMM using the EM algorithm
     try
