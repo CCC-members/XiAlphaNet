@@ -6,7 +6,7 @@ import guide.Visualization.*
 import functions.auxx.ZeroInflatedModels.*
 import functions.auxx.Refine_Solution.*
 prc = 90;
-cross_index = 0; % 
+cross_index = 1; % 
 age_min = 0;%age_range(1);
 age_max = 100;%age_range(2);
 dataset = jsondecode(fileread('/home/ronaldo/Documents/dev/Data/Results/XIALPHANET.json'));
@@ -38,54 +38,43 @@ for i=1:length(dataset.Participants)
 end
 
 %% Cross Validation
+% Initialize storage for Peak Alpha Frequency (PAF), Amplitude of the Alpha, and Amplitude of Xi
+PAF_all = [];
+AlphaAmp_all = [];
+XiAmp_all = [];
+
+% Convert each data.x to [e, a, s2] and store PAF (a(:,4)), Alpha Amplitude (a(:,1)), and Xi Amplitude
+threshold_PAF = 8;
+parfor j = 1:length(All_Data(1,:))
+    fprintf('Processing subject %d\n', j);
+    [e, a, s2] = x2v(All_Data{1,j});  % Assuming x2v returns [e, a, s2]
+    PAF_all(:,j) = a(:,4);            % Store Peak Alpha Frequency
+    AlphaAmp_all(:,j) = a(:,1);       % Store Amplitude of the Alpha
+    XiAmp_all(:,j) = e(:,1);
+    % Binarize the Amplitud by selecting nonparametrically a threshold
+    threshold_Alpha(j)   =  set_threshold_em(AlphaAmp_all(:,j));
+    threshold_Xi(j)   =  set_threshold_em(XiAmp_all(:,j));
+    PAF_all(:,j) = PAF_all(:,j).*(AlphaAmp_all(:,j)>threshold_Alpha(j));
+    PAF_all(:,j) = PAF_all(:,j) > threshold_PAF;                 % Apply threshold for PAF
+    AlphaAmp_all(:,j) = AlphaAmp_all(:,j).*(AlphaAmp_all(:,j)>threshold_Alpha(j));
+    XiAmp_all(:,j) = XiAmp_all(:,j)> threshold_Xi(j);
+end
+
+
+% Get unique ages
+ages = cell2mat(All_Data(2,:));  % Get the ages
+ages(isnan(ages)) = mean(ages(~isnan(ages)));  % Replace NaNs with mean age
+
 if cross_index == 1
-    % Initialize storage for Peak Alpha Frequency (PAF), Amplitude of the Alpha, and Amplitude of Xi
-    PAF_all = [];
-    AlphaAmp_all = [];
-    XiAmp_all = [];
-
-    % Convert each data.x to [e, a, s2] and store PAF (a(:,4)), Alpha Amplitude (a(:,1)), and Xi Amplitude
-    for j = 1:length(All_Data(1,:))
-        [e, a, s2] = x2v(All_Data{1,j});  % Assuming x2v returns [e, a, s2]
-        PAF_all(:,j) = a(:,4);            % Store Peak Alpha Frequency
-        AlphaAmp_all(:,j) = a(:,1);       % Store Amplitude of the Alpha
-        XiAmp_all(:,j) = e(:,1);                                % Store Amplitude of the Xi
-    end
-
-    % Convert each data.x to [e, a, s2] and store PAF (a(:,4)), Alpha Amplitude (a(:,1)), and Xi Amplitude
-    for j = 1:length(All_Data(1,:))
-        %[e, a, s2] = x2v(All_Data{1,j});  % Assuming x2v returns [e, a, s2]
-        threshold_Alpha   =  prctile(AlphaAmp_all(:,j),prc);
-        PAF_all(:,j) = PAF_all(:,j).*(AlphaAmp_all(:,j)>threshold_Alpha);            % Store Peak Alpha Frequency
-        AlphaAmp_all(:,j) = AlphaAmp_all(:,j).*(AlphaAmp_all(:,j)>threshold_Alpha);       % Store Amplitude of the Alpha
-        XiAmp_all(:,j) = XiAmp_all(:,j);         % Store Amplitude of the Xi
-    end
-
-
-    % Apply threshold and create binary masks for each measure
-    threshold_PAF = 8;
-    for j = 1:length(All_Data(1,:))
-        j
-        %[e, a, s2] = x2v(All_Data{1,j});  % Assuming x2v returns [e, a, s2]
-        threshold_Alpha   =  set_threshold_em(AlphaAmp_all(:,1));%prctile(AlphaAmp_all(:,j),prc);
-        threshold_Alpha   =  set_threshold_em(AlphaAmp_all(:,1));
-        PAF_all(:,j) = PAF_all(:,j) > threshold_PAF;             % Apply threshold for PAF
-        AlphaAmp_all(:,j) = AlphaAmp_all(:,j) > threshold_Alpha;   % Apply threshold for Alpha Amplitude
-        XiAmp_all(:,j) =  XiAmp_all(:,j) > threshold_Alpha;         % Apply threshold for Xi Amplitude
-    end
-
-    % Get unique ages
-    ages = cell2mat(All_Data(2,:));  % Get the ages
-    ages(isnan(ages)) = mean(ages(~isnan(ages)));  % Replace NaNs with mean age
 
     % Define a grid of age values for estimation
-    age_grid = linspace(min(ages), max(ages), 5);
+    age_grid = linspace(min(ages), max(ages), 30);
 
     % Define the Epanechnikov kernel function
     kernel = @(u) (3/4)*(1 - u.^2) .* (abs(u) <= 1);
 
     % Define a range of bandwidths to search
-    bandwidths = linspace(0.1, 10, 10);  % Adjust range and number of points as needed
+    bandwidths = linspace(0.1, 10, 20);  % Adjust range and number of points as needed
 
     % Number of folds for cross-validation
     K = 5;
@@ -199,32 +188,6 @@ else
     h_t_XiAmp = 10;
 end
 %% Kernel Density
-% Initialize storage for Peak Alpha Frequency (PAF), Amplitude of the Alpha, and Amplitude of Xi
-PAF_all = [];
-AlphaAmp_all = [];
-XiAmp_all = [];
-
-% Convert each data.x to [e, a, s2] and store PAF (a(:,4)), Alpha Amplitude (a(:,1)), and Xi Amplitude
-threshold_PAF = 8;
-parfor j = 1:length(All_Data(1,:))
-    fprintf('Processing subject %d\n', j);
-    [e, a, s2] = x2v(All_Data{1,j});  % Assuming x2v returns [e, a, s2]
-    PAF_all(:,j) = a(:,4);            % Store Peak Alpha Frequency
-    AlphaAmp_all(:,j) = a(:,1);       % Store Amplitude of the Alpha
-    XiAmp_all(:,j) = e(:,1);
-    % Binarize the Amplitud by selecting nonparametrically a threshold
-    threshold_Alpha(j)   =  set_threshold_em(AlphaAmp_all(:,j));
-    threshold_Xi(j)   =  set_threshold_em(XiAmp_all(:,j));
-    PAF_all(:,j) = PAF_all(:,j).*(AlphaAmp_all(:,j)>threshold_Alpha(j));
-    PAF_all(:,j) = PAF_all(:,j) > threshold_PAF;                 % Apply threshold for PAF
-    AlphaAmp_all(:,j) = AlphaAmp_all(:,j).*(AlphaAmp_all(:,j)>threshold_Alpha(j));
-    XiAmp_all(:,j) = XiAmp_all(:,j)> threshold_Xi(j);
-end
-
-
-% Get unique ages
-ages = cell2mat(All_Data(2,:));  % Get the ages
-ages(isnan(ages)) = mean(ages(~isnan(ages)));  % Replace NaNs with mean age
 
 % Define a grid of age values for estimation
 age_grid = linspace(min(ages), max(ages), 40);  % 30 points for smoothness

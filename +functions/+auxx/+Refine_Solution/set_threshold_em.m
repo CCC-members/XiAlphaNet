@@ -8,8 +8,8 @@ function threshold = set_threshold_em(V)
 
     % Fit a two-component GMM using the EM algorithm
     try
-        gm = fitgmdist(V, 2, 'Replicates', 10, ...
-            'Options', statset('MaxIter', 500, 'TolFun', 1e-6));
+        gm = fitgmdist(V, 2, 'Replicates', 20, ...
+            'Options', statset('MaxIter', 1000, 'TolFun', 1e-3),'RegularizationValue',1e-3);
     catch ME
         % If GMM fitting fails, use the 90th percentile as a fallback
         threshold = prctile(V, 90);

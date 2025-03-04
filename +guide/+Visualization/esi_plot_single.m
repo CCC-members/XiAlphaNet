@@ -26,7 +26,7 @@ J(iHideVert)            = [];
 % Apply smoothing to J using 'movmean' (moving average) or 'gaussian'
 J_smoothed              = J;%smoothdata(J, 'movmean', 30);  % 5 is the window size, adjust as needed
 L = parameters.Model.L;
-sigma = 50;
+sigma = 60;
 K = exp(-L.^2/(2*sigma^2));
 K = K./sum(K,2);
 J_smoothed = K*J_smoothed;
