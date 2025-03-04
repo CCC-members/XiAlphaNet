@@ -15,8 +15,8 @@ function threshold = set_threshold_em(V)
     try
         gm = fitgmdist(V, 2, 'Replicates', 10, 'Options', statset('MaxIter', 500, 'TolFun', 1e-6));
     catch ME
-        warning('GMM fitting failed: %s', ME.message);
-        threshold = NaN;  % Return NaN if fitting fails
+        %warning('GMM fitting failed: %s', ME.message);
+        threshold = prctile(V,90);  % Return NaN if fitting fails
         return;
     end
 
