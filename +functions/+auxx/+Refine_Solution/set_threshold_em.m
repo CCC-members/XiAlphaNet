@@ -46,7 +46,7 @@ function threshold = set_threshold_em(V)
  
 
     % Step 12: Find the threshold where the intersection_func is closest to zero
-    threshold = fzero(intersection_func,[mu_sorted(1),mu_sorted(2)]);
+    threshold = fzero(intersection_func,[mu_sorted(1)-sigma_1,mu_sorted(2)+sigma_2]);
 
     % % %%Optional: Plotting for visualization (can be removed in production)
     % figure;
