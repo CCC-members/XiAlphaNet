@@ -1,4 +1,5 @@
 function [Cortex,iHideVert]  = split_hemisphere(Cortex, hemis)
+import guide.functions.tess_hemisplit
 [rH, lH] = tess_hemisplit(Cortex);
 
 if(isequal(hemis,'left'))
