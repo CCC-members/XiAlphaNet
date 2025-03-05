@@ -26,7 +26,7 @@ J(iHideVert)            = [];
 % Apply smoothing to J using 'movmean' (moving average) or 'gaussian'
 J_smoothed              = J;%smoothdata(J, 'movmean', 30);  % 5 is the window size, adjust as needed
 L = parameters.Model.L;
-sigma = 60;
+sigma = 10;
 K = exp(-L.^2/(2*sigma^2));
 K = K./sum(K,2);
 J_smoothed = K*J_smoothed;
@@ -61,5 +61,5 @@ colormap(currentAxes,colorMap.cmap_a);
 set(currentAxes,"Parent",fig);
 axis(currentAxes,'equal');
 rotate3d(currentAxes,'on');
-colormap("parula")
+colormap("hot")
 set(gcf,'Color','w');
