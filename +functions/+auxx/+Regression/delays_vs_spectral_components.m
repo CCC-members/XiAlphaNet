@@ -13,13 +13,32 @@ ages = [];
 alpha_powers= [];
 xi_powers= [];
 alpha_pfs = [];
-% Get a list of all .mat files in the folder
-files = dir(fullfile(dataFolder, '*.mat'));
 
-% Check if any .mat files are found
-if isempty(files)
-    error('No .mat files found in the specified folder: %s', dataFolder);
+%Directory containing .mat files
+dataset = jsondecode(fileread('/home/ronaldo/Documents/dev/Data/Results/XIALPHANET.json'));
+import templates.*
+load("templates/mylin_data.mat")
+%Initialize arrays for storing delays and ages
+delays = [];
+ages = [];
+%--------------------------- Data Extraction -----------------------
+index = 1;
+for i=1:length(dataset.Participants)
+    participant = dataset.Participants(i);
+    participant_age = participant.Age;
+    if(isequal(participant.Status,'Completed'))
+        ages(index) = participant_age;
+        Part_Info = jsondecode(fileread(fullfile(dataset.Location,participant.SubID,participant.FileInfo)));
+        Mod_Weights = load(fullfile(dataset.Location,participant.SubID,Part_Info.Mod_Weights));
+        if participant_age <=15
+            delays(index) =  11 * Mod_Weights.Mod_Weights(1);
+        else
+            delays(index) = 9.5 * Mod_Weights.Mod_Weights(1);
+        end
+        index = index +1;
+    end
 end
+
 
 % --------------------------- Data Extraction -----------------------
 
