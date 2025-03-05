@@ -1,23 +1,69 @@
 function [data,status,Participant] = check_data_structure(properties, Participant, subject)
 
 %%
-%%  Importing Packages 
+%%  Importing Packages
 %%
 import functions.*
 import functions.auxx.*
 import functions.auxx.DataPreprosessing.*
 import functions.auxx.OptimizedOperations.*
+import functions.import.*
+import plugins.*
+import plugins.HarMNqEEG.*
 
 
 Nw = properties.model_params.nFreqs;
+country = properties.general_params.data.country;
+eeg_device = properties.general_params.data.eeg_device;
 ref_file = properties.general_params.data.ref_file;
 errors = {};
 status = true;
+type = properties.general_params.data.type;
+file_name = fullfile(subject.folder,subject.name,strrep(ref_file,'SubID',Participant.SubID));
 try
-    data = load(fullfile(subject.folder,subject.name,strrep(ref_file,'SubID',Participant.SubID)));    
-    while isfield(data,'data_struct')
-        data = data.data_struct;
-    end    
+    switch lower(type)
+        case 'cross'
+            data = load(file_name);
+            while isfield(data,'data_struct')
+                data = data.data_struct;
+            end
+        case 'eeg_signal'
+            data = ImportEEG(properties,file_name);            
+    end
+
+    Participant.Status = "Checked";
+    if(~isfield(data,'age'))
+        data.age = randi([20,80],1);
+    end
+    if ischar(data.age) || isstring(data.age)
+        % Convert the string to a number
+        data.age = str2double(data.age);
+    elseif(isnan(data.age))
+        data.age = randi([20 80],1);
+    else
+        data.age = data.age;
+    end
+
+    if(~isfield(data,'freqrange'))
+        Participant.Status = "Rejected";
+        status = false;
+    end
+
+    if(~isfield(data,'CrossM'))
+        Participant.Status = "Rejected";
+        status = false;
+    else
+        % Cross
+        data.Cross = data.CrossM(:,:,1:Nw);
+        data.Cross = aveReference(data.Cross);
+        data.Cross = regularize_tensor(data.Cross);
+        data.freq = data.freqrange(1:Nw);
+        data = rmfield(data,{'CrossM','freqrange'});
+    end
+    Participant.Age = data.age;
+    Participant.Errors = errors;
+    Participant.FileInfo = "";
+
 catch Ex
     Participant.Age = '';
     Participant.Status = "Rejected";
@@ -33,45 +79,12 @@ catch Ex
     data = [];
     return;
 end
-Participant.Status = "Checked";
-if(~isfield(data,'age'))
-    data.age = randi([20,80],1);
-end
-if ischar(data.age) || isstring(data.age)
-    % Convert the string to a number
-    data.age = str2double(data.age);
-elseif(isnan(data.age))
-    data.age = randi([20 80],1);
-else
-    data.age = data.age;
-end
-
-if(~isfield(data,'freqrange'))
-    Participant.Status = "Rejected";
-    status = false;
-end
-
-if(~isfield(data,'CrossM'))
-    Participant.Status = "Rejected";
-    status = false;
-else   
-    % Cross
-    data.Cross = data.CrossM(:,:,1:Nw);
-    data.Cross = aveReference(data.Cross);
-    data.Cross = regularize_tensor(data.Cross);
-    data.freq = data.freqrange(1:Nw); 
-    data = rmfield(data,{'CrossM','freqrange'});
-end
-
-Participant.Age = data.age;
-Participant.Errors = errors;
-Participant.FileInfo = "";
 
 if(status)
     disp("-->> Saving subject data");
     SubID = Participant.SubID;
     [Participant] = xan_save(properties,SubID,'create_subject',data,Participant);
-else    
+else
     fprintf(2,strcat('\n-->> Error: The folder structure for subject: ',subject.name,' \n'));
     fprintf(2,strcat('-->> Have the folows errors.\n'));
     for j=1:length(errors)

@@ -232,10 +232,13 @@ parameters.Dimensions.Nv = Nv;   % Number of Voxels
 parameters.Dimensions.Nw = properties.model_params.nFreqs; % Number of frequencies
 
 disp("-->> Saving Structural outputs");
-mkdir(fullfile(properties.general_params.output_path,'structural'))
-save(fullfile(properties.general_params.output_path,'structural/cortex.mat'),'-struct','Cortex');
-save(fullfile(properties.general_params.output_path,'structural/leadfield.mat'),'-struct','Leadfield');
-save(fullfile(properties.general_params.output_path,'structural/parameters.mat'),'-struct','parameters');
+structural_path = fullfile(properties.general_params.output_path,'structural');
+if(~isfolder(structural_path))
+    mkdir(structural_path);
+end
+save(fullfile(structural_path,'cortex.mat'),'-struct','Cortex');
+save(fullfile(structural_path,'leadfield.mat'),'-struct','Leadfield');
+save(fullfile(structural_path,'parameters.mat'),'-struct','parameters');
 
 end
 

@@ -1,6 +1,6 @@
 function XIALPHANET = groupProcessing(properties,XIALPHANET,var)
 
-age_range = properties.model_params.group_analysis.age_range;
+age_range = properties.model_params.group.age_range;
 age_min = 0;%age_range(1);
 age_max = 100;%age_range(2);
 parameters = load('/home/ronaldo/Documents/dev/Data/Results/structural/parameters.mat');
