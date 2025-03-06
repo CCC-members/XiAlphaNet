@@ -67,7 +67,7 @@ clean_delays = delays;
 clean_ap = clean_ap(sortIdx);
 
 % Construct design matrix for quadratic robust fit
-X = [ones(size(delays)), delays, delays.^2];
+X = [ones(size(delays)), delays];
 
 % Perform robust regression on the transformed data with quadratic model
 [b, stats] = robustfit(X(:, 2:end), clean_ap); % Exclude intercept from X in robustfit
@@ -79,11 +79,11 @@ hold on;
 
 % Evaluate the robust quadratic fit on the same range as ages_fit
 delays_fit = linspace(min(delays), max(delays), 100)'; % Same range as LOESS fit
-robust_fit_interp = (b(1) + b(2) * delays_fit+b(3) * delays_fit.^2);
+robust_fit_interp = (b(1) + b(2) * delays_fit);
 
 % Calculate standard error for each fitted value
 cov_b = stats.covb; % Covariance matrix of coefficients
-X_fit = [ones(size(delays_fit)), delays_fit,delays_fit.^2];
+X_fit = [ones(size(delays_fit)),delays_fit];
 se_robust_fit = sqrt(sum((X_fit * cov_b) .* X_fit, 2));
 
 % Calculate upper and lower bounds for the robust fit curve
@@ -115,7 +115,7 @@ clean_delays = delays;
 clean_xip = clean_xip(sortIdx);
 
 % Construct design matrix for quadratic robust fit
-X = [ones(size(delays)), delays, delays.^2];
+X = [ones(size(delays)), delays];
 
 % Perform robust regression on the transformed data with quadratic model
 [b, stats] = robustfit(X(:, 2:end), clean_xip); % Exclude intercept from X in robustfit
@@ -127,11 +127,11 @@ hold on;
 
 % Evaluate the robust quadratic fit on the same range as ages_fit
 delays_fit = linspace(min(delays), max(delays), 100)'; % Same range as LOESS fit
-robust_fit_interp = (b(1) + b(2) * delays_fit+b(3) * delays_fit.^2);
+robust_fit_interp = (b(1) + b(2) * delays_fit);
 
 % Calculate standard error for each fitted value
 cov_b = stats.covb; % Covariance matrix of coefficients
-X_fit = [ones(size(delays_fit)), delays_fit,delays_fit.^2];
+X_fit = [ones(size(delays_fit)),delays_fit];
 se_robust_fit = sqrt(sum((X_fit * cov_b) .* X_fit, 2));
 
 % Calculate upper and lower bounds for the robust fit curve
@@ -164,7 +164,7 @@ clean_delays = delays;
 clean_apf = clean_apf(sortIdx);
 
 % Construct design matrix for quadratic robust fit
-X = [ones(size(delays)), delays, delays.^2];
+X = [ones(size(delays)), delays];
 
 % Perform robust regression on the transformed data with quadratic model
 [b, stats] = robustfit(X(:, 2:end), clean_apf); % Exclude intercept from X in robustfit
@@ -176,11 +176,11 @@ hold on;
 
 % Evaluate the robust quadratic fit on the same range as ages_fit
 delays_fit = linspace(min(delays), max(delays), 100)'; % Same range as LOESS fit
-robust_fit_interp = (b(1) + b(2) * delays_fit+b(3) * delays_fit.^2);
+robust_fit_interp = (b(1) + b(2) * delays_fit);
 
 % Calculate standard error for each fitted value
 cov_b = stats.covb; % Covariance matrix of coefficients
-X_fit = [ones(size(delays_fit)), delays_fit,delays_fit.^2];
+X_fit = [ones(size(delays_fit)), delays_fit];
 se_robust_fit = sqrt(sum((X_fit * cov_b) .* X_fit, 2));
 
 % Calculate upper and lower bounds for the robust fit curve
@@ -204,7 +204,7 @@ title('Peak Alpha Frequency (PAF) vs Delays (\tau)');
 legend('Estimated Relationship','Estimator Uncertainty');
 grid on;
 hold off;
-
+%%
 %Alpha_vs_Delays
 % Apply outlier removal
 clean_ap = alpha_powers;
