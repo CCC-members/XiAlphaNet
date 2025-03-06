@@ -61,5 +61,5 @@ colormap(currentAxes,colorMap.cmap_a);
 set(currentAxes,"Parent",fig);
 axis(currentAxes,'equal');
 rotate3d(currentAxes,'on');
-colormap("hot")
+colormap("parula")
 set(gcf,'Color','w');
