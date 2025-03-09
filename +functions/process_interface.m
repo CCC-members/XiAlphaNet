@@ -47,6 +47,20 @@ else
     parameters = preprocessing(properties);
 end
 
+%% Loading Participamts Infomation
+participants_file = '';
+isPartInfo = false;
+if(isfile(fullfile(input_path,'participants.tsv')))
+    isPartInfo = true;
+    opts = detectImportOptions(fullfile(input_path,'participants.tsv'), FileType="text");
+    participants_file = table2struct(readtable(fullfile(input_path,'participants.tsv'),opts));
+end
+if(isfile(fullfile(input_path,'participants.json')))
+    isPartInfo = true;
+    participants_file = jsondecode(fileread(fullfile(input_path,'participants.tsv')));
+end
+
+
 %% Loop through each .mat file in the subjects
 subjects = dir(input_path);
 subjects(ismember({subjects.name},{'..','.','structural'})) = [];
@@ -86,7 +100,10 @@ for s=1:length(subjects)
     %%
     %% Check data structure
     %%
-    [data,status,Participant] = check_data_structure(properties,Participant,subject);
+    if(isPartInfo)
+        pat = participants_file(find(ismember({participants_file.participant_id},{SubID}),1));
+    end
+    [data,status,Participant] = check_data_structure(properties,Participant,subject,pat);    
     if(~status)
         XIALPHANET.Participants(iPart).SubID = Participant.SubID;
         XIALPHANET.Participants(iPart).Age = Participant.Age;

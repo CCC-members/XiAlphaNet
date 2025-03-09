@@ -1,4 +1,4 @@
-function [data,status,Participant] = check_data_structure(properties, Participant, subject)
+function [data,status,Participant] = check_data_structure(properties, Participant, subject, varargin)
 
 %%
 %%  Importing Packages
@@ -11,7 +11,9 @@ import functions.import.*
 import plugins.*
 import plugins.HarMNqEEG.*
 
-
+for i=1:length(varargin)
+    eval([inputname(i+3) '= varargin{i};']);
+end
 Nw = properties.model_params.nFreqs;
 country = properties.general_params.data.country;
 eeg_device = properties.general_params.data.eeg_device;
@@ -28,7 +30,7 @@ try
                 data = data.data_struct;
             end
         case 'eeg_signal'
-            data = ImportEEG(properties,file_name);            
+            data = ImportEEG(properties,file_name,Participant.SubID,pat);            
     end
 
     Participant.Status = "Checked";
