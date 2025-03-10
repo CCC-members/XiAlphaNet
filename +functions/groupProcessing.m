@@ -1,16 +1,18 @@
-function XIALPHANET = groupProcessing(properties,XIALPHANET,var)
+function XIALPHANET = groupProcessing(properties,XIALPHANET,varargin)
 
+import functions.auxx.ModelVectorization.*
 age_range = properties.model_params.group.age_range;
+
 age_min = 0;%age_range(1);
 age_max = 100;%age_range(2);
-parameters = load('/home/ronaldo/Documents/dev/Data/Results/structural/parameters.mat');
+parameters = load(fullfile(XIALPHANET.Location,XIALPHANET.Structural.parameters));
 ages = [];
 All_Data = {}; 
 index = 1;
 for i=1:length(XIALPHANET.Participants)
     participant = XIALPHANET.Participants(i);
     participant_age = participant.Age;
-    if(isequal(participant.Status,'Completed')) && age_min <= participant_age && participant_age <= age_max
+    if(isequal(participant.Status,'Completed') && age_min <= participant_age && participant_age <= age_max)
        ages = [ages,participant_age];
        All_Data{2,index} =  participant_age;
        Part_Info = jsondecode(fileread(fullfile(XIALPHANET.Location,participant.SubID,participant.FileInfo)));
