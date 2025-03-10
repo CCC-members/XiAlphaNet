@@ -14,3 +14,12 @@ figure(5)
 plot(data.freq,l');
 norm(l0-l,'fro')/norm(l,'fro')
 clear temp_parameters
+
+%
+figure(6)
+hold on 
+for j=1:length(hist)
+    plot(hist{j});
+    legend 
+end
+hold off
