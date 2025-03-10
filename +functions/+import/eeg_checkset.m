@@ -1272,14 +1272,6 @@ for inddataset = 1:length(ALLEEG)
     if ~isfield(EEG.reject, 'rejglobal'),        EEG.reject.rejglobal  = []; res = com; end
     if ~isfield(EEG.reject, 'rejglobalE'),       EEG.reject.rejglobalE = []; res = com; end
     
-    % track version of EEGLAB
-    % -----------------------
-    tmpvers = eeg_getversion;
-    if ~isfield(EEG.etc, 'eeglabvers') || ~isequal(EEG.etc.eeglabvers, tmpvers)
-        EEG.etc.eeglabvers = tmpvers;
-        EEG = eeg_hist( EEG, ['EEG.etc.eeglabvers = ''' tmpvers '''; % this tracks which version of EEGLAB is being used, you may ignore it'] );
-        res = com;
-    end
     
     % default colors for rejection
     % ----------------------------
@@ -1400,6 +1392,8 @@ end
 return;
 
 function num = popask( text )
+import functions.*
+import functions.import.*
 ButtonName=questdlg2( text, ...
     'Confirmation', 'Cancel', 'Yes','Yes');
 switch lower(ButtonName),

@@ -17,6 +17,7 @@ import tools.*
 
 input_path                              = properties.general_params.input_path;
 output_path                             = properties.general_params.output_path;
+part_file                               = properties.general_params.dataset.participants_info.file;
 
 %%
 %%
@@ -50,14 +51,15 @@ end
 %% Loading Participamts Infomation
 participants_file = '';
 isPartInfo = false;
-if(isfile(fullfile(input_path,'participants.tsv')))
+[~,~,part_ext] = fileparts(fullfile(input_path,part_file));
+if(isequal(part_ext,'.tsv') || isequal(part_ext,'.csv'))
     isPartInfo = true;
-    opts = detectImportOptions(fullfile(input_path,'participants.tsv'), FileType="text");
-    participants_file = table2struct(readtable(fullfile(input_path,'participants.tsv'),opts));
+    opts = detectImportOptions(fullfile(input_path,part_file), FileType="text");
+    participants_file = table2struct(readtable(fullfile(input_path,part_file),opts));
 end
-if(isfile(fullfile(input_path,'participants.json')))
+if(isequal(part_ext,'.json'))
     isPartInfo = true;
-    participants_file = jsondecode(fileread(fullfile(input_path,'participants.tsv')));
+    participants_file = jsondecode(fileread(fullfile(input_path,part_file)));
 end
 
 
@@ -101,7 +103,12 @@ for s=1:length(subjects)
     %% Check data structure
     %%
     if(isPartInfo)
-        pat = participants_file(find(ismember({participants_file.participant_id},{SubID}),1));
+        if(isfield(participants_file,'participant_id'))
+            pat = participants_file(find(ismember({participants_file.participant_id},{SubID}),1));
+        end
+        if(isfield(participants_file,'SubID'))
+            pat = participants_file(find(ismember({participants_file.SubID},{SubID}),1));
+        end
     end
     [data,status,Participant] = check_data_structure(properties,Participant,subject,pat);    
     if(~status)

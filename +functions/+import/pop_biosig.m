@@ -203,14 +203,12 @@ else
     command = [ command sprintf(', %s);', vararg2str(options)) ];
 end
 
-% Checking if str2double is on top of the path
-biosigpathlast;
-
 % ---------
 % read data
 % ---------
 function [dat, DAT, interval] = readfile(filename, channels, blockrange, memmapdata, bdfeventmode, overflow, uncalibrated)
-
+import functions.*
+import functions.import.*
 if isempty(channels), channels = 0; end
 strmode = '';
 if strcmpi(overflow, 'off')

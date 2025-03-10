@@ -30,7 +30,20 @@ try
                 data = data.data_struct;
             end
         case 'eeg_signal'
-            data = ImportEEG(properties,file_name,Participant.SubID,pat);            
+            [data,error_msg] = ImportEEG(properties,file_name,Participant.SubID,pat);
+            if(~isempty(error_msg))
+                status = false;
+                Participant.Age = '';
+                Participant.Status = "Rejected";
+                Participant.FileInfo = "";
+                Participant.Errors{1} = error_msg;
+                fprintf(2,strcat('\n-->> Error: The data structure for subject: ',subject.name,' \n'));
+                fprintf(2,strcat('-->> Have the folows errors.\n'));
+                fprintf(2,strcat("-->> " ,error_msg, ".\n"));
+                fprintf(2,strcat('-->> Jump to an other subject.\n'));
+                data = [];
+                return;
+            end
     end
 
     Participant.Status = "Checked";

@@ -1,4 +1,4 @@
-function data_struct = ImportEEG(properties,file_name,SubID,pat)
+function [data_struct,error_msg] = ImportEEG(properties,file_name,SubID,pat)
 
 import functions.*
 import plugins.*
@@ -26,13 +26,11 @@ switch ext
             dnames = {'Fp1', 'Fp2', 'F3', 'F4', 'C3', 'C4', 'P3', 'P4', 'O1', 'O2', 'F7', 'F8', 'T3', 'T4', 'T5', 'T6', 'Fz', 'Cz', 'Pz'};
         end
         pat                         = read_plgpat(strrep(file_name, ext, '.pat')); 
-        srate                       = SAMPLING_FREQ;
-        Age                         = pat.Age;
-        Sex                         = pat.Sex;     
+        srate                       = SAMPLING_FREQ;    
     case '.edf'
         EEG                     = pop_biosig(file_name);
         EEG.setname             = SubID;
-        EEG.SubID               = SubID;        
+        EEG.subject             = SubID;        
         EEG.filename            = path;
         EEG.filepath            = name;        
         % For cuban dataset
@@ -44,15 +42,14 @@ switch ext
         indx = ismember(dnames,{'T7','T8','P7','P8'});
         dnames(indx) = {'T3','T4','T5','T6'};
         data = EEG.data(1:length(dnames),:); 
-        srate                       = EEG.srate;
-        if(isfield(pat,'age' ))
-            Age                         = pat.age;
-        else
-            Age                         = '';
-        end
-        Sex                         = pat.sex;
+        srate                           = EEG.srate;        
     case '.set'
          EEG                     = pop_loadset(file_name);
+         dnames                  = {EEG.chanlocs(1:19).labels};
+         indx = ismember(dnames,{'T7','T8','P7','P8'});
+         dnames(indx) = {'T3','T4','T5','T6'};
+         data = EEG.data(1:length(dnames),:);
+         srate                       = EEG.srate;
     case '.mat'
         EEG                     = eeg_emptyset;
         load(file_name);
@@ -93,7 +90,23 @@ switch ext
         EEG.max                 = EEG.xmin+(EEG.pnts-1)*(1/EEG.srate);
         EEG.times               = (0:EEG.pnts-1)/EEG.srate.*1000;
 end
-
+if(isfield(pat,'age' ))
+    Age                         = pat.age;
+elseif(isfield(pat,'Age' ))
+    Age                         = pat.Age;
+else
+    Age                         = '';
+end
+if(isfield(pat,'sex' ))
+    Sex                         = pat.sex;
+elseif(isfield(pat,'Sex' ))
+    Sex                         = pat.Sex;
+elseif(isfield(pat,'Gender' ))
+    Sex                         = pat.Gender;
+else
+    Age                         = '';
+end
+        
 [data_struct, error_msg]    = data_gatherer_v2(data, srate, dnames, SubID, ref, Age, Sex,...
     country, eeg_device, keep_signal);
 if(isfield(pat,'BirthDate'))

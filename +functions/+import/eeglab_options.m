@@ -37,6 +37,8 @@ echo off;
 
 % load local file
 % ---------------
+import functions.*
+import functions.import.*
 homefolder = '';
 try 
     %clear eeg_options; % note: we instead clear this function handle in pop_editoptions()
