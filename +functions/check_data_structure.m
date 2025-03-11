@@ -1,4 +1,4 @@
-function [data,status,Participant] = check_data_structure(properties, Participant, subject)
+function [data,status,Participant] = check_data_structure(properties, Participant, subject, varargin)
 
 %%
 %%  Importing Packages
@@ -11,7 +11,9 @@ import functions.import.*
 import plugins.*
 import plugins.HarMNqEEG.*
 
-
+for i=1:length(varargin)
+    eval([inputname(i+3) '= varargin{i};']);
+end
 Nw = properties.model_params.nFreqs;
 country = properties.general_params.data.country;
 eeg_device = properties.general_params.data.eeg_device;
@@ -28,7 +30,20 @@ try
                 data = data.data_struct;
             end
         case 'eeg_signal'
-            data = ImportEEG(properties,file_name);            
+            [data,error_msg] = ImportEEG(properties,file_name,Participant.SubID,pat);
+            if(~isempty(error_msg))
+                status = false;
+                Participant.Age = '';
+                Participant.Status = "Rejected";
+                Participant.FileInfo = "";
+                Participant.Errors{1} = error_msg;
+                fprintf(2,strcat('\n-->> Error: The data structure for subject: ',subject.name,' \n'));
+                fprintf(2,strcat('-->> Have the folows errors.\n'));
+                fprintf(2,strcat("-->> " ,error_msg, ".\n"));
+                fprintf(2,strcat('-->> Jump to an other subject.\n'));
+                data = [];
+                return;
+            end
     end
 
     Participant.Status = "Checked";

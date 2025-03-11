@@ -41,6 +41,16 @@ switch contextName
         if(isequal(count,length(structures)))
             checked = false;
         end
+    case 'Part_file'
+        if(~isfolder(path))
+            checked = false;
+            return;
+        end
+        partfile = fullfile(path,ref_file);
+        if(~isfile(partfile))
+            checked = false;
+            return;
+        end
     case 'Tmp_path'
         if(~isfolder(fullfile(path)) && ~isequal(path,'local'))
             checked = false;

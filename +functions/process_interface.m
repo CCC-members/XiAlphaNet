@@ -17,6 +17,7 @@ import tools.*
 
 input_path                              = properties.general_params.input_path;
 output_path                             = properties.general_params.output_path;
+part_file                               = properties.general_params.dataset.participants_info.file;
 
 %%
 %%
@@ -46,6 +47,21 @@ else
     %%
     parameters = preprocessing(properties);
 end
+
+%% Loading Participamts Infomation
+participants_file = '';
+isPartInfo = false;
+[~,~,part_ext] = fileparts(fullfile(input_path,part_file));
+if(isequal(part_ext,'.tsv') || isequal(part_ext,'.csv'))
+    isPartInfo = true;
+    opts = detectImportOptions(fullfile(input_path,part_file), FileType="text");
+    participants_file = table2struct(readtable(fullfile(input_path,part_file),opts));
+end
+if(isequal(part_ext,'.json'))
+    isPartInfo = true;
+    participants_file = jsondecode(fileread(fullfile(input_path,part_file)));
+end
+
 
 %% Loop through each .mat file in the subjects
 subjects = dir(input_path);
@@ -86,7 +102,15 @@ for s=1:length(subjects)
     %%
     %% Check data structure
     %%
-    [data,status,Participant] = check_data_structure(properties,Participant,subject);
+    if(isPartInfo)
+        if(isfield(participants_file,'participant_id'))
+            pat = participants_file(find(ismember({participants_file.participant_id},{SubID}),1));
+        end
+        if(isfield(participants_file,'SubID'))
+            pat = participants_file(find(ismember({participants_file.SubID},{SubID}),1));
+        end
+    end
+    [data,status,Participant] = check_data_structure(properties,Participant,subject,pat);    
     if(~status)
         XIALPHANET.Participants(iPart).SubID = Participant.SubID;
         XIALPHANET.Participants(iPart).Age = Participant.Age;
