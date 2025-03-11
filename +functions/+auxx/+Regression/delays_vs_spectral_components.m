@@ -6,7 +6,7 @@ clear; clc;
 
 
 %Directory containing .mat files
-dataset = jsondecode(fileread('/home/ronaldo/Documents/dev/Data/Results/XIALPHANET.json'));
+dataset = jsondecode(fileread('D:\data\data\Results\XIALPHANET.json'));
 import templates.*
 import functions.auxx.ModelVectorization.*
 import guide.Visualization.*
@@ -156,7 +156,7 @@ legend('Estimated Relationship','Estimator Uncertainty');
 grid on;
 hold off;
 
-
+%%
 % Apply outlier removal
 clean_apf = alpha_pfs;
 clean_delays = delays;
