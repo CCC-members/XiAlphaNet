@@ -1,4 +1,7 @@
 function [HDR] = getfiletype(arg1)
+import functions.*
+import functions.import.*
+
 % GETFILETYPE get file type 
 %
 % HDR = getfiletype(Filename);
