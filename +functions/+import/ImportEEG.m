@@ -50,6 +50,15 @@ switch ext
          dnames(indx) = {'T3','T4','T5','T6'};
          data = EEG.data(1:length(dnames),:);
          srate                       = EEG.srate;
+    case '.vhdr'
+            [base_path,hdrfile,extf] = fileparts(file_name);
+            hdrfile = strcat(hdrfile,extf);
+
+            [EEG, com] = pop_loadbv(base_path, hdrfile);           
+            EEG.subject = subID;
+            EEG.filename = hdrfile;
+            EEG.filepath = fullfile(base_path);
+            srate                           = EEG.srate;
     case '.mat'
         EEG                     = eeg_emptyset;
         load(file_name);
