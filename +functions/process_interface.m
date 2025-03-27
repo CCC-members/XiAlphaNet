@@ -70,6 +70,7 @@ subjects([subjects.isdir]==0) = [];
 if(~isempty(properties.general_params.participants))
     subjects = subjects(ismember({subjects.name}, properties.general_params.participants));
 end
+parameters_tmp = parameters;
 for s=1:length(subjects)
     if(isfile(XAN_file))
         XIALPHANET              = jsondecode(fileread(XAN_file));
@@ -217,7 +218,7 @@ for s=1:length(subjects)
     %% Saving Participant file
     %%
     [Participant]               = xan_save(properties,SubID,'subject',x,T,parameters,data,Participant);
-
+    parameters                  = parameters_tmp; % Reset anatomical parameters
 
     %% Save the computed x to the corresponding group folder in Model_Parameters
 
