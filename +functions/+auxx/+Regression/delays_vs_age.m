@@ -8,7 +8,7 @@
 clear; clc;
 
 %Directory containing .mat files
-dataset = jsondecode(fileread('/home/ronaldo/Documents/dev/Data/Results/XIALPHANET.json'));
+dataset = jsondecode(fileread('D:\data\data\Results\XIALPHANET.json'));
 import templates.*
 load("templates/mylin_data.mat")
 %Initialize arrays for storing delays and ages

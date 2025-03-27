@@ -1,4 +1,9 @@
 function  xan_init()
+import app.*
+import app.functions.*
+import functions.*
+import guide.*
+import tools.*
 homedir = char(java.lang.System.getProperty('user.home'));
 XANdir  = fullfile(homedir,".XiAlphaNet");
 if(~isfolder(XANdir))

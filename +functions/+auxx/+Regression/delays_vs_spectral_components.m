@@ -6,7 +6,7 @@ clear; clc;
 
 
 %Directory containing .mat files
-dataset = jsondecode(fileread('D:\data\data\Results\XIALPHANET.json'));
+dataset = jsondecode(fileread('/Users/ronald/Downloads/Results/XIALPHANET.json'));
 import templates.*
 import functions.auxx.ModelVectorization.*
 import guide.Visualization.*
@@ -21,7 +21,7 @@ xi_powers= [];
 alpha_pfs = [];
 %--------------------------- Data Extraction -----------------------
 index = 1;
-parfor i=1:length(dataset.Participants)
+for i=1:length(dataset.Participants)
     i
     participant = dataset.Participants(i);
     participant_age = participant.Age;
@@ -32,11 +32,11 @@ parfor i=1:length(dataset.Participants)
         Alpha_estimate = load(fullfile(dataset.Location,participant.SubID,Part_Info.Alpha_estimate));
         Xi_estimate = load(fullfile(dataset.Location,participant.SubID,Part_Info.Xi_estimate));
         %
-        threshold_alpha = set_threshold_em(Alpha_estimate.Power);
+        threshold_alpha =  prctile(Alpha_estimate.Power,90);%set_threshold_em(Alpha_estimate.Power);
         pos_alpha = (Alpha_estimate.Power>threshold_alpha);
         alpha_powers(i) =real( mean(Alpha_estimate.Power(pos_alpha)));
         alpha_pfs(i) = real(mean(Alpha_estimate.PAF(pos_alpha)));
-        threshold_xi = set_threshold_em(Xi_estimate.Power);
+        threshold_xi = prctile(Xi_estimate.Power,90);%set_threshold_em(Xi_estimate.Power);
         pos_xi = (Xi_estimate.Power>threshold_xi);
         xi_powers(i) = real(mean(Xi_estimate.Power(pos_xi)));
         if participant_age <=15
@@ -56,7 +56,7 @@ ages0 = ages(:);
 alpha_powers0 = alpha_powers(:);
 alpha_pfs0 = alpha_pfs(:);
 xi_powers0 = xi_powers(:);
-
+%%
 delays = delays0(:);
 ages = ages0(:);
 alpha_powers = alpha_powers0(:);
@@ -64,8 +64,10 @@ alpha_pfs = alpha_pfs0(:);
 xi_powers = xi_powers0(:);
 %% Alpha_vs_Delays
 % Apply outlier removal
-clean_ap = (alpha_powers-min(alpha_powers))./(max(alpha_powers)-min(alpha_powers));
-clean_delays = delays;
+clean_ap = log(10^(-6)+alpha_powers);
+clean_ap = (clean_ap-min(clean_ap))./(max(clean_ap)-min(clean_ap));
+clean_delays = log(delays0.^(-2));
+clean_delays = (clean_delays-min(clean_delays))./(max(clean_delays)-min(clean_delays));
 % --------------------------- Quadratic Regression ----------------
 
 % Sort data by age for proper plotting
@@ -77,7 +79,7 @@ X = [ones(size(delays)), delays];
 
 % Perform robust regression on the transformed data with quadratic model
 [b, stats] = robustfit(X(:, 2:end), clean_ap); % Exclude intercept from X in robustfit
-
+stats.p
 % Visualize robust regression results
 figure;
 %scatter(ages, transformed_delays, 'filled', 'SizeData', 1.5);
@@ -115,8 +117,10 @@ grid on;
 hold off;
 
 % Apply outlier removal
-clean_xip = xi_powers;
-clean_delays = delays;
+clean_xip = log(10^(-6)+xi_powers);
+clean_xip = (clean_xip-min(clean_xip))./(max(clean_xip)-min(clean_xip));
+clean_delays = log(delays0.^(-2));
+clean_delays = (clean_delays-min(clean_delays))./(max(clean_delays)-min(clean_delays));
 % --------------------------- Quadratic Regression ----------------
 clean_xip = clean_xip(sortIdx);
 
@@ -125,7 +129,7 @@ X = [ones(size(delays)), delays];
 
 % Perform robust regression on the transformed data with quadratic model
 [b, stats] = robustfit(X(:, 2:end), clean_xip); % Exclude intercept from X in robustfit
-
+stats.p
 % Visualize robust regression results
 figure;
 %scatter(ages, transformed_delays, 'filled', 'SizeData', 1.5);
@@ -162,11 +166,15 @@ legend('Estimated Relationship','Estimator Uncertainty');
 grid on;
 hold off;
 
-%%
 % Apply outlier removal
-clean_apf = (alpha_pfs-min(alpha_pfs))./(max(alpha_pfs)-min(alpha_pfs));
-clean_delays = delays;
+clean_apf = log(10^(-6)+alpha_pfs);
+clean_apf = (clean_apf-min(clean_apf))./(max(clean_apf)-min(clean_apf));
+clean_delays = log(delays0.^(-2));
+clean_delays = (clean_delays-min(clean_delays))./(max(clean_delays)-min(clean_delays));
 % --------------------------- Quadratic Regression ----------------
+
+% Sort data by age for proper plotting
+[delays, sortIdx] = sort(clean_delays);
 clean_apf = clean_apf(sortIdx);
 
 % Construct design matrix for quadratic robust fit
@@ -174,7 +182,7 @@ X = [ones(size(delays)), delays];
 
 % Perform robust regression on the transformed data with quadratic model
 [b, stats] = robustfit(X(:, 2:end), clean_apf); % Exclude intercept from X in robustfit
-
+stats.p
 % Visualize robust regression results
 figure;
 %scatter(ages, transformed_delays, 'filled', 'SizeData', 1.5);
@@ -183,7 +191,6 @@ hold on;
 % Evaluate the robust quadratic fit on the same range as ages_fit
 delays_fit = linspace(min(delays), max(delays), 100)'; % Same range as LOESS fit
 robust_fit_interp = (b(1) + b(2) * delays_fit);
-
 % Calculate standard error for each fitted value
 cov_b = stats.covb; % Covariance matrix of coefficients
 X_fit = [ones(size(delays_fit)), delays_fit];
@@ -211,9 +218,9 @@ legend('Estimated Relationship','Estimator Uncertainty');
 grid on;
 hold off;
 %%
-%Alpha_vs_Delays
+%Alpha_vs_Age
 % Apply outlier removal
-clean_ap = alpha_powers;
+clean_ap = log(1+alpha_powers);
 clean_delays = ages;
 % --------------------------- Quadratic Regression ----------------
 
@@ -226,7 +233,7 @@ X = [ones(size(delays)), delays, delays.^2];
 
 % Perform robust regression on the transformed data with quadratic model
 [b, stats] = robustfit(X(:, 2:end), clean_ap); % Exclude intercept from X in robustfit
-
+stats.p
 % Visualize robust regression results
 figure;
 %scatter(ages, transformed_delays, 'filled', 'SizeData', 1.5);
@@ -717,7 +724,7 @@ disp('=== END OF SCRIPT ===');
 
 % 1) Ensure they are column vectors
 paf    =(alpha_pfs(:)-min(alpha_pfs(:)))./(max(alpha_pfs(:))-min(alpha_pfs(:)));
-delays = 1./delays0(:).^1;
+delays = 1./delays0(:).^2;
 delays = (delays-min(delays))./(max(delays)-min(delays));
 age    = ages(:);
 
@@ -801,7 +808,7 @@ plot(ageClean, delaysClean, '.', 'Color', 'b');
 pPAF = polyfit(ageClean, pafClean, 2);
 
 % Create a smooth age grid for plotting the fitted curve
-ageFit = linspace(min(ageClean), max(ageClean), 200);
+ageFit = linspace(0, 80, 200);
 
 % Evaluate the polynomial on this grid
 pafFit = polyval(pPAF, ageFit);
@@ -825,4 +832,659 @@ legend({'PAF data','Delays data','PAF Quadratic Fit','Delays Quadratic Fit'}, ..
        'Location','best');
 grid on;
 hold off;
+%%
+% 0) Ensure columns, remove NaNs if needed
+paf    = alpha_pfs(:);
+delays = delays0(:);
+age    = ages0(:);
 
+validIdx = ~isnan(paf) & ~isnan(delays) & ~isnan(age);
+pafClean    = paf(validIdx);
+delaysClean = delays(validIdx);
+ageClean    = age(validIdx);
+
+% 1) Compute 1/delay^2
+invDelays2 = delaysClean.^1;
+
+fprintf('\n=== PART A: PARTIAL CORRELATION (CONTROLLING FOR AGE) ===\n');
+
+% A1) Partial correlation controlling only for Age (linear)
+% partialcorr(X, Y, Z) returns the correlation between X and Y
+% after removing the effect of Z.
+% We'll use Spearman's rank correlation to be more robust to outliers.
+[rPartial_linear, pPartial_linear] = partialcorr(pafClean, invDelays2, ageClean, ...
+                                                'type', 'Spearman');
+fprintf('Partial Corr (PAF, 1/Del^2 | Age): r=%.4f, p=%.4g\n', ...
+        rPartial_linear, pPartial_linear);
+
+% A2) Partial correlation controlling for Age and Age^2
+% We'll build a matrix for the control variables [Age, Age^2].
+Z = [ageClean, ageClean.^2];
+[rPartial_quad, pPartial_quad] = partialcorr(pafClean, invDelays2, Z, ...
+                                             'type', 'Spearman');
+fprintf('Partial Corr (PAF, 1/Del^2 | Age, Age^2): r=%.4f, p=%.4g\n', ...
+        rPartial_quad, pPartial_quad);
+
+% Interpretation:
+% If these partial correlations remain significant (p<0.05), it suggests
+% that 1/Del^2 correlates with PAF even after factoring out age.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% PART B: MULTIPLE (ROBUST) REGRESSION: PAF ~ Age + Age^2 + (1/Del^2)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+fprintf('\n=== PART B: MULTIPLE ROBUST REGRESSION ===\n');
+
+% B1) Construct design matrix for robustfit.
+% robustfit automatically includes an intercept, so just columns for:
+%   1) Age
+%   2) Age^2
+%   3) 1/Del^2
+X = [ ageClean, ageClean.^2, invDelays2 ];
+
+% B2) Fit robust regression: pafClean = b0 + b1*Age + b2*Age^2 + b3*(1/Del^2)
+[b, stats] = robustfit(X, pafClean);
+
+% b(1) = intercept
+% b(2) = coefficient for Age
+% b(3) = coefficient for Age^2
+% b(4) = coefficient for (1/Del^2)
+
+pVals = stats.p;
+SEs   = stats.se;
+coeffNames = {'(Intercept)','Age','Age^2','1/delay^2'};
+
+fprintf('Coefficients (Robust Fit):\n');
+for i = 1:numel(coeffNames)
+    fprintf('  %s = %.4f (SE=%.4f, p=%.4g)\n', ...
+            coeffNames{i}, b(i), SEs(i), pVals(i));
+end
+
+% Interpretation:
+%  - If pVals(4) < 0.05 => (1/Del^2) is a significant predictor of PAF
+%    even after controlling for Age and Age^2.
+%  - Age or Age^2 being significant indicates an inverted-U or other
+%    shape in the PAF vs. Age relationship.
+
+disp('=== Analysis Complete ===');
+
+%%
+%% --------------------------- Alpha Power vs Delays^-2 ---------------------------
+% 1) Log-transform and sort
+AP = 10*log10(1e-6 + alpha_powers);          % log(Alpha Power)
+%AP =  (AP(:)-min(AP(:)))./(max(AP(:))-min(AP(:)));
+Del = (delays0);               % log(tau^-2)
+%Del =  (Del(:)-min(Del(:)))./(max(Del(:))-min(Del(:)));
+% Example IQR-based outlier removal on PAF:
+Q1 = quantile(AP, 0.25);
+Q3 = quantile(AP, 0.75);
+IQR_val = Q3 - Q1;
+lowerBound = Q1 - 1.5*IQR_val;
+upperBound = Q3 + 1.5*IQR_val;
+
+idxOut = (AP < lowerBound) | (AP > upperBound);
+fprintf('Removed %d outliers (PAF) via IQR.\n', sum(idxOut));
+
+AP    = AP(~idxOut);
+Del = Del(~idxOut);
+
+
+[logDel_sorted, idxSort] = sort(Del);
+logAP_sorted = AP(idxSort);
+
+% 2) Robust Linear Fit
+X_lin = logDel_sorted;
+[b_lin, stats_lin] = robustfit(X_lin, logAP_sorted);
+
+% Evaluate linear fit on the sorted data
+y_lin_fit = b_lin(1) + b_lin(2) * logDel_sorted;
+
+% 1-StdErr confidence bands for linear fit
+X_lin_fit = [ones(size(logDel_sorted)), logDel_sorted];
+var_lin_fit = sum((X_lin_fit * stats_lin.covb) .* X_lin_fit, 2);
+se_lin_fit = sqrt(var_lin_fit);
+upper_lin = y_lin_fit + se_lin_fit;
+lower_lin = y_lin_fit - se_lin_fit;
+
+% 3) Robust Quadratic Fit
+X_quad = [logDel_sorted, logDel_sorted.^2];
+[b_quad, stats_quad] = robustfit(X_quad, logAP_sorted);
+
+y_quad_fit = b_quad(1) + b_quad(2) * logDel_sorted + b_quad(3) * logDel_sorted.^2;
+
+% 1-StdErr confidence bands for quadratic fit
+X_quad_fit = [ones(size(logDel_sorted)), logDel_sorted, logDel_sorted.^2];
+var_quad_fit = sum((X_quad_fit * stats_quad.covb) .* X_quad_fit, 2);
+se_quad_fit = sqrt(var_quad_fit);
+upper_quad = y_quad_fit + se_quad_fit;
+lower_quad = y_quad_fit - se_quad_fit;
+
+% 4) Model comparison (RMSE and BIC)
+% Linear model residuals and RMSE
+residuals_lin = logAP_sorted - y_lin_fit;
+rmse_lin = sqrt(mean(residuals_lin.^2));
+
+% Quadratic model residuals and RMSE
+residuals_quad = logAP_sorted - y_quad_fit;
+rmse_quad = sqrt(mean(residuals_quad.^2));
+
+% BIC for Linear Model
+n = length(logAP_sorted);
+k_lin = length(b_lin); % Number of parameters in linear model
+bic_lin = n*log(mean(residuals_lin.^2)) + k_lin*log(n);
+
+% BIC for Quadratic Model
+k_quad = length(b_quad); % Number of parameters in quadratic model
+bic_quad = n*log(mean(residuals_quad.^2)) + k_quad*log(n);
+
+% 5) Plot only the regression lines (no scatter)
+figure; hold on;
+
+% Linear fit (red line)
+plot(logDel_sorted, y_lin_fit, 'r-', 'LineWidth', 1.5);
+fill([logDel_sorted; flipud(logDel_sorted)], ...
+     [upper_lin; flipud(lower_lin)], ...
+     'r', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
+
+% Quadratic fit (blue dashed)
+plot(logDel_sorted, y_quad_fit, 'b--', 'LineWidth', 1.5);
+fill([logDel_sorted; flipud(logDel_sorted)], ...
+     [upper_quad; flipud(lower_quad)], ...
+     'b', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
+
+% Axis labels are logs of the variables
+xlabel('Delays (ms)', 'FontWeight', 'bold');
+ylabel('Alpha Power Amplitud (dB)', 'FontWeight', 'bold');
+title('Alpha Power ~ \tau  (Robust Linear & Quadratic)');
+xlim([4 18])
+% Legend with parameter values, RMSE, BIC and p-values
+legLin = sprintf('Linear: Intercept=%.3f (p=%.3g), Slope=%.3f (p=%.3g), RMSE=%.3f, BIC=%.3f', ...
+    b_lin(1), stats_lin.p(1), b_lin(2), stats_lin.p(2), rmse_lin, bic_lin);
+legQuad = sprintf('Quadratic: b0=%.3f (p=%.3g), b1=%.3f (p=%.3g), b2=%.3f (p=%.3g), RMSE=%.3f, BIC=%.3f', ...
+    b_quad(1), stats_quad.p(1), b_quad(2), stats_quad.p(2), b_quad(3), stats_quad.p(3), rmse_quad, bic_quad);
+
+legend({legLin, 'Linear \pm1SE', legQuad, 'Quadratic \pm1SE'}, ...
+    'Location', 'best');
+grid on; hold off;
+% --------------------------- Peak Alpha Frequency vs Delays^-2 ---------------------------
+% 1) Log-transform and sort
+AP = alpha_pfs; % log(Alpha Power)
+%AP =  (AP(:)-min(AP(:)))./(max(AP(:))-min(AP(:)));
+Del = (delays0);               % log(tau^-2)
+%Del =  (Del(:)-min(Del(:)))./(max(Del(:))-min(Del(:)));
+
+% Example IQR-based outlier removal on PAF:
+Q1 = quantile(AP, 0.25);
+Q3 = quantile(AP, 0.75);
+IQR_val = Q3 - Q1;
+lowerBound = Q1 - 1.5*IQR_val;
+upperBound = Q3 + 1.5*IQR_val;
+
+idxOut = (AP < lowerBound) | (AP > upperBound);
+fprintf('Removed %d outliers (PAF) via IQR.\n', sum(idxOut));
+
+AP    = AP(~idxOut);
+Del = Del(~idxOut);
+
+
+
+
+[logDel_sorted, idxSort] = sort(Del);
+logAP_sorted = AP(idxSort);
+
+% 2) Robust Linear Fit
+X_lin = logDel_sorted;
+[b_lin, stats_lin] = robustfit(X_lin, logAP_sorted);
+
+% Evaluate linear fit on the sorted data
+y_lin_fit = b_lin(1) + b_lin(2) * logDel_sorted;
+
+% 1-StdErr confidence bands for linear fit
+X_lin_fit = [ones(size(logDel_sorted)), logDel_sorted];
+var_lin_fit = sum((X_lin_fit * stats_lin.covb) .* X_lin_fit, 2);
+se_lin_fit = sqrt(var_lin_fit);
+upper_lin = y_lin_fit + se_lin_fit;
+lower_lin = y_lin_fit - se_lin_fit;
+
+% 3) Robust Quadratic Fit
+X_quad = [logDel_sorted, logDel_sorted.^2];
+[b_quad, stats_quad] = robustfit(X_quad, logAP_sorted);
+
+y_quad_fit = b_quad(1) + b_quad(2) * logDel_sorted + b_quad(3) * logDel_sorted.^2;
+
+% 1-StdErr confidence bands for quadratic fit
+X_quad_fit = [ones(size(logDel_sorted)), logDel_sorted, logDel_sorted.^2];
+var_quad_fit = sum((X_quad_fit * stats_quad.covb) .* X_quad_fit, 2);
+se_quad_fit = sqrt(var_quad_fit);
+upper_quad = y_quad_fit + se_quad_fit;
+lower_quad = y_quad_fit - se_quad_fit;
+
+% 4) Model comparison (RMSE and BIC)
+% Linear model residuals and RMSE
+residuals_lin = logAP_sorted - y_lin_fit;
+rmse_lin = sqrt(mean(residuals_lin.^2));
+
+% Quadratic model residuals and RMSE
+residuals_quad = logAP_sorted - y_quad_fit;
+rmse_quad = sqrt(mean(residuals_quad.^2));
+
+% BIC for Linear Model
+n = length(logAP_sorted);
+k_lin = length(b_lin); % Number of parameters in linear model
+bic_lin = n*log(mean(residuals_lin.^2)) + k_lin*log(n);
+
+% BIC for Quadratic Model
+k_quad = length(b_quad); % Number of parameters in quadratic model
+bic_quad = n*log(mean(residuals_quad.^2)) + k_quad*log(n);
+
+% 5) Plot only the regression lines (no scatter)
+figure; hold on;
+
+% Linear fit (red line)
+plot(logDel_sorted, y_lin_fit, 'r-', 'LineWidth', 1.5);
+fill([logDel_sorted; flipud(logDel_sorted)], ...
+     [upper_lin; flipud(lower_lin)], ...
+     'r', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
+
+% Quadratic fit (blue dashed)
+plot(logDel_sorted, y_quad_fit, 'b--', 'LineWidth', 1.5);
+fill([logDel_sorted; flipud(logDel_sorted)], ...
+     [upper_quad; flipud(lower_quad)], ...
+     'b', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
+
+% Axis labels are logs of the variables
+xlabel('Delays (ms)', 'FontWeight', 'bold');
+ylabel('PAF (Hz)', 'FontWeight', 'bold');
+title('Peak Alpha Frequency (PAF) ~ \tau  (Robust Linear & Quadratic)');
+xlim([4 18])
+% Legend with parameter values, RMSE, BIC and p-values
+legLin = sprintf('Linear: Intercept=%.3f (p=%.3g), Slope=%.3f (p=%.3g), RMSE=%.3f, BIC=%.3f', ...
+    b_lin(1), stats_lin.p(1), b_lin(2), stats_lin.p(2), rmse_lin, bic_lin);
+legQuad = sprintf('Quadratic: b0=%.3f (p=%.3g), b1=%.3f (p=%.3g), b2=%.3f (p=%.3g), RMSE=%.3f, BIC=%.3f', ...
+    b_quad(1), stats_quad.p(1), b_quad(2), stats_quad.p(2), b_quad(3), stats_quad.p(3), rmse_quad, bic_quad);
+
+legend({legLin, 'Linear \pm1SE', legQuad, 'Quadratic \pm1SE'}, ...
+    'Location', 'best');
+grid on; hold off;
+
+% --------------------------- Xi Power vs Delays^-2 ---------------------------
+XIP = 10*log10(10^(-6)+xi_powers); 
+%XIP =  (XIP(:)-min(XIP(:)))./(max(XIP(:))-min(XIP(:)));
+Del = (delays0);               % log(tau^-2)
+%Del =  (Del(:)-min(Del(:)))./(max(Del(:))-min(Del(:)));
+
+% Example IQR-based outlier removal on PAF:
+Q1 = quantile(XIP, 0.25);
+Q3 = quantile(XIP, 0.75);
+IQR_val = Q3 - Q1;
+lowerBound = Q1 - 1.5*IQR_val;
+upperBound = Q3 + 1.5*IQR_val;
+
+idxOut = (XIP < lowerBound) | (XIP > upperBound);
+fprintf('Removed %d outliers (PAF) via IQR.\n', sum(idxOut));
+
+XIP    = XIP(~idxOut);
+Del = Del(~idxOut);
+
+
+[logDel_sorted, idxSort] = sort(Del);
+logXIP_sorted = XIP(idxSort);
+
+% Robust Linear
+X_lin = logDel_sorted;
+[b_lin, stats_lin] = robustfit(X_lin, logXIP_sorted);
+
+y_lin_fit = b_lin(1) + b_lin(2) * logDel_sorted;
+
+% 1-StdErr confidence bands for linear fit
+X_lin_fit = [ones(size(logDel_sorted)), logDel_sorted];
+var_lin_fit = sum((X_lin_fit * stats_lin.covb) .* X_lin_fit, 2);
+se_lin_fit = sqrt(var_lin_fit);
+upper_lin = y_lin_fit + se_lin_fit;
+lower_lin = y_lin_fit - se_lin_fit;
+
+% Robust Quadratic
+X_quad = [logDel_sorted, logDel_sorted.^2];
+[b_quad, stats_quad] = robustfit(X_quad, logXIP_sorted);
+
+y_quad_fit = b_quad(1) + b_quad(2) * logDel_sorted + b_quad(3) * logDel_sorted.^2;
+
+% 1-StdErr confidence bands for quadratic fit
+X_quad_fit = [ones(size(logDel_sorted)), logDel_sorted, logDel_sorted.^2];
+var_quad_fit = sum((X_quad_fit * stats_quad.covb) .* X_quad_fit, 2);
+se_quad_fit = sqrt(var_quad_fit);
+upper_quad = y_quad_fit + se_quad_fit;
+lower_quad = y_quad_fit - se_quad_fit;
+
+% Model comparison (RMSE and BIC)
+% Linear model residuals and RMSE
+residuals_lin = logXIP_sorted - y_lin_fit;
+rmse_lin = sqrt(mean(residuals_lin.^2));
+
+% Quadratic model residuals and RMSE
+residuals_quad = logXIP_sorted - y_quad_fit;
+rmse_quad = sqrt(mean(residuals_quad.^2));
+
+% BIC for Linear Model
+n = length(logXIP_sorted);
+k_lin = length(b_lin); % Number of parameters in linear model
+bic_lin = n*log(mean(residuals_lin.^2)) + k_lin*log(n);
+
+% BIC for Quadratic Model
+k_quad = length(b_quad); % Number of parameters in quadratic model
+bic_quad = n*log(mean(residuals_quad.^2)) + k_quad*log(n);
+
+% Plot
+figure; hold on;
+
+plot(logDel_sorted, y_lin_fit, 'r-', 'LineWidth', 1.5);
+fill([logDel_sorted; flipud(logDel_sorted)], ...
+     [upper_lin; flipud(lower_lin)], ...
+     'r', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
+
+plot(logDel_sorted, y_quad_fit, 'b--', 'LineWidth', 1.5);
+fill([logDel_sorted; flipud(logDel_sorted)], ...
+     [upper_quad; flipud(lower_quad)], ...
+     'b', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
+
+xlabel('Delay (ms)', 'FontWeight', 'bold');
+ylabel('Xi Power Amplitud (dB)', 'FontWeight', 'bold');
+title('Xi Power ~ \tau (Robust Linear & Quadratic)');
+xlim([4 18])
+legLin = sprintf('Linear: Intercept=%.3f (p=%.3g), Slope=%.3f (p=%.3g), RMSE=%.3f, BIC=%.3f', ...
+    b_lin(1), stats_lin.p(1), b_lin(2), stats_lin.p(2), rmse_lin, bic_lin);
+legQuad = sprintf('Quadratic: b0=%.3f (p=%.3g), b1=%.3f (p=%.3g), b2=%.3f (p=%.3g), RMSE=%.3f, BIC=%.3f', ...
+    b_quad(1), stats_quad.p(1), b_quad(2), stats_quad.p(2), b_quad(3), stats_quad.p(3), rmse_quad, bic_quad);
+
+legend({legLin, 'Linear \pm1SE', legQuad, 'Quadratic \pm1SE'}, ...
+    'Location', 'best');
+grid on; hold off;
+
+%% --------------------------- Alpha Power vs Age ---------------------------
+% 1) Log-transform and sort
+AP = 10*log10(1e-6 + alpha_powers);          % log(Alpha Power)
+%AP =  (AP(:)-min(AP(:)))./(max(AP(:))-min(AP(:)));
+Del = ages;               % log(tau^-2)
+% Example IQR-based outlier removal on PAF:
+Q1 = quantile(AP, 0.25);
+Q3 = quantile(AP, 0.75);
+IQR_val = Q3 - Q1;
+lowerBound = Q1 - 1.5*IQR_val;
+upperBound = Q3 + 1.5*IQR_val;
+
+idxOut = (AP < lowerBound) | (AP > upperBound);
+fprintf('Removed %d outliers (PAF) via IQR.\n', sum(idxOut));
+
+AP    = AP(~idxOut);
+Del = Del(~idxOut);
+
+
+[logDel_sorted, idxSort] = sort(Del);
+logAP_sorted = AP(idxSort);
+
+% 2) Robust Linear Fit
+X_lin = logDel_sorted;
+[b_lin, stats_lin] = robustfit(X_lin, logAP_sorted);
+
+% Evaluate linear fit on the sorted data
+y_lin_fit = b_lin(1) + b_lin(2) * logDel_sorted;
+
+% 1-StdErr confidence bands for linear fit
+X_lin_fit = [ones(size(logDel_sorted)), logDel_sorted];
+var_lin_fit = sum((X_lin_fit * stats_lin.covb) .* X_lin_fit, 2);
+se_lin_fit = sqrt(var_lin_fit);
+upper_lin = y_lin_fit + 2*se_lin_fit;
+lower_lin = y_lin_fit - 2*se_lin_fit;
+
+% 3) Robust Quadratic Fit
+X_quad = [logDel_sorted, logDel_sorted.^2];
+[b_quad, stats_quad] = robustfit(X_quad, logAP_sorted);
+
+y_quad_fit = b_quad(1) + b_quad(2) * logDel_sorted + b_quad(3) * logDel_sorted.^2;
+
+% 1-StdErr confidence bands for quadratic fit
+X_quad_fit = [ones(size(logDel_sorted)), logDel_sorted, logDel_sorted.^2];
+var_quad_fit = sum((X_quad_fit * stats_quad.covb) .* X_quad_fit, 2);
+se_quad_fit = sqrt(var_quad_fit);
+upper_quad = y_quad_fit + 2*se_quad_fit;
+lower_quad = y_quad_fit - 2*se_quad_fit;
+
+% 4) Model comparison (RMSE and BIC)
+% Linear model residuals and RMSE
+residuals_lin = logAP_sorted - y_lin_fit;
+rmse_lin = sqrt(mean(residuals_lin.^2));
+
+% Quadratic model residuals and RMSE
+residuals_quad = logAP_sorted - y_quad_fit;
+rmse_quad = sqrt(mean(residuals_quad.^2));
+
+% BIC for Linear Model
+n = length(logAP_sorted);
+k_lin = length(b_lin); % Number of parameters in linear model
+bic_lin = n*log(mean(residuals_lin.^2)) + k_lin*log(n);
+
+% BIC for Quadratic Model
+k_quad = length(b_quad); % Number of parameters in quadratic model
+bic_quad = n*log(mean(residuals_quad.^2)) + k_quad*log(n);
+
+% 5) Plot only the regression lines (no scatter)
+figure; hold on;
+
+% Linear fit (red line)
+plot(logDel_sorted, y_lin_fit, 'r-', 'LineWidth', 1.5);
+fill([logDel_sorted; flipud(logDel_sorted)], ...
+     [upper_lin; flipud(lower_lin)], ...
+     'r', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
+
+% Quadratic fit (blue dashed)
+plot(logDel_sorted, y_quad_fit, 'b--', 'LineWidth', 1.5);
+fill([logDel_sorted; flipud(logDel_sorted)], ...
+     [upper_quad; flipud(lower_quad)], ...
+     'b', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
+
+% Axis labels are logs of the variables
+xlabel('Age (Years)', 'FontWeight', 'bold');
+ylabel('Alpha Power Amplitud (dB)', 'FontWeight', 'bold');
+title('Alpha Power ~ age  (Robust Linear & Quadratic)');
+xlim([5 95])
+% Legend with parameter values, RMSE, BIC and p-values
+legLin = sprintf('Linear: Intercept=%.3f (p=%.3g), Slope=%.3f (p=%.3g), RMSE=%.3f, BIC=%.3f', ...
+    b_lin(1), stats_lin.p(1), b_lin(2), stats_lin.p(2), rmse_lin, bic_lin);
+legQuad = sprintf('Quadratic: b0=%.3f (p=%.3g), b1=%.3f (p=%.3g), b2=%.3f (p=%.3g), RMSE=%.3f, BIC=%.3f', ...
+    b_quad(1), stats_quad.p(1), b_quad(2), stats_quad.p(2), b_quad(3), stats_quad.p(3), rmse_quad, bic_quad);
+
+legend({legLin, 'Linear \pm1SE', legQuad, 'Quadratic \pm1SE'}, ...
+    'Location', 'best');
+grid on; hold off;
+% --------------------------- Peak Alpha Frequency vs Delays^-2 ---------------------------
+% 1) Log-transform and sort
+AP = alpha_pfs; % log(Alpha Power)
+%AP =  (AP(:)-min(AP(:)))./(max(AP(:))-min(AP(:)));
+Del = ages;              % log(tau^-2)
+
+% Example IQR-based outlier removal on PAF:
+Q1 = quantile(AP, 0.25);
+Q3 = quantile(AP, 0.75);
+IQR_val = Q3 - Q1;
+lowerBound = Q1 - 1.5*IQR_val;
+upperBound = Q3 + 1.5*IQR_val;
+
+idxOut = (AP < lowerBound) | (AP > upperBound);
+fprintf('Removed %d outliers (PAF) via IQR.\n', sum(idxOut));
+
+AP    = AP(~idxOut);
+Del = Del(~idxOut);
+
+
+
+
+[logDel_sorted, idxSort] = sort(Del);
+logAP_sorted = AP(idxSort);
+
+% 2) Robust Linear Fit
+X_lin = logDel_sorted;
+[b_lin, stats_lin] = robustfit(X_lin, logAP_sorted);
+
+% Evaluate linear fit on the sorted data
+y_lin_fit = b_lin(1) + b_lin(2) * logDel_sorted;
+
+% 1-StdErr confidence bands for linear fit
+X_lin_fit = [ones(size(logDel_sorted)), logDel_sorted];
+var_lin_fit = sum((X_lin_fit * stats_lin.covb) .* X_lin_fit, 2);
+se_lin_fit = sqrt(var_lin_fit);
+upper_lin = y_lin_fit + 2*se_lin_fit;
+lower_lin = y_lin_fit - 2*se_lin_fit;
+
+% 3) Robust Quadratic Fit
+X_quad = [logDel_sorted, logDel_sorted.^2];
+[b_quad, stats_quad] = robustfit(X_quad, logAP_sorted);
+
+y_quad_fit = b_quad(1) + b_quad(2) * logDel_sorted + b_quad(3) * logDel_sorted.^2;
+
+% 1-StdErr confidence bands for quadratic fit
+X_quad_fit = [ones(size(logDel_sorted)), logDel_sorted, logDel_sorted.^2];
+var_quad_fit = sum((X_quad_fit * stats_quad.covb) .* X_quad_fit, 2);
+se_quad_fit = sqrt(var_quad_fit);
+upper_quad = y_quad_fit + 2*se_quad_fit;
+lower_quad = y_quad_fit - 2*se_quad_fit;
+
+% 4) Model comparison (RMSE and BIC)
+% Linear model residuals and RMSE
+residuals_lin = logAP_sorted - y_lin_fit;
+rmse_lin = sqrt(mean(residuals_lin.^2));
+
+% Quadratic model residuals and RMSE
+residuals_quad = logAP_sorted - y_quad_fit;
+rmse_quad = sqrt(mean(residuals_quad.^2));
+
+% BIC for Linear Model
+n = length(logAP_sorted);
+k_lin = length(b_lin); % Number of parameters in linear model
+bic_lin = n*log(mean(residuals_lin.^2)) + k_lin*log(n);
+
+% BIC for Quadratic Model
+k_quad = length(b_quad); % Number of parameters in quadratic model
+bic_quad = n*log(mean(residuals_quad.^2)) + k_quad*log(n);
+
+% 5) Plot only the regression lines (no scatter)
+figure; hold on;
+
+% Linear fit (red line)
+plot(logDel_sorted, y_lin_fit, 'r-', 'LineWidth', 1.5);
+fill([logDel_sorted; flipud(logDel_sorted)], ...
+     [upper_lin; flipud(lower_lin)], ...
+     'r', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
+
+% Quadratic fit (blue dashed)
+plot(logDel_sorted, y_quad_fit, 'b--', 'LineWidth', 1.5);
+fill([logDel_sorted; flipud(logDel_sorted)], ...
+     [upper_quad; flipud(lower_quad)], ...
+     'b', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
+
+% Axis labels are logs of the variables
+xlabel('Age (Years)', 'FontWeight', 'bold');
+ylabel('PAF (Hz)', 'FontWeight', 'bold');
+title('Peak Alpha Frequency (PAF) ~ age  (Robust Linear & Quadratic)');
+xlim([5 95])
+% Legend with parameter values, RMSE, BIC and p-values
+legLin = sprintf('Linear: Intercept=%.3f (p=%.3g), Slope=%.3f (p=%.3g), RMSE=%.3f, BIC=%.3f', ...
+    b_lin(1), stats_lin.p(1), b_lin(2), stats_lin.p(2), rmse_lin, bic_lin);
+legQuad = sprintf('Quadratic: b0=%.3f (p=%.3g), b1=%.3f (p=%.3g), b2=%.3f (p=%.3g), RMSE=%.3f, BIC=%.3f', ...
+    b_quad(1), stats_quad.p(1), b_quad(2), stats_quad.p(2), b_quad(3), stats_quad.p(3), rmse_quad, bic_quad);
+
+legend({legLin, 'Linear \pm1SE', legQuad, 'Quadratic \pm1SE'}, ...
+    'Location', 'best');
+grid on; hold off;
+
+% --------------------------- Xi Power vs Delays^-2 ---------------------------
+XIP = 10*log10(10^(-6)+xi_powers); 
+%XIP =  (XIP(:)-min(XIP(:)))./(max(XIP(:))-min(XIP(:)));
+Del = ages;               % log(tau^-2)
+
+
+% Example IQR-based outlier removal on PAF:
+Q1 = quantile(XIP, 0.25);
+Q3 = quantile(XIP, 0.75);
+IQR_val = Q3 - Q1;
+lowerBound = Q1 - 1.5*IQR_val;
+upperBound = Q3 + 1.5*IQR_val;
+
+idxOut = (XIP < lowerBound) | (XIP > upperBound);
+fprintf('Removed %d outliers (PAF) via IQR.\n', sum(idxOut));
+
+XIP    = XIP(~idxOut);
+Del = Del(~idxOut);
+
+
+
+[logDel_sorted, idxSort] = sort(Del);
+logXIP_sorted = XIP(idxSort);
+
+% Robust Linear
+X_lin = logDel_sorted;
+[b_lin, stats_lin] = robustfit(X_lin, logXIP_sorted);
+
+y_lin_fit = b_lin(1) + b_lin(2) * logDel_sorted;
+
+% 1-StdErr confidence bands for linear fit
+X_lin_fit = [ones(size(logDel_sorted)), logDel_sorted];
+var_lin_fit = sum((X_lin_fit * stats_lin.covb) .* X_lin_fit, 2);
+se_lin_fit = sqrt(var_lin_fit);
+upper_lin = y_lin_fit + 2*se_lin_fit;
+lower_lin = y_lin_fit - 2*se_lin_fit;
+
+% Robust Quadratic
+X_quad = [logDel_sorted, logDel_sorted.^2];
+[b_quad, stats_quad] = robustfit(X_quad, logXIP_sorted);
+
+y_quad_fit = b_quad(1) + b_quad(2) * logDel_sorted + b_quad(3) * logDel_sorted.^2;
+
+% 1-StdErr confidence bands for quadratic fit
+X_quad_fit = [ones(size(logDel_sorted)), logDel_sorted, logDel_sorted.^2];
+var_quad_fit = sum((X_quad_fit * stats_quad.covb) .* X_quad_fit, 2);
+se_quad_fit = sqrt(var_quad_fit);
+upper_quad = y_quad_fit + 2*se_quad_fit;
+lower_quad = y_quad_fit - 2*se_quad_fit;
+
+% Model comparison (RMSE and BIC)
+% Linear model residuals and RMSE
+residuals_lin = logXIP_sorted - y_lin_fit;
+rmse_lin = sqrt(mean(residuals_lin.^2));
+
+% Quadratic model residuals and RMSE
+residuals_quad = logXIP_sorted - y_quad_fit;
+rmse_quad = sqrt(mean(residuals_quad.^2));
+
+% BIC for Linear Model
+n = length(logXIP_sorted);
+k_lin = length(b_lin); % Number of parameters in linear model
+bic_lin = n*log(mean(residuals_lin.^2)) + k_lin*log(n);
+
+% BIC for Quadratic Model
+k_quad = length(b_quad); % Number of parameters in quadratic model
+bic_quad = n*log(mean(residuals_quad.^2)) + k_quad*log(n);
+
+% Plot
+figure; hold on;
+
+plot(logDel_sorted, y_lin_fit, 'r-', 'LineWidth', 1.5);
+fill([logDel_sorted; flipud(logDel_sorted)], ...
+     [upper_lin; flipud(lower_lin)], ...
+     'r', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
+
+plot(logDel_sorted, y_quad_fit, 'b--', 'LineWidth', 1.5);
+fill([logDel_sorted; flipud(logDel_sorted)], ...
+     [upper_quad; flipud(lower_quad)], ...
+     'b', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
+
+xlabel('Age (Years)', 'FontWeight', 'bold');
+ylabel('Xi Power Amplitud (dB)', 'FontWeight', 'bold');
+title('Xi Power ~ age (Robust Linear & Quadratic)');
+xlim([5 95])
+legLin = sprintf('Linear: Intercept=%.3f (p=%.3g), Slope=%.3f (p=%.3g), RMSE=%.3f, BIC=%.3f', ...
+    b_lin(1), stats_lin.p(1), b_lin(2), stats_lin.p(2), rmse_lin, bic_lin);
+legQuad = sprintf('Quadratic: b0=%.3f (p=%.3g), b1=%.3f (p=%.3g), b2=%.3f (p=%.3g), RMSE=%.3f, BIC=%.3f', ...
+    b_quad(1), stats_quad.p(1), b_quad(2), stats_quad.p(2), b_quad(3), stats_quad.p(3), rmse_quad, bic_quad);
+
+legend({legLin, 'Linear \pm1SE', legQuad, 'Quadratic \pm1SE'}, ...
+    'Location', 'best');
+grid on; hold off;

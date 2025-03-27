@@ -135,6 +135,3 @@ After processing each subject, Xi-AlphaNET generates the following files in the 
 - **Documentation**: https://www.researchgate.net/publication/389324537_Lifespan_Mapping_of_EEG_Source_Spectral_Dynamics_with_x_-_aNET
 - **Tensor Field Download**: Provided on the website (~30 GB)
 - **Support Contact**: ronaldo@neuroinformatics-collaboratory.org
-
-
-
