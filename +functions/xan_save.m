@@ -45,11 +45,11 @@ switch lower(claf)
         Participant.Alpha_estimate              = fullfile('Alpha_estimate.mat');
         save(fullfile(subject_path,"Alpha_estimate.mat"),'-struct',"Alpha_estimate");
         % Saving Estimated Condunction Delay Matrix between Neurotracts
-        Delay_Matrix                            = x.Lambda_DC(1)*parameters.Compact_Model.D;
+        Delay_Matrix                            = parameters.Compact_Model.D;
         Participant.Delay_Matrix                = fullfile('Delay_Matrix.mat');
         save(fullfile(subject_path,"Delay_Matrix.mat"),"Delay_Matrix");
         % Saving Estimated Anatomical Connectivity Matrix between Neurotracts
-        Conn_Matrix                             = x.Lambda_DC(2)*parameters.Compact_Model.C;
+        Conn_Matrix                             = parameters.Compact_Model.C;
         Participant.Conn_Matrix                 = fullfile('Conn_Matrix.mat');
         save(fullfile(subject_path,"Conn_Matrix.mat"),"Conn_Matrix");
         % %Saving Transfer Function from Source to Scalp
