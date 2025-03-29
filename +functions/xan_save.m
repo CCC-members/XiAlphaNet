@@ -1,4 +1,4 @@
-function [Output] = xan_save(properties,SubID,claf,varargin)
+function [Output] = xan_save(properties,claf,varargin)
 import functions.*
 import functions.StochasticFISTA.*
 import functions.auxx.*
@@ -8,7 +8,7 @@ import functions.auxx.ModelVectorization.*
 import tools.*
 
 for i=1:length(varargin)
-    eval([inputname(i+3) '= varargin{i};']);
+    eval([inputname(i+2) '= varargin{i};']);
 end
 
 switch lower(claf)

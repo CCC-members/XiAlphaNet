@@ -119,7 +119,7 @@ for i = 1:length(age_intervals)-1
     XiAmp_avg_intervals(:, i) = f_va_XiAmp / (1+nf_va_XiAmp);
 end
 
-[XIALPHANET] = xan_save(properties,[],'groups',XIALPHANET,data1,data2,data3);
+[XIALPHANET] = xan_save(properties,'groups',XIALPHANET,data1,data2,data3);
 
 
 end

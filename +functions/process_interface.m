@@ -215,7 +215,7 @@ for s=1:length(subjects)
     %%
     %% Saving Participant file
     %%
-    [Participant]               = xan_save(properties,SubID,'subject',x,T,parameters,data,Participant);
+    [Participant]               = xan_save(properties,'subject',SubID,x,T,parameters,data,Participant);
     parameters                  = parameters_tmp;
 
 

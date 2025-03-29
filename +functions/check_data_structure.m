@@ -98,7 +98,7 @@ end
 if(status)
     disp("-->> Saving subject data");
     SubID = Participant.SubID;
-    [Participant] = xan_save(properties,SubID,'create_subject',data,Participant);
+    [Participant] = xan_save(properties,'create_subject',SubID,data,Participant);
 else
     fprintf(2,strcat('\n-->> Error: The folder structure for subject: ',subject.name,' \n'));
     fprintf(2,strcat('-->> Have the folows errors.\n'));
