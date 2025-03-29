@@ -1,4 +1,4 @@
-function parameters = preprocessing(properties)
+function [XIALPHANET,parameters] = preprocessing(properties,XIALPHANET)
  %% Preprocessing of the Data
 %     Author: Ronald Garcia, Ariosky Areaces Gonzales, Pedro A. Valdes Sosa 
 %     Create Time: 2024 
@@ -232,13 +232,7 @@ parameters.Dimensions.Nv = Nv;   % Number of Voxels
 parameters.Dimensions.Nw = properties.model_params.nFreqs; % Number of frequencies
 
 disp("-->> Saving Structural outputs");
-structural_path = fullfile(properties.general_params.output_path,'structural');
-if(~isfolder(structural_path))
-    mkdir(structural_path);
-end
-save(fullfile(structural_path,'cortex.mat'),'-struct','Cortex');
-save(fullfile(structural_path,'leadfield.mat'),'-struct','Leadfield');
-save(fullfile(structural_path,'parameters.mat'),'-struct','parameters');
+[XIALPHANET] = xan_save(properties,SubID,'structural',Cortex,Leadfield,parameters,XIALPHANET);
 
 end
 

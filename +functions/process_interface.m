@@ -36,16 +36,13 @@ else
     XIALPHANET.Task                     = properties.general_params.dataset.descriptors.task;
     XIALPHANET.Status                   = "Processing";
     XIALPHANET.Location                 = XAN_path;
-    XIALPHANET.general_params           = properties.general_params;
-    XIALPHANET.Structural.Cortex        = "structural/cortex.mat";
-    XIALPHANET.Structural.Leadfield     = "structural/leadfield.mat";
-    XIALPHANET.Structural.parameters    = "structural/parameters.mat";
+    XIALPHANET.general_params           = properties.general_params;    
     XIALPHANET.Participants     = [];
 
     %%
     %% Preprocessing
     %%
-    parameters = preprocessing(properties);
+    [XIALPHANET,parameters] = preprocessing(properties, XIALPHANET);
 end
 
 %% Loading Participamts Infomation
@@ -70,6 +67,7 @@ subjects([subjects.isdir]==0) = [];
 if(~isempty(properties.general_params.participants))
     subjects = subjects(ismember({subjects.name}, properties.general_params.participants));
 end
+parameters_tmp = parameters;
 for s=1:length(subjects)
     if(isfile(XAN_file))
         XIALPHANET              = jsondecode(fileread(XAN_file));
@@ -146,6 +144,7 @@ for s=1:length(subjects)
     clear NewCross;
     if data.age<15
         parameters.Model.D      = 0.0110*parameters.Model.D/ mean(parameters.Model.D(:));
+    parameters.Compact_Model.D  = 0.0110*parameters.Compact_Model.D/ mean(parameters.Compact_Model.D(:));
     end
     age                         = data.age;
 
@@ -165,7 +164,7 @@ for s=1:length(subjects)
     parameters.Model.C          = lambda2 * parameters.Model.C;
     parameters.Compact_Model.D  = lambda1 * parameters.Compact_Model.D;
     parameters.Compact_Model.C  = lambda2 * parameters.Compact_Model.C;
-    parameters.Parallel.T       = 0;
+    parameters.Parallel.T       = 1*conn_delay;
     parameters.Data.freq        = freq;
     T                           = Teval(parameters);
 
@@ -217,6 +216,7 @@ for s=1:length(subjects)
     %% Saving Participant file
     %%
     [Participant]               = xan_save(properties,SubID,'subject',x,T,parameters,data,Participant);
+    parameters                  = parameters_tmp;
 
 
     %% Save the computed x to the corresponding group folder in Model_Parameters

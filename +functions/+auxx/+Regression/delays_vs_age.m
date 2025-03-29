@@ -24,9 +24,9 @@ for i=1:length(dataset.Participants)
         Part_Info = jsondecode(fileread(fullfile(dataset.Location,participant.SubID,participant.FileInfo)));
         Mod_Weights = load(fullfile(dataset.Location,participant.SubID,Part_Info.Mod_Weights));
         if participant_age <=15
-            delays(index) =  11 * Mod_Weights.Mod_Weights(1);
+            delays(index) =  11 * Mod_Weights.Mod_Weights(2)/11;
         else
-            delays(index) = 9.5 * Mod_Weights.Mod_Weights(1);
+            delays(index) = 9.5 * Mod_Weights.Mod_Weights(2)/9.5;
         end
         index = index +1;
     end
