@@ -36,16 +36,13 @@ else
     XIALPHANET.Task                     = properties.general_params.dataset.descriptors.task;
     XIALPHANET.Status                   = "Processing";
     XIALPHANET.Location                 = XAN_path;
-    XIALPHANET.general_params           = properties.general_params;
-    XIALPHANET.Structural.Cortex        = "structural/cortex.mat";
-    XIALPHANET.Structural.Leadfield     = "structural/leadfield.mat";
-    XIALPHANET.Structural.parameters    = "structural/parameters.mat";
+    XIALPHANET.general_params           = properties.general_params;    
     XIALPHANET.Participants     = [];
 
     %%
     %% Preprocessing
     %%
-    parameters = preprocessing(properties);
+    [XIALPHANET,parameters] = preprocessing(properties, XIALPHANET);
 end
 
 %% Loading Participamts Infomation

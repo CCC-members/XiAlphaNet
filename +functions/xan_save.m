@@ -1,4 +1,4 @@
-function [Participant] = xan_save(properties,SubID,claf,varargin)
+function [Output] = xan_save(properties,SubID,claf,varargin)
 import functions.*
 import functions.StochasticFISTA.*
 import functions.auxx.*
@@ -12,6 +12,18 @@ for i=1:length(varargin)
 end
 
 switch lower(claf)
+    case 'structural'
+        structural_path = fullfile(properties.general_params.output_path,'structural');
+        if(~isfolder(structural_path))
+            mkdir(structural_path);
+        end
+        save(fullfile(structural_path,'cortex.mat'),'-struct','Cortex');
+        save(fullfile(structural_path,'leadfield.mat'),'-struct','Leadfield');
+        save(fullfile(structural_path,'parameters.mat'),'-struct','parameters');
+        XIALPHANET.Structural.Cortex        = "structural/cortex.mat";
+        XIALPHANET.Structural.Leadfield     = "structural/leadfield.mat";
+        XIALPHANET.Structural.parameters    = "structural/parameters.mat";
+        Output = XIALPHANET;
     case 'create_subject'
         subject_path                            = fullfile(properties.general_params.output_path,SubID);
         if(~isfolder(subject_path))
@@ -19,7 +31,7 @@ switch lower(claf)
         end
         Participant.Data = fullfile(strcat(SubID,'_desc-prep_eeg.mat'));
         save(fullfile(subject_path,strcat(SubID,'_desc-prep_eeg.mat')),'-struct','data');
-
+        Output = Participant;
     case 'subject' 
         subject_path                            = fullfile(properties.general_params.output_path,SubID);
         if(~isfolder(subject_path))
@@ -93,5 +105,33 @@ switch lower(claf)
         % Saving Status
         Participant.Status                      = "Completed";
         saveJSON(Participant,fullfile(subject_path ,strcat(SubID,'.json')));
+        Output = Participant;
+    case 'groups'
+        group_path = fullfile(properties.general_params.output_path,'groups');
+        if(~isfolder(group_path))
+            mkdir(group_path);
+        end
+        disp("-->> Saving Group analysis outputs");
+        for i=1:length(properties.model_params.group.age_range)
+            age_range = properties.model_params.group.age_range{i};
+            age_rage_name = strcat(num2str(age_range{1}),'-',num2str(age_range{2}),'years');
+            disp(strcat("---->> Saving group analysis for age range: ",age_rage_name));
+            age_range_path = fullfile(group_path,age_rage_name);
+            if(~isfolder(age_range_path))
+                mkdir(age_range_path);
+            end            
+            XIALPHANET.Groups.AgeRange(i).Comment = "Some Comment";
+            XIALPHANET.Groups.AgeRange(i).Range = age_range;
+            disp(strcat("------>> Saving file: ",'file1.mat'));
+            save(fullfile(age_range_path,'file1.mat'),'-struct','data1');
+            XIALPHANET.Groups.AgeRange(i).FileName = fullfile('groups',age_rage_name,'file1.mat');
+            disp(strcat("------>> Saving file: ",'file2.mat'));
+            save(fullfile(age_range_path,'file2.mat'),'-struct','data2');            
+            XIALPHANET.Groups.AgeRange(i).FileName = fullfile('groups',age_rage_name,'file2.mat');
+            disp(strcat("------>> Saving file: ",'file3.mat'));
+            save(fullfile(age_range_path,'file3.mat'),'-struct','data3');
+            XIALPHANET.Groups.AgeRange(i).FileName = fullfile('groups',age_rage_name,'file3.mat');
+        end
+        Output = XIALPHANET;        
 end
 end
