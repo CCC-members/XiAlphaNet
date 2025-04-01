@@ -207,8 +207,6 @@ Gain = sum(Gain.*VertNormals,3);
 
 
 %% Save Data
-
-
 R  = voxel_roi_map(Cortex);
 
 % Full Model of Spatio - Temporal Correlation on the Voxel Space
@@ -232,7 +230,7 @@ parameters.Dimensions.Nv = Nv;   % Number of Voxels
 parameters.Dimensions.Nw = properties.model_params.nFreqs; % Number of frequencies
 
 disp("-->> Saving Structural outputs");
-[XIALPHANET] = xan_save(properties,'structural',SubID,Cortex,Leadfield,parameters,XIALPHANET);
+[XIALPHANET] = xan_save(properties,'structural',Cortex,Leadfield,parameters,XIALPHANET);
 
 end
 
