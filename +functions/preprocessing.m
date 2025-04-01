@@ -207,8 +207,6 @@ Gain = sum(Gain.*VertNormals,3);
 
 
 %% Save Data
-
-
 R  = voxel_roi_map(Cortex);
 
 % Full Model of Spatio - Temporal Correlation on the Voxel Space
