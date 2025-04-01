@@ -230,7 +230,7 @@ parameters.Dimensions.Nv = Nv;   % Number of Voxels
 parameters.Dimensions.Nw = properties.model_params.nFreqs; % Number of frequencies
 
 disp("-->> Saving Structural outputs");
-[XIALPHANET] = xan_save(properties,'structural',SubID,Cortex,Leadfield,parameters,XIALPHANET);
+[XIALPHANET] = xan_save(properties,'structural',Cortex,Leadfield,parameters,XIALPHANET);
 
 end
 

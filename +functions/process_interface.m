@@ -68,13 +68,36 @@ if(~isempty(properties.general_params.participants))
     subjects = subjects(ismember({subjects.name}, properties.general_params.participants));
 end
 parameters_tmp = parameters;
-for s=1:length(subjects)
+for s=1:length(subjects)       
     if(isfile(XAN_file))
         XIALPHANET              = jsondecode(fileread(XAN_file));
     end
     subject                     = subjects(s);
     SubID                       = subject.name;
     Participant.SubID           = SubID;
+
+    % Update progress, report current estimate
+    if(getGlobalGuimode())
+        if(properties.dlg.CancelRequested)
+            msg = "Are you sure to cancel the processing?";
+            title = "Cancel processing";
+            answer = uiconfirm(properties.UIFigure,msg,title, ...
+                "Options",["Stop","Continue"], ...
+                "Icon","+guide/images/question.png",...
+                "DefaultOption",1,"CancelOption",2);
+            % Handle response
+            switch answer
+                case 'Stop'
+                    break;                    
+                case 'Continue'
+                    properties.dlg.CancelRequested=false;
+                    drawnow;
+            end
+        end
+        properties.dlg.Message = strcat("Processing subject: ",SubID, " (",num2str(s)," of ",num2str(length(subjects)),")");
+        drawnow;
+    end
+      
     %%
     %% Check participant processed
     %%
@@ -239,7 +262,7 @@ end
 %%
 %% Group analysis
 %%
-XIALPHANET          = groupProcessing(properties,XIALPHANET);
+% XIALPHANET          = groupProcessing(properties,XIALPHANET);
 
 %%
 %% Saving XIALPHANET file
