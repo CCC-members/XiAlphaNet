@@ -8,7 +8,8 @@
 clear; clc;
 
 %Directory containing .mat files
-dataset = jsondecode(fileread('D:\data\data\Results\XIALPHANET.json'));
+dataset = jsondecode(fileread('D:\data\Results\XIALPHANET.json'));
+dataset.Location = 'D:\data\Results';
 import templates.*
 load("templates/mylin_data.mat")
 %Initialize arrays for storing delays and ages
@@ -24,9 +25,9 @@ for i=1:length(dataset.Participants)
         Part_Info = jsondecode(fileread(fullfile(dataset.Location,participant.SubID,participant.FileInfo)));
         Mod_Weights = load(fullfile(dataset.Location,participant.SubID,Part_Info.Mod_Weights));
         if participant_age <=15
-            delays(index) =  11 * Mod_Weights.Mod_Weights(2)/11;
+            delays(index) =  11 * Mod_Weights.Mod_Weights(1);
         else
-            delays(index) = 9.5 * Mod_Weights.Mod_Weights(2)/9.5;
+            delays(index) = 9.5 * Mod_Weights.Mod_Weights(1);
         end
         index = index +1;
     end
@@ -128,7 +129,7 @@ figure;
 hold on;
 
 % Evaluate the robust quadratic fit on the same range as ages_fit
-ages_fit = linspace(0, 100, 100)'; % Same range as LOESS fit
+ages_fit = linspace(min(ages), max(ages), 200)'; % Same range as LOESS fit
 robust_fit_interp = b(1) + b(2) * ages_fit + b(3) * ages_fit.^2;
 % Calculate standard error for each fitted value
 cov_b = stats.covb; % Covariance matrix of coefficients

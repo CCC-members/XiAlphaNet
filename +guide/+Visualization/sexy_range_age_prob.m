@@ -6,11 +6,12 @@ import guide.Visualization.*
 import functions.auxx.ZeroInflatedModels.*
 import functions.auxx.Refine_Solution.*
 prc = 90;
-cross_index = 1; % 
+cross_index = 0; % 
 age_min = 0;%age_range(1);
 age_max = 100;%age_range(2);
-dataset = jsondecode(fileread('/home/ronaldo/Documents/dev/Data/Results/XIALPHANET.json'));
-parameters = load('/home/ronaldo/Documents/dev/Data/Results/structural/parameters.mat');
+dataset = jsondecode(fileread('D:\data\Results\XIALPHANET.json'));
+dataset.Location = 'D:\data\Results';
+parameters = load('D:\data\Results\structural\parameters.mat');
 ages = [];
 All_Data = {}; 
 index = 1;
@@ -360,7 +361,7 @@ end
 PAF_avg_intervals = PAF_marginalized;          % 1 x num_groups
 AlphaAmp_avg_intervals = AlphaAmp_marginalized;% 1 x num_groups
 XiAmp_avg_intervals = XiAmp_marginalized;      % 1 x num_groups
-
+import guide.Visualization.esi_plot_single
 % === Step 2: Define Age Intervals ===
 age_intervals =  linspace(age_min,age_max,2);% Adjust as needed
 num_groups = 1;
@@ -380,7 +381,7 @@ for i = 1:num_groups
     % Plot using custom function
     J = J_age_interval;
     esi_plot_single;  % Pass J as an argument
-    
+    colormap('hot')
     % Set title and labels
     title(sprintf('PAF vs Age %.0f - %.0f', age_intervals(i), age_intervals(i+1)));
     ylabel('PAF');
@@ -400,7 +401,7 @@ for i = 1:num_groups
     % Plot using custom function
     J = J_age_interval;
     esi_plot_single;  % Pass J as an argument
-    
+    colormap('hot')
     % Set title and labels
     title(sprintf('Alpha Amp vs Age %.0f - %.0f', age_intervals(i), age_intervals(i+1)));
     ylabel('Alpha Amp');
@@ -420,7 +421,7 @@ for i = 1:num_groups
     % Plot using custom function
     J=J_age_interval;
     esi_plot_single;  % Pass J as an argument
-    
+    colormap('hot')
     % Set title and labels
     title(sprintf('Xi Amp vs Age %.0f - %.0f', age_intervals(i), age_intervals(i+1)));
     ylabel('Xi Amp');
