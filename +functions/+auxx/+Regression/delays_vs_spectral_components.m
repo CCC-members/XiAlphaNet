@@ -40,9 +40,9 @@ parfor i=1:length(dataset.Participants)
         pos_xi = (Xi_estimate.Power>threshold_xi);
         xi_powers(i) = real(mean(Xi_estimate.Power(pos_xi)));
         if participant_age <=15
-            delays(i) =  11 * Mod_Weights.Mod_Weights(2)/11
+            delays(i) =  11 * Mod_Weights.Mod_Weights(1);
         else
-            delays(i) = 9.5 * Mod_Weights.Mod_Weights(2)/9.5;
+            delays(i) = 9.5 * Mod_Weights.Mod_Weights(1); 
         end
         index = index +1;
     end
