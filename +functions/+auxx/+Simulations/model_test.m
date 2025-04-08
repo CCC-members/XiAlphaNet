@@ -3,70 +3,112 @@
 
 clear all 
 clc;
-load("Data\Model_Parameters\parameters.mat")
-load('Data\Model_Parameters\x_avg.mat');
+% Enter direction to the structural data in Results
+load("/data/Results/structural/parameters.mat")
+%%
+% Setting the parameters to preform simulation in ROI space
+parameters.Model = Compact_Model;
+parameters.Compact_Model = Compact_Model;
+parameters.Dimensions = Dimensions;
+%%
+clear Compact_Model
+clear Model
+clear Dimensions
+import functions.*
+import functions.auxx.*
+import functions.auxx.BayesOptimization.*
+import functions.auxx.CrossSpectrum.*
+import functions.auxx.ModelVectorization.*
+import functions.auxx.Simulations.*
+import tools.*
+import  functions.auxx.DataPreprosessing.*
+import functions.auxx.DataPreprosessing.aveReference.*
+
 % Setting initialiation of te simulations  
-Nc=19;
-Nr= 360;
-Nw = 49;
-Nsim = 1;
+Ne = parameters.Dimensions.Ne;
+Nr = parameters.Dimensions.Nr;
+parameters.Dimensions.Nv = Nr;
+Nv = parameters.Dimensions.Nv; % Set voxel to roi
+Nw = parameters.Dimensions.Nw;
+Nsim = 30;  % Number of simulated crosspectrum 
+% Simulated Cross
+Svv_cross=zeros(Ne,Ne,Nw,Nsim);         % Simulated observed cross-spectrum at the scalp 
+Sjj_cross=zeros(Nr,Nr,Nw,Nsim);         % Simulated source cross-spectrum at ROIs
+% Estimated Cross
+eL_Sjj_cross= zeros(Nr,Nr,Nw,Nsim);     % Estimated source cross-spectrum using eLORETA
+lcmv_Sjj_cross= zeros(Nr,Nr,Nw,Nsim);   % Estimated source cross-spectrum using LCMV
+XA_Sjj_cross= zeros(Nr,Nr,Nw,Nsim);     % Estimated source cross-spectrum using Xi-AlphaNET
+higgs_Sjj_cross = zeros(Nr,Nr,Nw,Nsim); % Estimated source cross-spectrum using Higgs
 %
-Svv_cross=zeros(Nc,Nc,Nw,Nsim);  % structure to safe the cross 
-Sjj_cross=zeros(Nr,Nr,Nw,Nsim);  % structure to safe the cross 
-eL_Sjj_cross= zeros(Nr,Nr,Nw,Nsim);
-lcmv_Sjj_cross= zeros(Nr,Nr,Nw,Nsim);
-XA_Sjj_cross= zeros(Nr,Nr,Nw,Nsim);
-higgs_Sjj_cross = zeros(Nr,Nr,Nw,Nsim);
-%
-R = voxel_roi_map;
-preprocessing_velocity;
-K= parameters.Model.K;
-L=K;
-T = parameters.Model.T;
-K =pinv(K);
-U_map =K;
-for j=1:Nw
-     T_omega(:,:,j) = U_map*T(:,:,j);
-end
-parameters.Model.U= T_omega;
-load('Data/Average_Velocity_ROISpace/GPfit_Delay_Mean.mat');
-%
-% x_mean = mean(x_avg,2);
-% x_std  = std(x_avg',1)';
-% [e_mean,a_mean,s2_mean]=x2v(x_mean);
-% [e_std,a_std,s2_std]=x2v(x_std);
-% 
-% e_mean =max(e_mean).*ones(size(e_mean));
-% a_mean =max(a_mean).*ones(size(a_mean));
-% s2_mean =max(s2_mean).*ones(size(s2_mean));
-% x_mean = v2x(e_mean,a_mean,s2_mean);
-% 
-% e_std =max(e_std).*ones(size(e_std));
-% a_std =max(a_std).*ones(size(a_std));
-% s2_std =max(s2_std).*ones(size(s2_std));
-% x_std = v2x(e_std,a_mean,s2_std);
-%
+L = parameters.Compact_Model.K;
+% Generate a random sample of plausible crosspectrum in the scalp 
+dir_data = 'D:\data\data\MultinationalNorms';
+% List all the subject folders in the directory
+subject_folders = dir(fullfile(dir_data, '*'));
+subject_folders = subject_folders([subject_folders.isdir] & ~startsWith({subject_folders.name}, '.'));
+selected_folders = subject_folders(randperm(length(subject_folders), Nsim));
 
-% Generate a random sample of plausible crospectrum in the scalp 
-Svv = parameters.Data.Cross;
-Sjj = mn_cross(Svv,parameters);
 N_wishart = 100;
-for j=1:Nsim 
-    for i=1:Nw
-    Sjj_cross(:,:,i,j) = generate_complex_wishart(Sjj(:,:,i), N_wishart);
-    Svv_cross(:,:,i,j) = L*Sjj_cross(:,:,i,j)*L';
+for j=1:Nsim
+    tic
+    % Get the path for the current subject's folder and corresponding .mat file
+    subject_folder = selected_folders(j).name;
+    mat_file_path = fullfile(dir_data, subject_folder, [subject_folder, '.mat']);
+   
+    % Load the .mat file
+    data_struct = load(mat_file_path);
+    % Extract the cross-spectrum
+    Svv = data_struct.data_struct.CrossM(:,:,1:Nw);
+    Svv = aveReference(Svv);
+    freq = data_struct.data_struct.freqrange(1:Nw);
+    % Apply the mn_cross function (assuming it's a predefined function)
+    Sjj = mn_cross(Svv, parameters);  % Replace parameters with actual ones
+    
+    % Loop to generate cross-spectra using the Wishart distribution
+    for i = 1:Nw
+        % Generate complex Wishart matrices
+        Sjj_cross(:,:,i,j) = generate_complex_wishart(Sjj(:,:,i), N_wishart);
+        
+        % Apply the L matrix transformation (ensure L is defined)
+        Svv_cross(:,:,i,j) = L * Sjj_cross(:,:,i,j) * L';  % Ensure L is appropriately defined
     end
+    toc;
 end
-
-% 
-
+%% 
+% Init Xi-AlphaNET properties
+properties.model_params.nFreqs = parameters.Dimensions.Nw;
+properties.model_params.BayesIter_Delay = 1;
+ properties.model_params.BayesIter_Reg1 = 1;
+  properties.model_params.BayesIter_Reg2 = 1;
+properties.model_params.Nrand1 = 1;
+ properties.model_params.Nrand2 = 1;
+ properties.model_params.delay.lambda_space_cd = [[0.4,1.6];[0.01,2]];
+properties.general_params.parallel.conn_delay = 0;
+properties.model_params.stoch1 = 0;
+ properties.model_params.stoch2 =0;
+properties.model_params.tensor_field.default =0;
+import app.*
+import app.functions.*
+import functions.*
+import functions.StochasticFISTA.*
+import functions.auxx.*
+import functions.auxx.BayesOptimization.*
+import functions.auxx.CrossSpectrum.*
+import functions.auxx.ModelVectorization.*
+import functions.auxx.Regularization.*
+import functions.auxx.TOperator.*
+import tools.*
+% properties = jsondecode(fileread(fullfile(pwd,'+app','properties.json')));
+%properties = jsondecode(fileread('D:\XiAlphaNet\+app\properties.json'));
 for j=1:Nsim 
     j
     tic
-    parameters.Data.Cross = Svv_cross(:,:,:,j);
-    [S,~] =  Xi_ALphaNET(parameters);
+    data.Cross = Svv_cross(:,:,:,j);
+    data.age = 25; % 
+    data.freq = freq;
+    [S,~] =  Xi_ALphaNET(properties,data,parameters);
     XA_Sjj_cross(:,:,:,j) = S;
-    for i=1:8
+    for i=1:1
         i
         % Find the etimation using eLoreta and LCMV 
         source = inverse(Svv_cross(:,:,i,j),L);
@@ -356,3 +398,34 @@ set(gcf,'Color','w');
 % fprintf('eLORETA: Mean = %.4f, Std = %.4f\n', mean_eL_corr, std_eL_corr);
 % fprintf('LCMV: Mean = %.4f, Std = %.4f\n', mean_lcmv_corr, std_lcmv_corr);
 % fprintf('XA: Mean = %.4f, Std = %.4f\n', mean_XA_corr, std_XA_corr);
+
+
+%
+% R = voxel_roi_map;
+% preprocessing_velocity;
+% K= parameters.Model.K;
+% L=K;
+% T = parameters.Model.T;
+% K =pinv(K);
+% U_map =K;
+% for j=1:Nw
+%      T_omega(:,:,j) = U_map*T(:,:,j);
+% end
+% parameters.Model.U= T_omega;
+% load('Data/Average_Velocity_ROISpace/GPfit_Delay_Mean.mat');
+% %
+% x_mean = mean(x_avg,2);
+% x_std  = std(x_avg',1)';
+% [e_mean,a_mean,s2_mean]=x2v(x_mean);
+% [e_std,a_std,s2_std]=x2v(x_std);
+% 
+% e_mean =max(e_mean).*ones(size(e_mean));
+% a_mean =max(a_mean).*ones(size(a_mean));
+% s2_mean =max(s2_mean).*ones(size(s2_mean));
+% x_mean = v2x(e_mean,a_mean,s2_mean);
+% 
+% e_std =max(e_std).*ones(size(e_std));
+% a_std =max(a_std).*ones(size(a_std));
+% s2_std =max(s2_std).*ones(size(s2_std));
+% x_std = v2x(e_std,a_mean,s2_std);
+%
