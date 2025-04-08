@@ -1,5 +1,15 @@
 function [x,T] =  Xi_ALphaNET(properties,data,parameters)
-
+import app.*
+import app.functions.*
+import functions.*
+import functions.StochasticFISTA.*
+import functions.auxx.*
+import functions.auxx.BayesOptimization.*
+import functions.auxx.CrossSpectrum.*
+import functions.auxx.ModelVectorization.*
+import functions.auxx.Regularization.*
+import functions.auxx.TOperator.*
+import tools.*
 disp('-->> Initializing Model Parameters...')
 
 Nr = parameters.Dimensions.Nr;
@@ -26,6 +36,7 @@ clear NewCross;
  
 if data.age<15
    parameters.Model.D=0.0110*parameters.Model.D/ mean(parameters.Model.D(:));
+   parameters.Compact_Model.D=0.0110*parameters.Compact_Model.D/ mean(parameters.Compact_Model.D(:));
 end
 age = data.age;
 
@@ -57,10 +68,10 @@ parameters.Data.freq = freq;
 T = Teval(parameters);
 disp('-->> Estimating Number of Batchs to StochFISTA...')
 
-k_min = findMinimumK(freq,T,Cross, 5, 20,conn_delay);
+k_min = 40;
 
 disp('-->> Initializing Bayesian Optimization On Regularization...')
-index_parall_bayes= 1;
+index_parall_bayes= 1*conn_delay;
 Nsfreq = k_min;
 Lipschitz = 0.01;%estimateLipschitzConstant(freq,T,Cross,1,Nsfreq,stoch1, 0.1, 20);
 lambda_space  = [100,1000,1000];%lambda_regspace(freq,T,Cross,Lipschitz,stoch1,Nsfreq);
