@@ -6,7 +6,8 @@ clear; clc;
 
 
 %Directory containing .mat files
-dataset = jsondecode(fileread('D:\data\data\Results\XIALPHANET.json'));
+dataset = jsondecode(fileread('/Users/ronald/Desktop/Results/XIALPHANET.json'));
+dataset.Location = '/Users/ronald/Desktop/Results';
 import templates.*
 import functions.auxx.ModelVectorization.*
 import guide.Visualization.*
@@ -29,6 +30,8 @@ parfor i=1:length(dataset.Participants)
         ages(i) = participant_age;
         Part_Info = jsondecode(fileread(fullfile(dataset.Location,participant.SubID,participant.FileInfo)));
         Mod_Weights = load(fullfile(dataset.Location,participant.SubID,Part_Info.Mod_Weights));
+        Delay_Matrix = load(fullfile(dataset.Location,participant.SubID,Part_Info.Delay_Matrix));
+
         Alpha_estimate = load(fullfile(dataset.Location,participant.SubID,Part_Info.Alpha_estimate));
         Xi_estimate = load(fullfile(dataset.Location,participant.SubID,Part_Info.Xi_estimate));
         %
@@ -39,11 +42,11 @@ parfor i=1:length(dataset.Participants)
         threshold_xi = set_threshold_em(Xi_estimate.Power);
         pos_xi = (Xi_estimate.Power>threshold_xi);
         xi_powers(i) = real(mean(Xi_estimate.Power(pos_xi)));
-        if participant_age <=15
-            delays(i) =  11 * Mod_Weights.Mod_Weights(1);
-        else
-            delays(i) = 9.5 * Mod_Weights.Mod_Weights(1); 
-        end
+       % if participant_age <=15
+            delays(i) =  mean(Delay_Matrix.Delay_Matrix(:));%11 * Mod_Weights.Mod_Weights(1);
+        %else
+         %   delays(i) = mean(Delay_Matrix(:));%9.5 * Mod_Weights.Mod_Weights(1); 
+        %end
         index = index +1;
     end
 end
@@ -163,11 +166,11 @@ legQuad = sprintf('Quadratic: b0=%.3f (p=%.3g), b1=%.3f (p=%.3g), b2=%.3f (p=%.3
 legend({legLin, 'Linear \pm1SE', legQuad, 'Quadratic \pm1SE'}, ...
     'Location', 'best');
 grid on; hold off;
-% --------------------------- Peak Alpha Frequency vs Delays ---------------------------
+%% --------------------------- Peak Alpha Frequency vs Delays ---------------------------
 % 1) Log-transform and sort
 AP = alpha_pfs; % log(Alpha Power)
 %AP =  (AP(:)-min(AP(:)))./(max(AP(:))-min(AP(:)));
-Del = (delays0);               % log(tau^-2)
+Del = (1000*delays0).^(-2);               % log(tau^-2)
 %Del =  (Del(:)-min(Del(:)))./(max(Del(:))-min(Del(:)));
 
 % Example IQR-based outlier removal on PAF:
@@ -253,7 +256,7 @@ fill([logDel_sorted; flipud(logDel_sorted)], ...
 xlabel('Delays (ms)', 'FontWeight', 'bold');
 ylabel('PAF (Hz)', 'FontWeight', 'bold');
 title('Average Source Peak Alpha Frequency (PAF) ~ \tau  (Robust Linear & Quadratic)');
-xlim([4 18])
+%xlim([4 18])
 % Legend with parameter values, RMSE, BIC and p-values
 legLin = sprintf('Linear: Intercept=%.3f (p=%.3g), Slope=%.3f (p=%.3g), RMSE=%.3f, BIC=%.3f', ...
     b_lin(1), stats_lin.p(1), b_lin(2), stats_lin.p(2), rmse_lin, bic_lin);
@@ -264,7 +267,7 @@ legend({legLin, 'Linear \pm1SE', legQuad, 'Quadratic \pm1SE'}, ...
     'Location', 'best');
 grid on; hold off;
 
-% --------------------------- Xi Power vs Delays ---------------------------
+%% --------------------------- Xi Power vs Delays ---------------------------
 XIP = 10*log10(10^(-6)+xi_powers); 
 %XIP =  (XIP(:)-min(XIP(:)))./(max(XIP(:))-min(XIP(:)));
 Del = (delays0);               % log(tau^-2)
@@ -646,3 +649,85 @@ legQuad = sprintf('Quadratic: b0=%.3f (p=%.3g), b1=%.3f (p=%.3g), b2=%.3f (p=%.3
 legend({legLin, 'Linear \pm1SE', legQuad, 'Quadratic \pm1SE'}, ...
     'Location', 'best');
 grid on; hold off;
+%%
+X = ages; 
+ M = 1000*delays.^2;  Y = log(alpha_pfs);
+X= (X-mean(X))/std(X);
+Y =  (Y-mean(Y))/std(Y);
+M =  (M-mean(M))/std(M);
+% Step 1: Regress mediator (M) on X (quadratic terms included)
+X2 = X.^2; % Compute quadratic term for X
+mdl1 = fitlm([X, X2], M); % Fit linear model with X and X^2 as predictors
+alpha1 = mdl1.Coefficients.Estimate(2); % Coefficient for X
+alpha2 = mdl1.Coefficients.Estimate(3); % Coefficient for X^2
+
+% Display coefficients for path a
+disp('Coefficients for path a (X -> M):');
+disp(['alpha1 (X): ', num2str(alpha1)]);
+disp(['alpha2 (X^2): ', num2str(alpha2)]);
+
+% Step 2: Regress Y on both X and M (quadratic terms included)
+M2 = M.^2; % Compute quadratic term for M
+X2 = X.^2; % Recompute quadratic term for X if needed
+mdl2 = fitlm([X, X2, M, M2], Y); % Fit linear model with X, X^2, M, M^2 as predictors
+beta1 = mdl2.Coefficients.Estimate(2); % Coefficient for X
+beta2 = mdl2.Coefficients.Estimate(3); % Coefficient for X^2
+beta3 = mdl2.Coefficients.Estimate(4); % Coefficient for M
+beta4 = mdl2.Coefficients.Estimate(5); % Coefficient for M^2
+
+% Display coefficients for path b and direct effect path (X -> Y)
+disp('Coefficients for path b (M -> Y) and direct effects (X -> Y):');
+disp(['beta1 (X): ', num2str(beta1)]);
+disp(['beta2 (X^2): ', num2str(beta2)]);
+disp(['beta3 (M): ', num2str(beta3)]);
+disp(['beta4 (M^2): ', num2str(beta4)]);
+
+% Step 3: Calculate indirect effect (a * b)
+indirect_effect = (alpha1 * beta3) + (alpha2 * beta4);
+
+% Step 4: Calculate direct effect (X -> Y)
+direct_effect = beta1 + beta2;
+
+% Display results
+disp('Indirect Effect (a * b):');
+disp(indirect_effect);
+
+disp('Direct Effect (X -> Y):');
+disp(direct_effect);
+
+% Step 5: Calculate total effect (Direct + Indirect)
+total_effect = direct_effect + indirect_effect;
+disp('Total Effect (Direct + Indirect):');
+disp(total_effect);
+
+% Step 6: Bootstrap the indirect effect to get confidence intervals
+numBootstraps = 1000;
+indirectEffects = zeros(numBootstraps, 1);
+
+for i = 1:numBootstraps
+    % Resample the data
+    idx = randi(length(X), length(X), 1);
+    X_resampled = X(idx);
+    M_resampled = M(idx);
+    Y_resampled = Y(idx);
+    
+    % Regress mediator (M) on X (quadratic terms)
+    X2_resampled = X_resampled.^2;
+    mdl1_resampled = fitlm([X_resampled, X2_resampled], M_resampled);
+    alpha1_resampled = mdl1_resampled.Coefficients.Estimate(2);
+    alpha2_resampled = mdl1_resampled.Coefficients.Estimate(3);
+    
+    % Regress Y on X and M (quadratic terms)
+    M2_resampled = M_resampled.^2;
+    mdl2_resampled = fitlm([X_resampled, X2_resampled, M_resampled, M2_resampled], Y_resampled);
+    beta3_resampled = mdl2_resampled.Coefficients.Estimate(4);
+    beta4_resampled = mdl2_resampled.Coefficients.Estimate(5);
+    
+    % Calculate indirect effect for this bootstrap sample
+    indirectEffects(i) = (alpha1_resampled * beta3_resampled) + (alpha2_resampled * beta4_resampled);
+end
+
+% Get confidence intervals for the indirect effect
+CI = prctile(indirectEffects, [2.5, 97.5]);
+disp('Bootstrapped Confidence Interval for Indirect Effect:');
+disp(CI);
