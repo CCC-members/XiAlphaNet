@@ -9,7 +9,11 @@ conn_delay = properties.general_params.parallel.conn_delay;
 [~,Nv,Nsw]=size(T);
 [Nr,~] = size(R);
 K_inv = pinv(K) ;
-U = R*K_inv;
+if Nv > Nr
+    U = R*K_inv;
+else 
+    U = K_inv;
+end
 % Unpack the input vector x into e, a, and sigma^2 components
 [e, a, ~] = x2v(x);
 %R = R*pinv(K);
