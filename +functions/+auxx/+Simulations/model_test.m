@@ -1,155 +1,226 @@
-%Povilas Karvelis (2024). daviolinplot - beautiful violin and raincloud plots 
+% Povilas Karvelis (2024). daviolinplot - beautiful violin and raincloud plots
 % (https://github.com/povilaskarvelis/DataViz/releases/tag/v3.2.4), GitHub. Retrieved September 20, 2024.
 
-clear all 
+% Clear workspace and initialize
+clear all;
 clc;
-% Enter direction to the structural data in Results
-load("/mnt/Store/Ronaldo/dev/Data/Results/structural/parameters.mat")
-% Setting the parameters to preform simulation in ROI space
+
+% Load structural data
+load("/Users/ronald/Desktop/Results/structural/parameters.mat");
+
+% Set parameters for simulation in ROI space
 parameters.Model = Compact_Model;
 parameters.Compact_Model = Compact_Model;
 parameters.Dimensions = Dimensions;
-%
-clear Compact_Model
-clear Model
+parameters.Dimensions.Nv = parameters.Dimensions.Nr;
+% Clear temporary variables to save memory
+clear Compact_Model Model Dimensions;
 
-clear Dimensions
-import functions.*
-import functions.auxx.*
-import functions.auxx.BayesOptimization.*
-import functions.auxx.CrossSpectrum.*
-import functions.auxx.ModelVectorization.*
-import functions.auxx.Simulations.*
-import functions.auxx.TOperator.*
-import tools.*
-import  functions.auxx.DataPreprosessing.*
-import functions.auxx.DataPreprosessing.aveReference.*
+% Import necessary functions
+import functions.*;
+import functions.auxx.*;
+import functions.auxx.BayesOptimization.*;
+import functions.auxx.CrossSpectrum.*;
+import functions.auxx.ModelVectorization.*;
+import functions.auxx.Simulations.*;
+import functions.auxx.TOperator.*;
+import tools.*;
+import functions.auxx.DataPreprocessing.*;
 
-% Setting initialiation of te simulations  
-Ne = parameters.Dimensions.Ne;
-Nr = parameters.Dimensions.Nr;
-parameters.Dimensions.Nv = Nr;
-Nv = parameters.Dimensions.Nv; % Set voxel to roi
-Nw = parameters.Dimensions.Nw;
-Nsim = 1;  % Number of simulated crosspectrum 
-% Simulated Cross
-Svv_cross=zeros(Ne,Ne,Nw,Nsim);         % Simulated observed cross-spectrum at the scalp 
-Sjj_cross=zeros(Nr,Nr,Nw,Nsim);         % Simulated source cross-spectrum at ROIs
-% Estimated Cross
-eL_Sjj_cross= zeros(Nr,Nr,Nw,Nsim);     % Estimated source cross-spectrum using eLORETA
-lcmv_Sjj_cross= zeros(Nr,Nr,Nw,Nsim);   % Estimated source cross-spectrum using LCMV
-XA_Sjj_cross= zeros(Nr,Nr,Nw,Nsim);     % Estimated source cross-spectrum using Xi-AlphaNET
-higgs_Sjj_cross = zeros(Nr,Nr,Nw,Nsim); % Estimated source cross-spectrum using Higgs
-%
-L = parameters.Compact_Model.K;
-% Generate a random sample of plausible croxsspectrum in the scalp 
-dir_data = '/mnt/Store/Ronaldo/dev/Data/norms';
-% List all the subject folders in the directory
-subject_folders = dir(fullfile(dir_data, '*'));
-subject_folders = subject_folders([subject_folders.isdir] & ~startsWith({subject_folders.name}, '.'));
-selected_folders = subject_folders(randperm(length(subject_folders), Nsim));
-disp("--> Simulate source and scalp cross")
+
+% Set up simulation parameters
+Ne = parameters.Dimensions.Ne;  % Number of electrodes
+Nr = parameters.Dimensions.Nr;  % Number of ROIs
+Nv = parameters.Dimensions.Nv;  % Set voxel to ROI  
+Nw = parameters.Dimensions.Nw;  % Number of frequency bins
+Nsim = 10;  % Number of simulations
 N_wishart = 1000;
- j=1;
- 
-% % % Get the path for the current subject's folder and corresponding .mat file
- subject_folder = selected_folders(j).name;
- mat_file_path = fullfile(dir_data, subject_folder, [subject_folder, '.mat']);
-% %
-% % Load the .mat file
-data_struct = load(mat_file_path);
-% % Extract the cross-spectrum
-Svv = data_struct.data_struct.CrossM(:,:,1:Nw);
-Svv = aveReference(Svv);
 
-freq = data_struct.data_struct.freqrange(1:Nw);
-parameters.Data.freq = freq;
-parameters.Parallel.T = 0;
-T = Teval(parameters);
-K = parameters.Model.K;
-R = parameters.Compact_Model.R;
-Kinv = pinv(K);
+% Xi-AlphaNET properties
+disp("--> Estimating source cross-spectrum");
 
-for j=1:Nsim
-    tic
-    % % Apply the mn_cross function (assuming it's a predefined function)
-    Sjj = mn_cross(Svv, K);  % Replace parameters with actual ones
-    % Loop to generate cross-spectra using the Wishart distribution
-    for i = 1:Nw
-        % Generate complex Wishart matrices
-        %U_map =G(:,:,j);%Kinv * T(:,:,i);
-        %act_map = diag(randn(size(T,2),1));
-        %Sjj =  U_map*U_map';
-        Sjj_cross(:,:,i,j) = generate_complex_wishart(Sjj(:,:,i), N_wishart);
-        % Apply the L matrix transformation (ensure L is defined)
-        Svv_cross(:,:,i,j) = L * Sjj_cross(:,:,i,j) * L';  % Ensure L is appropriately defined
-    end
-    toc;
-end
-subject_folder = selected_folders(1).name;
- mat_file_path = fullfile(dir_data, subject_folder, [subject_folder, '.mat']);
- data_struct = load(mat_file_path);
- freq = data_struct.data_struct.freqrange(1:Nw);
-%% 
-% Init Xi-AlphaNET properties
-disp("--> Estimating source cross ")
-%%
-properties.model_params.nFreqs = parameters.Dimensions.Nw;
+% Set model parameters for Xi-AlphaNET estimation
+properties.model_params.nFreqs = Nw;
 properties.model_params.BayesIter_Delay = 50;
 properties.model_params.BayesIter_Reg1 = 1;
-properties.model_params.BayesIter_Reg2 = 100;
-properties.model_params.Nrand1 = 10;
+properties.model_params.BayesIter_Reg2 = 30;
+properties.model_params.Nrand1 = 1;
 properties.model_params.Nrand2 = 10;
-properties.model_params.delay.lambda_space_cd =[[0.4,1.6];[0.01,2]];
+properties.model_params.delay.lambda_space_cd = [[0.4, 1.6]; [0.01, 2]];
 properties.general_params.parallel.conn_delay = 1;
 properties.model_params.stoch1 = 1;
 properties.model_params.stoch2 = 0;
-properties.model_params.tensor_field.default =0;
-import app.*
-import app.functions.*
-import functions.*
-import functions.StochasticFISTA.*
-import functions.auxx.*
-import functions.auxx.BayesOptimization.*
-import functions.auxx.CrossSpectrum.*
-import functions.auxx.ModelVectorization.*
-import functions.auxx.Regularization.*
-import functions.auxx.TOperator.*
-import tools.*
-import functions.auxx.Simulations.*
-import functions.auxx.Simulations.inverse.*
-import functions.auxx.Simulations.private.*
-%%
-for j=1:Nsim 
-    j
-    tic
-    %%
-    j=1
-    data.Cross = Svv_cross(:,:,:,j);
-    data.age = 25; % 
-    data.freq = freq;
-    [x,T,G] =  Xi_ALphaNET(properties,data,parameters);
-    [source_act_cross] = functions.auxx.Simulations.eval_source_conn_sim(x.Solution, data.freq,G,parameters.Model.K,parameters.Model.R,properties);
-    %clear x
-    %clear T
-    XA_Sjj_cross(:,:,:,j) = source_act_cross.Cross.Full;
-    %%
-    parfor i=1:Nw
-        i
-        % Find the etimation using eLoreta and LCMV 
-        source = inverse(Svv_cross(:,:,i,j),L);
-        eL_Sjj_cross(:,:,i,j) = source.eloreata.Sjj;
-        lcmv_Sjj_cross(:,:,i,j) = source.lcmv.Sjj;
-        %higgs_Sjj_cross(:,:,i,j) = call_higgs(Svv_cross(:,:,i,j),L);
+properties.model_params.tensor_field.default = 0;
+
+% Import necessary functions for Xi-AlphaNET estimation
+import app.*;
+import app.functions.*;
+import functions.*;
+import functions.StochasticFISTA.*;
+import functions.auxx.*;
+import functions.auxx.BayesOptimization.*;
+import functions.auxx.CrossSpectrum.*;
+import functions.auxx.ModelVectorization.*;
+import functions.auxx.Regularization.*;
+import functions.auxx.TOperator.*;
+import tools.*;
+import functions.auxx.Simulations.*;
+import functions.auxx.Simulations.inverse.*;
+import functions.auxx.Simulations.private.*;
+
+% Load model and transformation matrices
+L = parameters.Compact_Model.K;  % Transformation matrix for cross-spectrum
+
+% Set data directory for simulation
+dir_data = '/Users/ronald/Downloads/MultinationalNorms';
+subject_folders = dir(fullfile(dir_data, '*'));
+subject_folders = subject_folders([subject_folders.isdir] & ~startsWith({subject_folders.name}, '.'));
+selected_folders = subject_folders(randperm(length(subject_folders), Nsim));
+
+K = parameters.Model.K;
+R = parameters.Compact_Model.R;
+% Simulation loop
+
+for j = 1:Nsim
+    tic;
+    disp(['Processing simulation ', num2str(j), ' of ', num2str(Nsim)]);
+
+    % Select subject folder and load data
+    subject_folder = selected_folders(j).name;
+    mat_file_path = fullfile(dir_data, subject_folder, [subject_folder, '.mat']);
+    data_struct = load(mat_file_path);
+    
+    % Extract cross-spectrum and reference it
+    disp('->> Reading Scalp Cross')
+    Svv = data_struct.data_struct.CrossM(:,:,1:Nw);
+    Svv = functions.auxx.DataPreprosessing.aveReference(Svv);
+    
+    % Source cross-spectrum 
+    disp('->> Estimating Source Cross with MN')
+    Sjj = mn_cross(Svv,K);
+
+    % Set frequency range and parameters for the current simulation
+    freq = data_struct.data_struct.freqrange(1:Nw);
+    parameters.Data.freq = freq;
+    
+    % Generate and process simulated cross-spectrum
+    disp('->> Simulating Scalp Cross Wishart Noise + FModel')
+    for i = 1:Nw
+        % Generate complex Wishart matrices and simulate cross-spectrum
+        Sjj_cross(:,:,i) = generate_complex_wishart(Sjj(:,:,i), N_wishart);
+        Svv_cross(:,:,i) = L * Sjj_cross(:,:,i) * L';  % Apply transformation
     end
-    toc
+    
+    toc;  % End of simulation processing
+    
+    
+    % Prepare data for Xi-AlphaNET estimation
+    data.Cross = Svv_cross;
+    data.age = 25;  % Age of the subject
+    data.freq = freq;
+    parameters.Parallel.T = 0;
+    T = Teval(parameters);
+    
+    % Perform Xi-AlphaNET estimation
+    disp('->> Xi-AlphaNeT Inverse Solution')
+    [x, T, G] = Xi_ALphaNET(properties, data, parameters);
+    [source_act_cross] = functions.auxx.Simulations.eval_source_conn_sim(x.Solution, data.freq, G, parameters.Model.K, parameters.Model.R, properties);
+    
+    % Store the results of the Xi-AlphaNET simulation
+    XA_Sjj_cross = source_act_cross.Cross.Full;
+    
+    % Parallelized loop for source estimation using different methods
+    disp('->> eLORETA and LCMV Inverse Solutions')
+    parfor i = 1:Nw
+        % Perform eLORETA and LCMV source estimations
+        source = inverse(Svv_cross(:,:,i), L);
+        eL_Sjj_cross(:,:,i) = source.eloreata.Sjj;
+        lcmv_Sjj_cross(:,:,i) = source.lcmv.Sjj;
+    end
+    toc;
+  
+    % Precompute coherence and phase values
+    disp('->> Evaluating Distances')
+    import functions.auxx.OptimizedOperations.*
+    coherence_XA = coherence(XA_Sjj_cross);
+    coherence_Sjj = coherence(Sjj_cross);
+    angle_XA = angle(XA_Sjj_cross);
+    angle_Sjj = angle(Sjj_cross);
+    
+    % Log-spectrum benchmarking for XA, eL, and LCMV
+   
+    for i = 1:Nw
+        xl(:,i) = log(real(diag(XA_Sjj_cross(:,:,i))));
+        el(:,i) = log(real(diag(eL_Sjj_cross(:,:,i))));
+        cl(:,i) = log(real(diag(lcmv_Sjj_cross(:,:,i))));
+        l(:,i) = log(real(diag(Sjj_cross(:,:,i))));
+    end
+    
+    % Benchmark log-spectrum for XA, eL, and LCMV
+    XA_Spectrum_Fro(j) = tensor_norm(xl - l, 2);
+    XA_Spectrum_FroR(j) = XA_Spectrum_Fro(j) / tensor_norm(l, 2);
+    XA_Spectrum_L1(j) = tensor_norm(xl - l, 1);
+    XA_Spectrum_L1R(j) = XA_Spectrum_L1(j) / tensor_norm(l, 1);
+    
+    eL_Spectrum_Fro(j) = tensor_norm(el - l, 2);
+    eL_Spectrum_FroR(j) = eL_Spectrum_Fro(j) / tensor_norm(l, 2);
+    eL_Spectrum_L1(j) = tensor_norm(el - l, 1);
+    eL_Spectrum_L1R(j) = eL_Spectrum_L1(j) / tensor_norm(l, 1);
+    
+    cl_Spectrum_Fro(j) = tensor_norm(cl - l, 2);
+    cl_Spectrum_FroR(j) = cl_Spectrum_Fro(j) / tensor_norm(l, 2);
+    cL_Spectrum_L1(j) = tensor_norm(cl - l, 1);
+    cL_Spectrum_L1R(j) = cL_Spectrum_L1(j) / tensor_norm(l, 1);
+    
+    % Benchmark coherence XA, eL, and LCMV
+    XA_Coherence_Fro(j) = tensor_norm(coherence_XA - coherence_Sjj, 2);
+    XA_Coherence_FroR(j) = XA_Coherence_Fro(j) / tensor_norm(coherence_Sjj, 2);
+    XA_Coherence_L1(j) = tensor_norm(coherence_XA - coherence_Sjj, 1);
+    XA_Coherence_L1R(j) = XA_Coherence_L1(j) / tensor_norm(coherence_Sjj, 1);
+    
+    eL_Coherence_Fro(j) = tensor_norm(coherence(eL_Sjj_cross) - coherence_Sjj, 2);
+    eL_Coherence_FroR(j) = eL_Coherence_Fro(j) / tensor_norm(coherence_Sjj, 2);
+    eL_Coherence_L1(j) = tensor_norm(coherence(eL_Sjj_cross) - coherence_Sjj, 1);
+    eL_Coherence_L1R(j) = eL_Coherence_L1(j) / tensor_norm(coherence_Sjj, 1);
+    
+    lcmv_Coherence_Fro(j) = tensor_norm(coherence(lcmv_Sjj_cross) - coherence_Sjj, 2);
+    lcmv_Coherence_FroR(j) = lcmv_Coherence_Fro(j) / tensor_norm(coherence_Sjj, 2);
+    lcmv_Coherence_L1(j) = tensor_norm(coherence(lcmv_Sjj_cross) - coherence_Sjj, 1);
+    lcmv_Coherence_L1R(j) = lcmv_Coherence_L1(j) / tensor_norm(coherence_Sjj, 1);
+    
+    % Benchmark phase XA, eL, and LCMV
+    XA_Phase_Fro(j) = tensor_norm(angle_XA - angle_Sjj, 2);
+    XA_Phase_FroR(j) = XA_Phase_Fro(j) / tensor_norm(angle_Sjj, 2);
+    XA_Phase_L1(j) = tensor_norm(angle_XA - angle_Sjj, 1);
+    XA_Phase_L1R(j) = XA_Phase_L1(j) / tensor_norm(angle_Sjj, 1);
+    
+    eL_Phase_Fro(j) = tensor_norm(angle(eL_Sjj_cross) - angle_Sjj, 2);
+    eL_Phase_FroR(j) = eL_Phase_Fro(j) / tensor_norm(angle_Sjj, 2);
+    eL_Phase_L1(j) = tensor_norm(angle(eL_Sjj_cross) - angle_Sjj, 1);
+    eL_Phase_L1R(j) = eL_Phase_L1(j) / tensor_norm(angle_Sjj, 1);
+    
+    lcmv_Phase_Fro(j) = tensor_norm(angle(lcmv_Sjj_cross) - angle_Sjj, 2);
+    lcmv_Phase_FroR(j) = lcmv_Phase_Fro(j) / tensor_norm(angle_Sjj, 2);
+    lcmv_Phase_L1(j) = tensor_norm(angle(lcmv_Sjj_cross) - angle_Sjj, 1);
+    lcmv_Phase_L1R(j) = lcmv_Phase_L1(j) / tensor_norm(angle_Sjj, 1);
+   
 end
+
+%%
+for j = 1:Nsim 
+    
+end
+
 %%
 for j=1:47
-    xad(j) = norm(angle(XA_Sjj_cross(:,:,j,1))-angle(Sjj_cross(:,:,j,1)),'fro')/norm(Sjj_cross(:,:,j,1),'fro');
-    eld(j) = norm(angle(eL_Sjj_cross(:,:,j,1))-angle(Sjj_cross(:,:,j,1)),'fro')/norm(Sjj_cross(:,:,j,1),'fro');
-    lcd(j) = norm(angle(lcmv_Sjj_cross(:,:,j,1))-angle(Sjj_cross(:,:,j,1)),'fro')/norm(Sjj_cross(:,:,j,1),'fro');
+    xad(j) = norm(angle(XA_Sjj_cross(:,:,j,1))-angle(Sjj_cross(:,:,j,1)),'fro')/norm(angle(Sjj_cross(:,:,j,1)),'fro');
+    eld(j) = norm(angle(eL_Sjj_cross(:,:,j,1))-angle(Sjj_cross(:,:,j,1)),'fro')/norm(angle(Sjj_cross(:,:,j,1)),'fro');
+    lcd(j) = norm(angle(lcmv_Sjj_cross(:,:,j,1))-angle(Sjj_cross(:,:,j,1)),'fro')/norm(angle(Sjj_cross(:,:,j,1)),'fro');
 end
+
+value = norm(angle(XA_Sjj_cross(:,:,:,1))-angle(Sjj_cross),'fro')/norm(angle(Sjj_cross),'fro')
+value2 = norm(angle(eL_Sjj_cross)-angle(Sjj_cross),'fro')/norm(angle(Sjj_cross),'fro')
+
 
 for j=1:47
     xad(j) = norm((XA_Sjj_cross(:,:,j,1))-(Sjj_cross(:,:,j,1)),'fro');
@@ -167,12 +238,11 @@ plot(xad,'*','Color','r')
 plot(eld,'*','Color','b')
 plot(lcd,'*','Color','y')
 %%
-l = []
 for j=1:47
       xl(:,j) = log(real(diag(XA_Sjj_cross(:,:,j,1))));
        el(:,j) = log(real(diag(eL_Sjj_cross(:,:,j,1))));
        cl(:,j) = log(real(diag(lcmv_Sjj_cross(:,:,j,1))));
-    l(:,j) = log(real(diag(Sjj_cross(:,:,j,1))));
+       l(:,j) = log(real(diag(Sjj_cross(:,:,j,1))));
 end
 figure(1)
 hold on

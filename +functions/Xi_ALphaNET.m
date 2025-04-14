@@ -86,7 +86,7 @@ k_min = 40;
 index_parall_bayes = conn_delay;
 Nsfreq = k_min;
 
-Lipschitz = estimateLipschitzConstant(freq, T, Cross, 1, Nsfreq, stoch1, 0.001, 100, x0);
+Lipschitz = estimateLipschitzConstant(freq, T, Cross, 1, 25, stoch1, 0.001, 100, x0);
 
 %% Find optimal regularization space
 disp('-->> Finding Optimal Regularization Parameters...');
