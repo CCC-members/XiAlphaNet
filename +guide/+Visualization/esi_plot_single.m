@@ -25,13 +25,13 @@ J(iHideVert)            = [];
 
 % Apply smoothing to J using 'movmean' (moving average) or 'gaussian'
 J_smoothed              = J;%smoothdata(J, 'movmean', 30);  % 5 is the window size, adjust as needed
- L = parameters.Model.L;
- sigma = 10;
- K = exp(-L.^2/(2*sigma^2));
- K = K./sum(K,2);
- J_smoothed = K*J_smoothed;
+ % L = parameters.Model.L;
+ % sigma = 10;
+ % K = exp(-L.^2/(2*sigma^2));
+ % K = K./sum(K,2);
+ % J_smoothed = K*J_smoothed;
 sources_iv = J_smoothed;%_star;
-sources_iv              = sources_iv/max(sources_iv(:));
+%sources_iv              = sources_iv/max(sources_iv(:));
 %%
 smoothValue             = 0.2;
 SurfSmoothIterations    = 10;
@@ -40,7 +40,7 @@ fig = figure;
 patch(currentAxes, ...
   'Faces',Cortex.Faces, ...
     'Vertices',Vertices, ...
-    'FaceVertexCData',Cortex.SulciMap*0.00+sources_iv, ...
+    'FaceVertexCData',sources_iv, ...
     'FaceColor','interp', ...
     'EdgeColor','none', ...
     'AlphaDataMapping', 'none', ...
@@ -63,3 +63,4 @@ axis(currentAxes,'equal');
 rotate3d(currentAxes,'on');
 colormap("parula")
 set(gcf,'Color','w');
+

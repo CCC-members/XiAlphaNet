@@ -4,7 +4,7 @@
 clear all 
 clc;
 % Enter direction to the structural data in Results
-load("/mnt/Store/Ronaldo/dev/Data/Results/structural/parameters.mat")
+load("/Users/ronald/Desktop/Results/structural/parameters.mat")
 % Setting the parameters to preform simulation in ROI space
 parameters.Model = Compact_Model;
 parameters.Compact_Model = Compact_Model;
@@ -19,6 +19,7 @@ import functions.auxx.BayesOptimization.*
 import functions.auxx.CrossSpectrum.*
 import functions.auxx.ModelVectorization.*
 import functions.auxx.Simulations.*
+import functions.auxx.TOperator.*
 import tools.*
 import  functions.auxx.DataPreprosessing.*
 import functions.auxx.DataPreprosessing.aveReference.*
@@ -29,7 +30,7 @@ Nr = parameters.Dimensions.Nr;
 parameters.Dimensions.Nv = Nr;
 Nv = parameters.Dimensions.Nv; % Set voxel to roi
 Nw = parameters.Dimensions.Nw;
-Nsim = 10;  % Number of simulated crosspectrum 
+Nsim = 1;  % Number of simulated crosspectrum 
 % Simulated Cross
 Svv_cross=zeros(Ne,Ne,Nw,Nsim);         % Simulated observed cross-spectrum at the scalp 
 Sjj_cross=zeros(Nr,Nr,Nw,Nsim);         % Simulated source cross-spectrum at ROIs
@@ -40,34 +41,45 @@ XA_Sjj_cross= zeros(Nr,Nr,Nw,Nsim);     % Estimated source cross-spectrum using 
 higgs_Sjj_cross = zeros(Nr,Nr,Nw,Nsim); % Estimated source cross-spectrum using Higgs
 %
 L = parameters.Compact_Model.K;
-% Generate a random sample of plausible crosspectrum in the scalp 
-dir_data = '/mnt/Store/Ronaldo/dev/Data/norms';
+% Generate a random sample of plausible croxsspectrum in the scalp 
+dir_data = '/Users/ronald/Downloads/MultinationalNorms';
 % List all the subject folders in the directory
 subject_folders = dir(fullfile(dir_data, '*'));
 subject_folders = subject_folders([subject_folders.isdir] & ~startsWith({subject_folders.name}, '.'));
 selected_folders = subject_folders(randperm(length(subject_folders), Nsim));
 disp("--> Simulate source and scalp cross")
-N_wishart = 10;
-parfor j=1:Nsim
+N_wishart = 1000;
+ j=1;
+ 
+% % % Get the path for the current subject's folder and corresponding .mat file
+ subject_folder = selected_folders(j).name;
+ mat_file_path = fullfile(dir_data, subject_folder, [subject_folder, '.mat']);
+% %
+% % Load the .mat file
+data_struct = load(mat_file_path);
+% % Extract the cross-spectrum
+Svv = data_struct.data_struct.CrossM(:,:,1:Nw);
+Svv = aveReference(Svv);
+
+freq = data_struct.data_struct.freqrange(1:Nw);
+parameters.Data.freq = freq;
+parameters.Parallel.T = 0;
+T = Teval(parameters);
+K = parameters.Model.K;
+R = parameters.Compact_Model.R;
+Kinv = pinv(K);
+
+for j=1:Nsim
     tic
-    % Get the path for the current subject's folder and corresponding .mat file
-    subject_folder = selected_folders(j).name;
-    mat_file_path = fullfile(dir_data, subject_folder, [subject_folder, '.mat']);
-   
-    % Load the .mat file
-    data_struct = load(mat_file_path);
-    % Extract the cross-spectrum
-    Svv = data_struct.data_struct.CrossM(:,:,1:Nw);
-    Svv = aveReference(Svv);
-    freq = data_struct.data_struct.freqrange(1:Nw);
-    % Apply the mn_cross function (assuming it's a predefined function)
-    Sjj = mn_cross(Svv, parameters);  % Replace parameters with actual ones
-    
+    % % Apply the mn_cross function (assuming it's a predefined function)
+    Sjj = mn_cross(Svv, K);  % Replace parameters with actual ones
     % Loop to generate cross-spectra using the Wishart distribution
     for i = 1:Nw
         % Generate complex Wishart matrices
+        %U_map =G(:,:,j);%Kinv * T(:,:,i);
+        %act_map = diag(randn(size(T,2),1));
+        %Sjj =  U_map*U_map';
         Sjj_cross(:,:,i,j) = generate_complex_wishart(Sjj(:,:,i), N_wishart);
-        
         % Apply the L matrix transformation (ensure L is defined)
         Svv_cross(:,:,i,j) = L * Sjj_cross(:,:,i,j) * L';  % Ensure L is appropriately defined
     end
@@ -80,17 +92,17 @@ subject_folder = selected_folders(1).name;
 %% 
 % Init Xi-AlphaNET properties
 disp("--> Estimating source cross ")
-
+%%
 properties.model_params.nFreqs = parameters.Dimensions.Nw;
-properties.model_params.BayesIter_Delay = 1;
+properties.model_params.BayesIter_Delay = 50;
 properties.model_params.BayesIter_Reg1 = 1;
-properties.model_params.BayesIter_Reg2 = 30;
+properties.model_params.BayesIter_Reg2 = 100;
 properties.model_params.Nrand1 = 1;
-properties.model_params.Nrand2 = 1;
-properties.model_params.delay.lambda_space_cd = [[0.99,1];[0.99,1]];%[[0.4,1.6];[0.01,2]];
+properties.model_params.Nrand2 = 10;
+properties.model_params.delay.lambda_space_cd =[[0.4,1.6];[0.1,2]];
 properties.general_params.parallel.conn_delay = 1;
-properties.model_params.stoch1 = 0;
-properties.model_params.stoch2 =0;
+properties.model_params.stoch1 = 1;
+properties.model_params.stoch2 = 0;
 properties.model_params.tensor_field.default =0;
 import app.*
 import app.functions.*
@@ -106,18 +118,19 @@ import tools.*
 import functions.auxx.Simulations.*
 import functions.auxx.Simulations.inverse.*
 import functions.auxx.Simulations.private.*
-
+%%
 for j=1:Nsim 
     j
     tic
     %%
+    j=1
     data.Cross = Svv_cross(:,:,:,j);
-    data.age = 25; % 
+    data.age = 25; %
     data.freq = freq;
-    [x,T] =  Xi_ALphaNET(properties,data,parameters);
-    [source_act_cross] = eval_source_conn(x.Solution, data.freq,T,parameters.Model.K,parameters.Model.R,properties);
-    clear x
-    clear T
+    [x,T,G] =  Xi_ALphaNET(properties,data,parameters);
+    [source_act_cross] = functions.auxx.Simulations.eval_source_conn_sim(x.Solution, data.freq,G,parameters.Model.K,parameters.Model.R,properties);
+    %clear x
+    %clear T
     XA_Sjj_cross(:,:,:,j) = source_act_cross.Cross.Full;
     %%
     parfor i=1:Nw
@@ -131,14 +144,116 @@ for j=1:Nsim
     toc
 end
 %%
+for j=1:47
+    xad(j) = norm(angle(XA_Sjj_cross(:,:,j,1))-angle(Sjj_cross(:,:,j,1)),'fro')/norm(Sjj_cross(:,:,j,1),'fro');
+    eld(j) = norm(angle(eL_Sjj_cross(:,:,j,1))-angle(Sjj_cross(:,:,j,1)),'fro')/norm(Sjj_cross(:,:,j,1),'fro');
+    lcd(j) = norm(angle(lcmv_Sjj_cross(:,:,j,1))-angle(Sjj_cross(:,:,j,1)),'fro')/norm(Sjj_cross(:,:,j,1),'fro');
+end
 
+for j=1:47
+    xad(j) = norm((XA_Sjj_cross(:,:,j,1))-(Sjj_cross(:,:,j,1)),'fro');
+    eld(j) = norm((eL_Sjj_cross(:,:,j,1))-(Sjj_cross(:,:,j,1)),'fro');
+    lcd(j) = norm((lcmv_Sjj_cross(:,:,j,1))-(Sjj_cross(:,:,j,1)),'fro');
+end
+
+for j=1:47
+    xad(j) = functions.logdet_divergence(XA_Sjj_cross(:,:,j,1),Sjj_cross(:,:,j,1));
+    eld(j) = functions.logdet_divergence(eL_Sjj_cross(:,:,j,1),Sjj_cross(:,:,j,1));
+    lcd(j) = functions.logdet_divergence(lcmv_Sjj_cross(:,:,j,1),Sjj_cross(:,:,j,1));
+end
+hold on 
+plot(xad,'*','Color','r')
+plot(eld,'*','Color','b')
+plot(lcd,'*','Color','y')
+%%
+l = [];
+for j=1:47
+      xl(:,j) = log(real(diag(XA_Sjj_cross(:,:,j,1))));
+       el(:,j) = log(real(diag(eL_Sjj_cross(:,:,j,1))));
+       cl(:,j) = log(real(diag(lcmv_Sjj_cross(:,:,j,1))));
+    l(:,j) = log(real(diag(Sjj_cross(:,:,j,1))));
+end
+figure(1)
+hold on
+plot(freq,mean(xl',2),'Color','r')
+plot(freq,mean(l',2),'-','Color','b')
+hold off
+norm(xl-l,'fro')/norm(l,'fro')
+norm(el-l,'fro')/norm(l,'fro')
+
+
+figure(2)
+hold on
+plot(freq,mean(el',2),'Color','r')
+plot(freq,mean(l',2),'-','Color','b')
+hold off
+%%
+% Combine the data into one matrix
+data = [xad', eld', lcd'];
+
+% Create the boxplot with labels for each group
+figure;  % Create a new figure window
+boxplot(data, 'Labels', {'xad', 'eld', 'lcd'});
+
+% Add a title and labels if desired
+title('Boxplot of xad, eld, and lcd');
+xlabel('Variables');
+ylabel('Values');
+
+% Calculate medians for each group
+medians = median(data);
+
+% Find the index of the group with the smallest median
+[~, bestGroupIndex] = min(medians);
+
+% Hold the current plot and add a marker to the best group
+hold on;
+% Plot a red 'x' marker on the median of the best group
+plot(bestGroupIndex, medians(bestGroupIndex), 'rx', 'MarkerSize', 10, 'LineWidth', 2);
+
+% Optionally, add text to label the best group
+text(bestGroupIndex, medians(bestGroupIndex), '  Best', 'Color', 'red', 'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'right');
+%%
+spm = [];
+parfor j = 1:size(l,1)
+    j
+ [parm,sp]=functions.auxx.GenerateSourceSample.fit_xi_alpha_multi(Sjj_cross(j,j,:),freq,10,0);
+ spm = [spm,log(sp)];
+end
+hold on
+plot(freq,mean(spm,2))
+plot(freq,mean(l',2))
+%%
+% x0 = generateRandomSample_fit(Nr,Nr, data.Cross, T, R, freq, 10);
+import functions.auxx.GenerateSourceSample.*
+import functions.auxx.TOperator.*
+T = Teval(parameters);
+C = parameters.Model.C;
+D = parameters.Model.D;
+U_map = pinv(K);
+clear G
+for j=1:Nw
+    j
+    G(:,:,j) =inv(eye(size(C))- C .* exp(-2 * pi*i * freq(j) * D));
+end
+x0 = functions.auxx.GenerateSourceSample.generateRandomSample_fit(Nr,Nr, Svv, T, R, freq, 10);
+[source_act_cross] = functions.auxx.Simulations.eval_source_conn_sim(x0, freq,G,parameters.Model.K,parameters.Model.R,properties);
+ Cross2= source_act_cross.Cross.Full;
+for j=1:47
+    c1(:,j) = log(real(diag(Sjj(:,:,j,1))));
+    c2(:,j) = log(real(diag(Cross2(:,:,j,1))));
+end
+figure(1)
+hold on
+plot(freq,mean(c1',2),'Color','r')
+plot(freq,mean(c2',2),'-','Color','b')
 
 
 %% Read Data  and validate spectra
 % Svv_cross = data_struct.Svv_cross;
 % Sjj_cross = data_struct.Sjj_cross;
 % eL_Sjj_cross = data_struct.eL_Sjj_cross;
-% lcmv_Sjj_cross = data_struct.lcmv_Sjj_cross;
+% lcmv_Sjj_cross = data_struct.lcmv_Sjj_cross;c
 % XA_Sjj_cross = data_struct.XA_Sjj_cross;
 % data_struct2.Svv_cross=Svv_cross;
 % data_struct2.Sjj_cross=Sjj_cross;
@@ -193,14 +308,14 @@ XA_distances_l1 = zeros(Nsim * Nw, 1);
 score_counter = 1;
 distance_counter = 1;
 
-for n = 1:10
+for n = 1:1
     disp(n); % Display the simulation number
     for f = 1:Nw
         % Extract true and estimated covariance matrices (pre-compute abs)
-        Sjj_true = abs((Sjj_cross(:, :, f, n)));
-        eL_Sjj_est = abs((eL_Sjj_cross(:, :, f, n)));
-        lcmv_Sjj_est = abs((lcmv_Sjj_cross(:, :, f, n)));
-        XA_Sjj_est = abs((XA_Sjj_cross(:, :, f, n)));
+        Sjj_true = (abs((Sjj_cross(:, :, f, n))));
+        eL_Sjj_est = (abs((eL_Sjj_cross(:, :, f, n))));
+        lcmv_Sjj_est = (abs((lcmv_Sjj_cross(:, :, f, n))));
+        XA_Sjj_est = (abs((XA_Sjj_cross(:, :, f, n))));
        % higgs_Sjj_est = angle((higgs_Sjj_cross(:, :, f, n)));
 
         % Flatten the upper triangular parts of the matrices
@@ -211,7 +326,7 @@ for n = 1:10
         %higgs_Sjj_est_vec = (higgs_Sjj_est(idx_triu));
 
         % Threshold for ground truth labels
-        threshold = mean(Sjj_true_vec);
+        threshold = prctile(Sjj_true_vec,75);
         labels = Sjj_true_vec > threshold;
 
         % Store labels and scores
@@ -410,7 +525,7 @@ XA_distances_l1 = zeros(Nsim * Nw, 1);
 score_counter = 1;
 distance_counter = 1;
 
-for n = 1:10
+for n = 1:1
     disp(n); % Display the simulation number
     for f = 1:Nw
         % Extract true and estimated covariance matrices (pre-compute abs)
@@ -627,7 +742,7 @@ XA_distances_l1 = zeros(Nsim * Nw, 1);
 score_counter = 1;
 distance_counter = 1;
 
-for n = 1:10
+for n = 1:1
     disp(n); % Display the simulation number
     for f = 1:Nw
         % Extract true and estimated covariance matrices (pre-compute abs)

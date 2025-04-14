@@ -8,10 +8,10 @@ import functions.auxx.Refine_Solution.*
 prc = 90;
 cross_index = 0; % 
 age_min = 0;%age_range(1);
-age_max = 100;%age_range(2);
-dataset = jsondecode(fileread('D:\data\Results\XIALPHANET.json'));
-dataset.Location = 'D:\data\Results';
-parameters = load('D:\data\Results\structural\parameters.mat');
+age_max = 20;%age_range(2);
+dataset = jsondecode(fileread('/Users/ronald/Desktop/Results/XIALPHANET.json'));
+dataset.Location = '/Users/ronald/Desktop/Results/';
+parameters = load('/Users/ronald/Desktop/Results/structural/parameters.mat');
 ages = [];
 All_Data = {}; 
 index = 1;
@@ -46,7 +46,8 @@ XiAmp_all = [];
 
 % Convert each data.x to [e, a, s2] and store PAF (a(:,4)), Alpha Amplitude (a(:,1)), and Xi Amplitude
 threshold_PAF = 8;
-parfor j = 1:length(All_Data(1,:))
+import functions.auxx.Refine_Solution.*
+for j = 1:length(All_Data(1,:))
     fprintf('Processing subject %d\n', j);
     [e, a, s2] = x2v(All_Data{1,j});  % Assuming x2v returns [e, a, s2]
     PAF_all(:,j) = a(:,4);            % Store Peak Alpha Frequency

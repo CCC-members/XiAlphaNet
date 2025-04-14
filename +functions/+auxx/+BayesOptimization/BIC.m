@@ -1,4 +1,4 @@
-function [BICV] = BIC(lambda, Ne,Nv,T,freq,index_stoch,index_parll,Nsfreq,Cross,Nrand,Lipschitz)
+function [BICV] = BIC(lambda, Ne,Nv,T,freq,index_stoch,index_parll,Nsfreq,Cross,Nrand,Lipschitz,x0)
 import functions.*
 import functions.auxx.*
 import functions.StochasticFISTA.*
@@ -20,7 +20,7 @@ import functions.auxx.ModelVectorization.*
 
 % Execute FISTA to find the optimal parameters
 lambda = table2array(lambda);
-[X_opt,~] = stoch_fista_global(lambda, Ne,Nv,T,freq,index_stoch,index_parll,Nsfreq,Cross,Nrand,Lipschitz);
+[X_opt,~] = stoch_fista_global(lambda, Ne,Nv,T,freq,index_stoch,index_parll,Nsfreq,Cross,Nrand,Lipschitz,x0);
 N  = length(freq);
 [e,a,s2] = x2v(X_opt.Solution);
 epsilon=1/length(X_opt.Solution);

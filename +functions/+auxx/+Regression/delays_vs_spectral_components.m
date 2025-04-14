@@ -9,17 +9,47 @@ clear; clc;
 dataset = jsondecode(fileread('/Users/ronald/Desktop/Results/XIALPHANET.json'));
 dataset.Location = '/Users/ronald/Desktop/Results';
 import templates.*
-import functions.auxx.ModelVectorization.*
+import functions.auxx.ModelVectorization.* 
 import guide.Visualization.*
 import functions.auxx.ZeroInflatedModels.*
 import functions.auxx.Refine_Solution.*
 load("templates/mylin_data.mat")
 % Initialize arrays for storing delays and ages
-delays = [];
-ages = [];
-alpha_powers= [];
-xi_powers= [];
-alpha_pfs = [];
+% delays = [];
+% ages = [];
+% alpha_powers= [];
+% xi_powers= [];
+% alpha_pfs = [];
+index=1;
+parfor i=1:length(dataset.Participants)
+    i
+    participant = dataset.Participants(i);
+    participant_age = participant.Age;
+    if(isequal(participant.Status,'Completed'))
+        ages(i) = participant_age;
+        Part_Info = jsondecode(fileread(fullfile(dataset.Location,participant.SubID,participant.FileInfo)));
+        Mod_Weights = load(fullfile(dataset.Location,participant.SubID,Part_Info.Mod_Weights));
+        Delay_Matrix = load(fullfile(dataset.Location,participant.SubID,Part_Info.Delay_Matrix));
+
+        Alpha_estimate = load(fullfile(dataset.Location,participant.SubID,Part_Info.Alpha_estimate));
+        Xi_estimate = load(fullfile(dataset.Location,participant.SubID,Part_Info.Xi_estimate));
+        %
+        threshold_alpha =  set_threshold_em(Alpha_estimate.Power);
+        %pos_alpha = (Alpha_estimate.Power>threshold_alpha);
+        alpha_powers(:,i) =real( (Alpha_estimate.Power).*(Alpha_estimate.Power> threshold_alpha));
+        alpha_pfs(:,i) = real((Alpha_estimate.PAF).*(Alpha_estimate.Power> threshold_alpha));
+        threshold_xi = set_threshold_em(Xi_estimate.Power);
+        %pos_xi = (Xi_estimate.Power>threshold_xi);
+        xi_powers(:,i) = real((Xi_estimate.Power));
+       % if participant_age <=15
+            delays(i) =  mean(Delay_Matrix.Delay_Matrix(:));%11 * Mod_Weights.Mod_Weights(1);
+        %else
+         %   delays(i) = mean(Delay_Matrix(:));%9.5 * Mod_Weights.Mod_Weights(1); 
+        %end
+        index = index +1;
+    end
+end
+%%
 %--------------------------- Data Extraction -----------------------
 index = 1;
 parfor i=1:length(dataset.Participants)
@@ -731,3 +761,50 @@ end
 CI = prctile(indirectEffects, [2.5, 97.5]);
 disp('Bootstrapped Confidence Interval for Indirect Effect:');
 disp(CI);
+
+%%
+% c_d = zeros(8003, 1);  % R² for delays (quadratic fit)
+% c_a = zeros(8003, 1);  % R² for ages (quadratic fit)
+% % pos=ones(8003,1);
+% % for j=1:size(alpha_powers,2)
+% %     j
+% %     pos = pos.*(alpha_powers>0);
+% % end
+% 
+% 
+% for j = 1:8003
+%     j
+%     y = alpha_powers(j, :);
+%     pos = find(y > 0);
+%     y_r = y(pos);
+%     ages_r = ages(pos);
+%     delays_r = delays(pos);
+% 
+%     % Quadratic R² for delays
+%     X = [ones(length(delays_r(:)), 1), delays_r(:), delays_r(:).^2];
+%     beta = pinv(X) * y_r(:);
+%     y_hat = X * beta;
+%     SS_res = sum((y_r(:) - y_hat).^2);
+%     SS_tot = sum((y_r(:) - mean(y_r)).^2);  % also updated this to use y_r!
+%     c_d(j) = 1 - (SS_res / SS_tot);
+% 
+%     % Quadratic R² for ages
+%     X = [ones(length(ages_r(:)), 1), ages_r(:), ages_r(:).^2];
+%     beta = pinv(X) * y_r(:);
+%     y_hat = X * beta;
+%     SS_res = sum((y_r(:) - y_hat).^2);
+%     SS_tot = sum((y_r(:) - mean(y_r)).^2);  % updated here too
+%     c_a(j) = 1 - (SS_res / SS_tot);
+% end
+% 
+% %% Plotting
+% import functions.auxx.Refine_Solution.*
+% J = c_d;%.*alpha_pfs(:,1)./max(alpha_pfs(:,1));
+% import guide.Visualization.*
+% esi_plot_single;
+% colormap('parula');
+
+
+
+
+

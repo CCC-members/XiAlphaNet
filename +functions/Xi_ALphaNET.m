@@ -1,4 +1,4 @@
-function [x,T] =  Xi_ALphaNET(properties,data,parameters)
+function [x,T,G] =  Xi_ALphaNET(properties,data,parameters)
 import app.*
 import app.functions.*
 import functions.*
@@ -9,6 +9,9 @@ import functions.auxx.CrossSpectrum.*
 import functions.auxx.ModelVectorization.*
 import functions.auxx.Regularization.*
 import functions.auxx.TOperator.*
+import functions.auxx.GenerateSourceSample.*
+import functions.auxx.RegSpace.*
+import functions.auxx.Simulations.*
 import tools.*
 disp('-->> Initializing Model Parameters...')
 
@@ -32,24 +35,50 @@ parameters.Dimensions.Nv = Nr;
 [NewCross,scale] = global_scale_factor_correction(data.Cross);
 data.Cross = NewCross;
 clear NewCross;
-
- 
+ %scale=1;
 if data.age<15
    parameters.Model.D=0.0110*parameters.Model.D/ mean(parameters.Model.D(:));
    parameters.Compact_Model.D=0.0110*parameters.Compact_Model.D/ mean(parameters.Compact_Model.D(:));
 end
 age = data.age;
-
-
-disp('-->> Estimating Connectivity & Delays Weights...')
+% 
 Cross = data.Cross;
 freq = data.freq;
 K = parameters.Compact_Model.K;
 D = parameters.Compact_Model.D;
 C = parameters.Compact_Model.C;
+R = parameters.Compact_Model.R;
+% 
+disp('-->> Fixing Initial parameters...')
+T = Teval(parameters);
+parameters.Model.T = T;
+Cross1 = mn_cross(Cross,K);
+for j=1:Nw
+    G(:,:,j) = inv(eye(size(C))- C .* exp(-2 * pi* 1i * freq(j) * D));
+end
+x0 = generateRandomSample_fit(Nr,Nr, Cross1, G, R, freq, 1);
+
+disp('-->> Cross Validating Regularization Parmeters...')
+k_min = 30;
+index_parall_bayes= 1*conn_delay;
+Nsfreq = k_min;
+Lipschitz = 10^(14);
+% L = 10.^(linspace(0,30,10)); % Space
+% Value = [];
+% for j = 1:length(L)
+%     lambda_space = lambda_regspace(freq,T,Cross,L(j),stoch1,Nsfreq,x0);
+%     [lambda_opt] = bayesianOptSearch(lambda_space,Ne,Nr,T,freq,stoch1,1,index_parall_bayes,Nsfreq,Cross,Nrand1,L(j),30,x0);
+%     [x_opt, ~] = stoch_fista_global(lambda_opt, Ne,Nv,T,freq,stoch1,1,Nsfreq,Cross,10,L(j),x0);
+%     Value(j) = x_opt.Feval;
+% end
+% [~,index] = min(Value);
+% Lipschitz = L(index);
 
 
-[lambda_opt_dc] = bayes_search_conn_delay(lambda_space_cd, Ne,Nr,Nw,freq,Cross,BayesIter_Reg1,K,D,C,conn_delay,BayesIter_Delay);
+disp('-->> Estimating Connectivity & Delays Weights...')
+
+
+[lambda_opt_dc] = bayes_search_conn_delay(lambda_space_cd, Ne,Nr,Nw,freq,Cross,BayesIter_Reg1,K,D,C,1,BayesIter_Delay,x0,Lipschitz);
 
 
 lambda1 = lambda_opt_dc(1); % Estimated delay strenght
@@ -62,21 +91,26 @@ parameters.Model.C = lambda2 * parameters.Model.C;
 
 parameters.Compact_Model.D = lambda1 * parameters.Compact_Model.D;
 parameters.Compact_Model.C = lambda2 * parameters.Compact_Model.C;
+C = parameters.Compact_Model.C ;
+D = parameters.Compact_Model.D ;
+
 
 parameters.Parallel.T = 0;
 parameters.Data.freq = freq;
 T = Teval(parameters);
-disp('-->> Estimating Number of Batchs to StochFISTA...')
 
-k_min = 40;
+% disp('-->> Fixing Initial parameters...')
+% for j=1:Nw
+%     G(:,:,j) = inv(eye(size(C))- C .* exp(-2 * pi*i * freq(j) * D));
+% end
+% x0 = generateRandomSample_fit(Nr,Nr, Cross1, G, R, freq, 3);
+
 
 disp('-->> Initializing Bayesian Optimization On Regularization...')
-index_parall_bayes= 1*conn_delay;
-Nsfreq = k_min;
-Lipschitz = 0.01;%estimateLipschitzConstant(freq,T,Cross,1,Nsfreq,stoch1, 0.1, 20);
-lambda_space  = [100,1000,1000];%lambda_regspace(freq,T,Cross,Lipschitz,stoch1,Nsfreq);
+%estimateLipschitzConstant(freq,T,Cross,1,Nsfreq,stoch1, 0.1, 1000,x0);
+lambda_space  = lambda_regspace(freq,T,Cross,Lipschitz,stoch1,Nsfreq,x0)
 
-[lambda_opt] = bayesianOptSearch(lambda_space,Ne,Nr,T,freq,stoch1,0,index_parall_bayes,Nsfreq,Cross,Nrand1,Lipschitz,BayesIter_Reg2);
+[lambda_opt] = bayesianOptSearch(lambda_space,Ne,Nr,T,freq,stoch1,0,index_parall_bayes,Nsfreq,Cross,Nrand1,Lipschitz,BayesIter_Reg2,x0);
 
 disp('-->> Estimating Transfer Function...')
 parameters.Dimensions.Nv = Nv;
@@ -91,7 +125,7 @@ clear parameters;
 
 disp('-->> Initializing Stochastic FISTA global optimizer...')
 tic;
-[x_opt, ~] = stoch_fista_global(lambda_opt, Ne,Nv,T,freq,stoch2,conn_delay,Nsfreq,Cross,Nrand2,Lipschitz);
+[x_opt, ~] = stoch_fista_global(lambda_opt, Ne,Nv,T,freq,stoch2,conn_delay,Nsfreq,Cross,Nrand2,Lipschitz,x0);
 toc;
 [e,a,s2] = x2v(x_opt.Solution);
 e(:,1) = e(:,1)/scale;

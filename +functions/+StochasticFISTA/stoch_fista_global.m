@@ -1,4 +1,4 @@
-function [x_opt, History] = stoch_fista_global(lambda, Ne,Nv,T,freq,index_stoch,index_parll,Nsfreq,Cross,Nrand,Lipschitz)
+function [x_opt, History] = stoch_fista_global(lambda, Ne,Nv,T,freq,index_stoch,index_parll,Nsfreq,Cross,Nrand,Lipschitz,xx0)
 
 import functions.*
 import functions.FunctionGrandientProx.*
@@ -27,9 +27,9 @@ import functions.StochasticFISTA.*
 max_backtracking_iter = 60;
 L0 = Lipschitz;
 max_iter = 100;
-tol = 1e-2;
+tol = 10^(-4);
 eta = 2;
-var = 2; % Variance
+var = 0.01; % Variance
 f = @(x) evaluateF(x,Ne,T,sw,sp,nsf_band,Cross);
 g1 = @(x) evalg(x,1);
 g2 = @(x) evalg(x,2);
@@ -46,7 +46,7 @@ F_vals = inf(1, Nrand);
 % Iterate over each random simulation in parallel
 if index_parll == 1
     parfor j = 1:Nrand
-        x0 = generateRandomSample(Ne,Nv,Cross,T,freq, var);
+        x0 = generateRandomSample(xx0, var);%Ne,Nv,Cross,T,freq, var);
         [x, hist, FSmooth] = fista_with_backtracking(f, grad_f, g, prox2, x0, lambda, L0, eta, max_iter, tol, max_backtracking_iter);
         History{j} = hist;
 
@@ -62,7 +62,7 @@ if index_parll == 1
     end
 else
     for j = 1:Nrand
-        x0 = generateRandomSample(Ne,Nv,Cross,T,freq, var);
+        x0 = generateRandomSample(xx0, var);
         [x, hist, FSmooth] = fista_with_backtracking(f, grad_f, g, prox2, x0, lambda, L0, eta, max_iter, tol, max_backtracking_iter);
         History{j} = hist;
 

@@ -1,8 +1,13 @@
-function  [lambda] = lambda_regspace(freq,T,Sw,L,index_stoch,Nsfreq)
+function  [lambda] = lambda_regspace(freq,T,Sw,L,index_stoch,Nsfreq,x0)
+import functions.auxx.StochasticEval.*
+import functions.auxx.GenerateSourceSample.*
+import functions.FunctionGrandientProx.*
+import functions.auxx.RegSpace.*
+import functions.auxx.ModelVectorization.*
 [Ne,Nv,~] = size(T);
 [nsf_band, sw, sp] = sample_frequencies(freq, index_stoch, Nsfreq);
-x0  = generateRandomSample(Ne, Nv, Sw, T, freq, 0.01);
-epsilon = 10^(-1);
+x0  = generateRandomSample(x0, 0.001);
+epsilon = 10^(-6);
 dim = size(x0);
 x0 = ones(dim)*epsilon;
 dF = evaluatedF(x0, Ne,Nv, T, sw, sp, nsf_band, Sw);

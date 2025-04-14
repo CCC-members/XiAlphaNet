@@ -8,4 +8,5 @@ function TDT = computeTDT(T, D)
 
     % Compute the product of the scaled matrix TD with T'
     TDT = TD * T';
+    TDT = 0.5*(TDT+TDT');
 end
