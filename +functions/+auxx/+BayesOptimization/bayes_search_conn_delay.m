@@ -1,7 +1,7 @@
-function [lambda_opt_dc] = bayes_search_conn_delay(lambda_space, Ne,Nr,Nw,freq,Cross,BayesIter_Conn,K,D,C,indx_parallel,BayesIter_Delay,x0,Lipschitz)
+function [lambda_opt_dc] = bayes_search_conn_delay(lambda_space, Ne,Nr,Nw,freq,Cross,BayesIter_Conn,K,D,C,indx_parallel,BayesIter_Delay,x0,Lipschitz,best_lambda_reg)
     
     % Define the objective function to be minimized using Bayesian Optimization
-    objectiveFunc = @(lambda) modelObjective(lambda,Ne,Nr,Nw,freq,Cross,BayesIter_Conn,K,D,C,x0,Lipschitz);
+    objectiveFunc = @(lambda) modelObjective(lambda,Ne,Nr,Nw,freq,Cross,BayesIter_Conn,K,D,C,x0,Lipschitz,best_lambda_reg);
     
     % Set up the domain for lambda parameters
     ld_domain = optimizableVariable('l1', [lambda_space(1,1), lambda_space(1,2)], 'Transform', 'log'); % s
@@ -30,7 +30,7 @@ function [lambda_opt_dc] = bayes_search_conn_delay(lambda_space, Ne,Nr,Nw,freq,C
 end
 
 % Model objective function that computes the AIC and solution for given lambda
-function [LL_val] = modelObjective(lambda,Ne,Nr,Nw,freq,Cross,BayesIter,K,D,C,x0,Lipschitz)
+function [LL_val] = modelObjective(lambda,Ne,Nr,Nw,freq,Cross,BayesIter,K,D,C,x0,Lipschitz,best_lambda_reg)
 import functions.*
 import functions.auxx.*
 import functions.auxx.BayesOptimization.*
@@ -66,9 +66,9 @@ index_parall_bayes= 0;
 Nsfreq = k_min;
 Nrand = 1;
 %Lipschitz = estimateLipschitzConstant(freq,T,Cross,0,Nsfreq,1, 0.1, 20,x0);
-lambda_space = lambda_regspace(freq,T,Cross,Lipschitz,1,Nsfreq,x0); % Adjust as needed
+%lambda_space = lambda_regspace(freq,T,Cross,1,Nsfreq,x0); % Adjust as needed
 disp('-->> Initializing Stochastic FISTA global optimizer...')
-[lambda_opt] = bayesianOptSearch(lambda_space,Ne,Nr,T,freq,index_stoch,index_parall_fist,index_parall_bayes,Nsfreq,Cross,Nrand,Lipschitz,BayesIter,x0);
+[lambda_opt] = bayesianOptSearch(best_lambda_reg,Ne,Nr,T,freq,index_stoch,index_parall_fist,index_parall_bayes,Nsfreq,Cross,Nrand,Lipschitz,BayesIter,x0);
 index_stoch = 0;
 Nrand = 1;
 [x_opt, ~] = stoch_fista_global(lambda_opt, Ne,Nr,T,freq,index_stoch,index_parall_fist,Nsfreq,Cross,Nrand,Lipschitz,x0);

@@ -4,7 +4,7 @@
 clear all 
 clc;
 % Enter direction to the structural data in Results
-load("/Users/ronald/Desktop/Results/structural/parameters.mat")
+load("/mnt/Store/Ronaldo/dev/Data/Results/structural/parameters.mat")
 % Setting the parameters to preform simulation in ROI space
 parameters.Model = Compact_Model;
 parameters.Compact_Model = Compact_Model;
@@ -12,6 +12,7 @@ parameters.Dimensions = Dimensions;
 %
 clear Compact_Model
 clear Model
+
 clear Dimensions
 import functions.*
 import functions.auxx.*
@@ -42,7 +43,7 @@ higgs_Sjj_cross = zeros(Nr,Nr,Nw,Nsim); % Estimated source cross-spectrum using 
 %
 L = parameters.Compact_Model.K;
 % Generate a random sample of plausible croxsspectrum in the scalp 
-dir_data = '/Users/ronald/Downloads/MultinationalNorms';
+dir_data = '/mnt/Store/Ronaldo/dev/Data/norms';
 % List all the subject folders in the directory
 subject_folders = dir(fullfile(dir_data, '*'));
 subject_folders = subject_folders([subject_folders.isdir] & ~startsWith({subject_folders.name}, '.'));
@@ -97,9 +98,9 @@ properties.model_params.nFreqs = parameters.Dimensions.Nw;
 properties.model_params.BayesIter_Delay = 50;
 properties.model_params.BayesIter_Reg1 = 1;
 properties.model_params.BayesIter_Reg2 = 100;
-properties.model_params.Nrand1 = 1;
+properties.model_params.Nrand1 = 10;
 properties.model_params.Nrand2 = 10;
-properties.model_params.delay.lambda_space_cd =[[0.4,1.6];[0.1,2]];
+properties.model_params.delay.lambda_space_cd =[[0.4,1.6];[0.01,2]];
 properties.general_params.parallel.conn_delay = 1;
 properties.model_params.stoch1 = 1;
 properties.model_params.stoch2 = 0;
@@ -125,7 +126,7 @@ for j=1:Nsim
     %%
     j=1
     data.Cross = Svv_cross(:,:,:,j);
-    data.age = 25; %
+    data.age = 25; % 
     data.freq = freq;
     [x,T,G] =  Xi_ALphaNET(properties,data,parameters);
     [source_act_cross] = functions.auxx.Simulations.eval_source_conn_sim(x.Solution, data.freq,G,parameters.Model.K,parameters.Model.R,properties);
@@ -166,7 +167,7 @@ plot(xad,'*','Color','r')
 plot(eld,'*','Color','b')
 plot(lcd,'*','Color','y')
 %%
-l = [];
+l = []
 for j=1:47
       xl(:,j) = log(real(diag(XA_Sjj_cross(:,:,j,1))));
        el(:,j) = log(real(diag(eL_Sjj_cross(:,:,j,1))));

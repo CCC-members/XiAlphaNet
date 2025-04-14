@@ -5,7 +5,7 @@ import functions.auxx.ModelVectorization.*
 import functions.auxx.ProximalOperators.*
 
 % Split x into parts e, a, s2 using x2v function
-[e, a, s2] = x2v(x);
+[e, a, s2] = x2v(real(x));
 
 % Retrieve the threshold parameter
 

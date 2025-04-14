@@ -27,9 +27,9 @@ import functions.StochasticFISTA.*
 max_backtracking_iter = 60;
 L0 = Lipschitz;
 max_iter = 100;
-tol = 10^(-4);
+tol = 10^(-2);
 eta = 2;
-var = 0.01; % Variance
+var = 0.001; % Variance
 f = @(x) evaluateF(x,Ne,T,sw,sp,nsf_band,Cross);
 g1 = @(x) evalg(x,1);
 g2 = @(x) evalg(x,2);
@@ -74,7 +74,7 @@ else
         F_vals(j) = hist(end);
 
         % Display current simulation status
-        fprintf('Simulation %d/%d, OF Value: %f, Smooth OF Value: %e\n', j, Nrand, hist(end), FSmooth);
+       % fprintf('Simulation %d/%d, OF Value: %f, Smooth OF Value: %e\n', j, Nrand, hist(end), FSmooth);
     end
 end
 % After the parallel loop, find the best solution

@@ -67,5 +67,5 @@ import functions.FunctionGrandientProx.*
     
     % The estimated Lipschitz constant is the maximum ratio found
     L_est = maxRatio;
-    fprintf('-->Lipschitz constant found %d\n',L_est)
+    fprintf('-->> Lipschitz constant found %d\n',L_est)
 end
