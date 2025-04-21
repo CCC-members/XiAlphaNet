@@ -1,4 +1,4 @@
-function [solution] = eval_source_conn(x, freq,T,K,R,properties)
+function [solution] = eval_source_conn(x, freq,T,K,R,G,properties)
 import functions.*
 import functions.auxx.*
 import functions.auxx.OptimizedOperations.*
@@ -28,8 +28,8 @@ if conn_delay == 1
     parfor j = 1:Nsw
         %fprintf('Processing frequency %d of %d\n', j, Nsw);
         omega = freq(j);
-        Tj_cross = U*T(:,:,j);
-        Tj_act = K_inv*T(:,:,j);
+        Tj_cross = R*G(:,:,j);
+        Tj_act = G(:,:,j);
         % Calculate xi_omega and alpha_omega based on the model parameters
         xi_omega = e(:,1) ./ (1 + e(:,2) .* omega.^2).^e(:,3);
         alpha_omega = a(:,1) ./ (1 + a(:,2) .* (omega - a(:,4)).^2).^a(:,3);
@@ -46,8 +46,8 @@ else
     for j = 1:Nsw
         %fprintf('Processing frequency %d of %d\n', j, Nsw);
         omega = freq(j);
-        Tj_cross = U*T(:,:,j);
-        Tj_act = K_inv*T(:,:,j);
+        Tj_cross = R*G(:,:,j);
+        Tj_act = G(:,:,j);
         % Calculate xi_omega and alpha_omega based on the model parameters
         xi_omega = e(:,1) ./ (1 + e(:,2) .* omega.^2).^e(:,3);
         alpha_omega = a(:,1) ./ (1 + a(:,2) .* (omega - a(:,4)).^2).^a(:,3);

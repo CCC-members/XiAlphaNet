@@ -223,9 +223,7 @@ for s=1:length(subjects)
         [T,G]                   = Teval(parameters);
     end
 
-    %
     % Initializing Stochastic FISTA global optimizer
-
     disp('-->> Fixing Initial Parameters...');
     x0                           = generateRandomSample_fit(Nv, Cross, G, freq, 30); 
     disp('-->> Running Stochastic FISTA Global Optimization...');
@@ -246,7 +244,7 @@ for s=1:length(subjects)
     %%
     %% Saving Participant file
     %%
-    [Participant]               = xan_save(properties,'subject',SubID,x,T,parameters,data,Participant);
+    [Participant]               = xan_save(properties,'subject',SubID,x,T,G,parameters,data,Participant);
     parameters                  = parameters_tmp;
 
 

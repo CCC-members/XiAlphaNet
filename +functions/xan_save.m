@@ -69,7 +69,7 @@ switch lower(claf)
         % Participant.Transfer_Function = fullfile('Transfer_Function.mat');
         % save(fullfile(subject_path,"Transfer_Function.mat"),"Transfer_Function");
         % Map Solution into Source  Activation and Crosspectrum on the Frequency Domain
-        [source_act_cross]                      = eval_source_conn(x.Solution, data.freq,T,parameters.Model.K,parameters.Model.R,properties);
+        [source_act_cross]                      = eval_source_conn(x.Solution, data.freq,T,parameters.Model.K,parameters.Model.R,G,properties);
         % Saving  Full Activation
         Source_Activations_Full                 = source_act_cross.Activations.Full;
         Participant.Source_Activations_Full     = fullfile('Source_Activations_Full.mat');
