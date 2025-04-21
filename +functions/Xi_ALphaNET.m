@@ -68,17 +68,12 @@ R = parameters.Compact_Model.R;
 
 %% Fix initial parameters
 disp('-->> Fixing Initial Parameters...');
-T = Teval(parameters);
+parameters.Parallel.T = 0;
+[T,G] = Teval(parameters);
 parameters.Model.T = T;
 
-Cross1 = mn_cross(Cross, K);
-G = zeros(size(C, 1), size(C, 2), Nw);
-for j = 1:Nw
-    G(:, :, j) = inv(eye(size(C)) - C .* exp(-2*pi*1i*freq(j)*D));
-end
-
 % Generate initial random sample
-x0 = generateRandomSample_fit(Nr, Nr, Cross1, G, R, freq, 3);
+x0 = generateRandomSample_fit(Nr, Cross, G, freq, 3); 
 
 %% Estimate Lipschitz constant for optimization
 disp('-->> Estimating Lipschitz Constant...');
@@ -89,8 +84,8 @@ Nsfreq = k_min;
 Lipschitz = estimateLipschitzConstant(freq, T, Cross, 1, 25, stoch1, 0.001, 100, x0);
 
 %% Find optimal regularization space
-disp('-->> Finding Optimal Regularization Parameters...');
-[lambda_space, ~, ~] = find_best_lambda(freq, T, Cross, stoch1, stoch2, Nsfreq, x0, Ne, Nr, Nv, 10, index_parall_bayes, Nrand1, Nrand2, Lipschitz, conn_delay);
+disp('-->> Cross Validating Initial Regularization Space...');
+[lambda_space, ~, ~] = find_best_lambda(freq, T, Cross, stoch1, stoch2, 25, x0, Ne, Nr, Nr, 10, index_parall_bayes, Nrand1, Nrand2, Lipschitz, conn_delay);
 
 %% Estimate connectivity and conduction delay weights
 disp('-->> Estimating Connectivity & Delay Weights...');
@@ -110,8 +105,8 @@ parameters.Data.freq = freq;
 T = Teval(parameters);
 
 %% Cross-validate regularization parameters
-disp('-->> Cross Validating Regularization Space...');
-[lambda_space, ~, ~] = find_best_lambda(freq, T, Cross, stoch1, stoch2, Nsfreq, x0, Ne, Nr, Nv, 10, index_parall_bayes, Nrand1, Nrand2, Lipschitz, conn_delay);
+disp('-->> Cross Validating Final Regularization Space...');
+[lambda_space, ~, ~] = find_best_lambda(freq, T, Cross, stoch1, stoch2, Nsfreq, x0, Ne, Nr, Nr, 10, index_parall_bayes, Nrand1, Nrand2, Lipschitz, conn_delay);
 
 %% Bayesian Optimization on regularization parameters
 disp('-->> Bayesian Optimization on Regularization Parameters...');
@@ -125,13 +120,16 @@ if tf_default
     T = read_tensor_field(lambda1, lambda2, age, TF_path);
 else
     parameters.Parallel.T = 0;
-    T = Teval(parameters);
+    tic
+    [T,G] = Teval(parameters);
+    toc
 end
 clear parameters;
 
 %% Stochastic FISTA global optimization
 disp('-->> Running Stochastic FISTA Global Optimization...');
 tic;
+x0 = generateRandomSample_fit(Nv, Cross, G, freq, 1); 
 [x_opt, ~] = stoch_fista_global(lambda_opt, Ne, Nv, T, freq, stoch2, conn_delay, Nsfreq, Cross, Nrand2, Lipschitz, x0);
 toc;
 

@@ -50,6 +50,7 @@ Lambda = zeros(N_spaces, length(lambda_space));
 % Choose loop type based on conn_delay
 if conn_delay == 1
     parfor j = 1:N_spaces
+        
         lambda_j = bayesianOptSearch(lambda_space, Ne, Nr, T, freq, stoch1, ...
             0, 0, Nsfreq, Cross, ...
             1, Lipschitz, 30, x0);
