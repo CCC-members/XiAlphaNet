@@ -6,7 +6,7 @@ clear all;
 clc;
 
 % Load structural data
-load("/Users/ronald/Desktop/Results/structural/parameters.mat");
+load("/mnt/Store/Ronaldo/dev/Data/Results/structural/parameters.mat");
 
 % Set parameters for simulation in ROI space
 parameters.Model = Model;
@@ -42,15 +42,15 @@ disp("--> Estimating source cross-spectrum");
 
 % Set model parameters for Xi-AlphaNET estimation
 properties.model_params.nFreqs = Nw;
-properties.model_params.BayesIter_Delay = 50;
-properties.model_params.BayesIter_Reg1 = 1;
-properties.model_params.BayesIter_Reg2 = 30;
-properties.model_params.Nrand1 = 1;
-properties.model_params.Nrand2 = 1;
+properties.model_params.BayesIter_Delay = 30;
+properties.model_params.BayesIter_Reg1 = 20;
+properties.model_params.BayesIter_Reg2 = 100;
+properties.model_params.Nrand1 = 10;
+properties.model_params.Nrand2 = 50;
 properties.model_params.delay.lambda_space_cd = [[0.4, 1.6]; [10^(-10), 1/conn_spec]];
 properties.general_params.parallel.conn_delay = 1;
 properties.model_params.stoch1 = 1;
-properties.model_params.stoch2 = 0;
+properties.model_params.stoch2 = 1;
 properties.model_params.tensor_field.default = 0;
 
 % Import necessary functions for Xi-AlphaNET estimation
@@ -73,7 +73,7 @@ import functions.auxx.Simulations.private.*;
 L = parameters.Model.K;  % Transformation matrix for cross-spectrum
 
 % Set data directory for simulation
-dir_data = '/Users/ronald/Downloads/MultinationalNorms';
+dir_data = '/mnt/Store/Ronaldo/dev/Data/norms';
 subject_folders = dir(fullfile(dir_data, '*'));
 subject_folders = subject_folders([subject_folders.isdir] & ~startsWith({subject_folders.name}, '.'));
 selected_folders = subject_folders(randperm(length(subject_folders), Nsim));
@@ -123,7 +123,7 @@ for j = 1:Nsim
    
     % Perform Xi-AlphaNET estimation
     disp('->> Xi-AlphaNeT Inverse Solution')
-    [x, ~, G] = Xi_ALphaNET(properties, data, parameters);
+    [x, ~, G,x0] = Xi_ALphaNET(properties, data, parameters);
     [source_act_cross] = functions.auxx.Simulations.eval_source_conn_sim(x.Solution, data.freq, G, parameters.Model.K, parameters.Model.R, properties);
     
     % Store the results of the Xi-AlphaNET simulation

@@ -1,4 +1,4 @@
-function [x, T, G] = Xi_ALphaNET(properties, data, parameters)
+function [x, T, G,x0] = Xi_ALphaNET(properties, data, parameters)
 % Xi_ALphaNET: Estimates EEG source connectivity, conduction delays, and spectral parameters
 %
 % INPUTS:
@@ -69,6 +69,7 @@ R = parameters.Compact_Model.R;
 %% Fix initial parameters
 disp('-->> Fixing Initial Parameters...');
 parameters.Parallel.T = 0;
+%parameters.Dimensions.Nv = Nr;
 [T,G] = Teval(parameters);
 parameters.Model.T = T;
 
@@ -86,7 +87,7 @@ Lipschitz = estimateLipschitzConstant(freq, T, Cross, 1, 25, stoch1, 0.001, 100,
 %% Find optimal regularization space
 disp('-->> Cross Validating Initial Regularization Space...');
 [lambda_space, ~, ~] = find_best_lambda(freq, T, Cross, stoch1, stoch2, 25, x0, Ne, Nr, Nr, 10, index_parall_bayes, Nrand1, Nrand2, Lipschitz, conn_delay);
-
+%lambda_space  =  [100,1000,1000];
 %% Estimate connectivity and conduction delay weights
 disp('-->> Estimating Connectivity & Delay Weights...');
 [lambda_opt_dc] = bayes_search_conn_delay(lambda_space_cd, Ne, Nr, Nw, freq, Cross, BayesIter_Reg1, K, D, C, 1, BayesIter_Delay, x0, Lipschitz, lambda_space);
@@ -107,7 +108,7 @@ T = Teval(parameters);
 %% Cross-validate regularization parameters
 disp('-->> Cross Validating Final Regularization Space...');
 [lambda_space, ~, ~] = find_best_lambda(freq, T, Cross, stoch1, stoch2, Nsfreq, x0, Ne, Nr, Nr, 10, index_parall_bayes, Nrand1, Nrand2, Lipschitz, conn_delay);
-
+%lambda_space  =  [100,1000,1000];
 %% Bayesian Optimization on regularization parameters
 disp('-->> Bayesian Optimization on Regularization Parameters...');
 [lambda_opt] = bayesianOptSearch(lambda_space, Ne, Nr, T, freq, stoch1, 0, index_parall_bayes, Nsfreq, Cross, Nrand1, Lipschitz, BayesIter_Reg2, x0);
@@ -119,17 +120,15 @@ if tf_default
     TF_path = fullfile(properties.general_params.tmp.path, 'TensorField');
     T = read_tensor_field(lambda1, lambda2, age, TF_path);
 else
-    parameters.Parallel.T = 0;
-    tic
+    parameters.Parallel.T = 1;
     [T,G] = Teval(parameters);
-    toc
 end
-clear parameters;
+%clear parameters;
 
 %% Stochastic FISTA global optimization
 disp('-->> Running Stochastic FISTA Global Optimization...');
 tic;
-x0 = generateRandomSample_fit(Nv, Cross, G, freq, 1); 
+x0 = generateRandomSample_fit(Nv, Cross, G, freq, 30); 
 [x_opt, ~] = stoch_fista_global(lambda_opt, Ne, Nv, T, freq, stoch2, conn_delay, Nsfreq, Cross, Nrand2, Lipschitz, x0);
 toc;
 

@@ -44,6 +44,7 @@ if Nv>Nr
             if rho_C < 1
                 T(:,:,w) = K + K * Z;
             else
+                w
                 T(:,:,w) = K/(I-Z);
             end
             G(:,:,w) = Kinv - Z * Kinv;
