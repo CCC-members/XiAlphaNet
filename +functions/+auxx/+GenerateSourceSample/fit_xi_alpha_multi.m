@@ -27,7 +27,7 @@ function [best_params, best_fit, all_fits] = fit_xi_alpha_multi(S, omega, N_init
 
     % === Bounds ===
     lb = [0, 0, 0,     0, 0, 0, 7];     % [e1, e2, e3, a1, a2, a3, a4]
-    ub = [Inf, 10, 5,  Inf, 10, 10, 13];
+    ub = [Inf, 10, 10,  Inf, 10, 100, 13];
 
     % === Optimizer options ===
     options = optimoptions('lsqcurvefit', 'Display', 'off', ...
@@ -49,7 +49,7 @@ function [best_params, best_fit, all_fits] = fit_xi_alpha_multi(S, omega, N_init
         a1_0 = max(S) * (0.5 + rand());
         a2_0 = rand() * 0.5;
         a3_0 = 2 + rand() * 3;
-        a4_0 = 8 + rand() * 5;
+        a4_0 = 10 + rand() * 2;
 
         init_params = [e1_fixed, e2_0, e3_0, a1_0, a2_0, a3_0, a4_0];
 

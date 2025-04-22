@@ -38,6 +38,7 @@ switch lower(claf)
             mkdir(subject_path);
         end
         [e,a,~]                                 = x2v(x.Solution);
+        freq                                    = parameters.Data.freq;
         % Saving Modulatory Weights of the Anatomical Connectivity and
         % Conduction Delays
         Mod_Weights                             = x.Lambda_DC;
@@ -69,7 +70,7 @@ switch lower(claf)
         % Participant.Transfer_Function = fullfile('Transfer_Function.mat');
         % save(fullfile(subject_path,"Transfer_Function.mat"),"Transfer_Function");
         % Map Solution into Source  Activation and Crosspectrum on the Frequency Domain
-        [source_act_cross]                      = eval_source_conn(x.Solution, data.freq,T,parameters.Model.K,parameters.Model.R,G,properties);
+        [source_act_cross]                      = eval_source_conn(x.Solution, data.freq,parameters.Model.R,properties,parameters);
         % Saving  Full Activation
         Source_Activations_Full                 = source_act_cross.Activations.Full;
         Participant.Source_Activations_Full     = fullfile('Source_Activations_Full.mat');
@@ -83,8 +84,8 @@ switch lower(claf)
         Participant.Source_Activations_Alpha    = fullfile('Source_Activations_Alpha.mat');
         save(fullfile(subject_path,"Source_Activations_Alpha.mat"),"Source_Activations_Alpha");
         % Saving Full Cross-Spectrum in ROIs-Space
-        Source_Cross_Full                       = source_act_cross.Cross.Full;
-        [Source_PSD,freq]                       = log_spectrum(Source_Cross_Full,data.freq);
+        Source_Cross_Full                       = source_act_cross.Cross.Spectra;
+        [Source_PSD]                            = 10*log10(Source_Cross_Full);
         Participant.Source_PSD                  = fullfile('Source_PSD.mat');
         save(fullfile(subject_path,"Source_PSD.mat"),"Source_PSD",'freq');
 

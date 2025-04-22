@@ -1,8 +1,8 @@
-function [T,G] = Teval(parameters)
+function  [T] = Teval(parameters)
 import functions.*
 import functions.auxx.*
 import functions.auxx.Regularization.*
-%% 
+%%
 Nw = parameters.Dimensions.Nw;
 Ne = parameters.Dimensions.Ne;
 Nr = parameters.Dimensions.Nr;
@@ -16,38 +16,43 @@ else
     K = parameters.Model.K;
     D = parameters.Model.D;
 end
-D = 0.5*(D+D');
-C = 0.5*(C+C');
-Kinv = pinv(K);
+
+rho_C = max(abs(eig(C))); % spectral radius of C
 freq = parameters.Data.freq;
 %%
-I = zeros(Nv,Nv);
+
+I = eye(size(C));
 T = zeros(Ne,Nv,Nw);
-G = zeros(Nv,Ne,Nw);
-rho_C = max(abs(eig(C))); % spectral radius of C
+PF = floor(Nw/2);
 if Nv>Nr
     if parameters.Parallel.T == 1
-        parfor w = 1:Nw
+        parfor w = 1:PF
             %fprintf('-->Frequency %d/%d\n',w,Nw)
             Z = C .* exp(-2 * pi * 1i * freq(w) * D);
-            if rho_C < 1
+            if rho_C < 0.8
                 T(:,:,w) = K + K * Z;
             else
                 T(:,:,w) = K/(I-Z);
             end
-            G(:,:,w) = Kinv - Z * Kinv;
+        end
+        parfor w = 1+PF:Nw
+            %fprintf('-->Frequency %d/%d\n',w,Nw)
+            Z = C .* exp(-2 * pi * 1i * freq(w) * D);
+            if rho_C < 0.8
+                T(:,:,w) = K + K * Z;
+            else
+                T(:,:,w) = K/(I-Z);
+            end
         end
     else
         for w = 1:Nw
-           %fprintf('-->Frequency %d/%d\n',w,Nw)
+            %fprintf('-->Frequency %d/%d\n',w,Nw)
             Z = C .* exp(-2 * pi * 1i * freq(w) * D);
-            if rho_C < 1
+            if rho_C < 0.8
                 T(:,:,w) = K + K * Z;
             else
-                w
                 T(:,:,w) = K/(I-Z);
             end
-            G(:,:,w) = Kinv - Z * Kinv;
         end
     end
 else
@@ -55,9 +60,6 @@ else
         %fprintf('-->Frequency %d/%d\n',w,Nw)
         Z = I-C .* exp(-2 * pi * 1i * freq(w) * D);
         T(:,:,w) = K / Z;
-        G(:,:,w) = Z * Kinv;
     end
 end
 end
-%%
-

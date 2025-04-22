@@ -71,7 +71,10 @@ if(~isempty(properties.general_params.participants))
     subjects = subjects(ismember({subjects.name}, properties.general_params.participants));
 end
 parameters_tmp = parameters;
-for s=1:length(subjects)       
+lambda_space_cd                 = properties.model_params.delay.lambda_space_cd;
+lambda_space_cd(2,:)            = [10^(-10),1/max(abs(eig(parameters.Model.C)))];
+for s=1:length(subjects) 
+    tic
     if(isfile(XAN_file))
         XIALPHANET              = jsondecode(fileread(XAN_file));
     end
@@ -159,7 +162,6 @@ for s=1:length(subjects)
     BayesIter_Reg2              = properties.model_params.BayesIter_Reg2;
     Nrand1                      = properties.model_params.Nrand1;
     Nrand2                      = properties.model_params.Nrand2;
-    lambda_space_cd             = properties.model_params.delay.lambda_space_cd;
     conn_delay                  = properties.general_params.parallel.conn_delay;
     stoch1                      = properties.model_params.stoch1;
     stoch2                      = properties.model_params.stoch2;
@@ -180,8 +182,10 @@ for s=1:length(subjects)
     K                           = parameters.Compact_Model.K;
     D                           = parameters.Compact_Model.D;
     C                           = parameters.Compact_Model.C;
+    parameters.Data.freq        = freq;
     parameters.Parallel.T       = 0;
-    [T,G]                       = Teval(parameters);
+    T                           = Teval(parameters);
+    G                           = Geval(parameters);
     parameters.Model.T          = T;
     x0                          = generateRandomSample_fit(Nr, Cross, G, freq, 3);
 
@@ -192,7 +196,7 @@ for s=1:length(subjects)
     Lipschitz                   = estimateLipschitzConstant(freq, T, Cross, 1, 25, stoch1, 0.001, 100, x0);
    
     disp('-->> Cross Validating Initial Regularization Space...');
-    [lambda_space, ~, ~] = find_best_lambda(freq, T, Cross, stoch1, stoch2, 25, x0, Ne, Nr, Nr, 10, index_parall_bayes, Nrand1, Nrand2, Lipschitz, conn_delay);
+    [lambda_space, ~, ~]        = find_best_lambda(freq, T, Cross, stoch1, stoch2, 20, x0, Ne, Nr, Nr, 5, index_parall_bayes, Nrand1, Nrand2, Lipschitz, conn_delay);
 
     disp('-->> Estimating Connectivity & Delays Weights...');
     [lambda_opt_dc]             = bayes_search_conn_delay(lambda_space_cd, Ne, Nr, Nw, freq, Cross, BayesIter_Reg1, K, D, C, 1, BayesIter_Delay, x0, Lipschitz, lambda_space);
@@ -205,30 +209,30 @@ for s=1:length(subjects)
     parameters.Compact_Model.D  = lambda1 * parameters.Compact_Model.D;
     parameters.Compact_Model.C  = lambda2 * parameters.Compact_Model.C;
     parameters.Parallel.T       = 1*conn_delay;
-    parameters.Data.freq        = freq;
     T                           = Teval(parameters);
-
-    disp('-->> Cross Validating Final Regularization Space...');
-    [lambda_space, ~, ~]        = find_best_lambda(freq, T, Cross, stoch1, stoch2, Nsfreq, x0, Ne, Nr, Nr, 10, index_parall_bayes, Nrand1, Nrand2, Lipschitz, conn_delay);
+    % 
+    % disp('-->> Cross Validating Final Regularization Space...');
+    % [lambda_space, ~, ~]        = find_best_lambda(freq, T, Cross, stoch1, stoch2, Nsfreq, x0, Ne, Nr, Nr, 10, index_parall_bayes, Nrand1, Nrand2, Lipschitz, conn_delay);
 
     % Initializing Bayesian Optimization On Regularization
     disp('-->> Bayesian Optimization On Regularization Parameters...');
-    [lambda_opt]                = bayesianOptSearch(lambda_space,Ne,Nr,T,freq,stoch1,0,index_parall_bayes,Nsfreq,Cross,Nrand1,Lipschitz,BayesIter_Reg2);
+    [lambda_opt] = bayesianOptSearch(lambda_space, Ne, Nr, T, freq, stoch1, 0, index_parall_bayes, Nsfreq, Cross, Nrand1, Lipschitz, BayesIter_Reg2, x0);
     
     % Estimate transfer function
     disp('-->> Estimating Transfer Function...');
     parameters.Dimensions.Nv    = Nv;
     if(tf_default)
         TF_path                 = fullfile(properties.general_params.tmp.path,'TensorField');
-        T                       = read_tensor_field(lambda1,lambda2,age,TF_path);
+        [T]                     = read_tensor_field(lambda1,lambda2,age,TF_path);
+        [G]                     = Geval(parameters);
     else
-        parameters.Parallel.T   = 0;
-        [T,G]                   = Teval(parameters);
+        [T]                     = Teval(parameters);
+        [G]                     = Geval(parameters);
     end
 
     % Initializing Stochastic FISTA global optimizer
     disp('-->> Fixing Initial Parameters...');
-    x0                           = generateRandomSample_fit(Nv, Cross, G, freq, 30); 
+    x0                           = generateRandomSample_fit(Nv, Cross, G, freq, 20); 
     disp('-->> Running Stochastic FISTA Global Optimization...');
     [x_opt, ~]                  = stoch_fista_global(lambda_opt, Ne, Nv, T, freq, stoch2, conn_delay, Nsfreq, Cross, Nrand2, Lipschitz, x0);
     [e,a,s2]                    = x2v(x_opt.Solution);
@@ -249,7 +253,7 @@ for s=1:length(subjects)
     %%
     [Participant]               = xan_save(properties,'subject',SubID,x,T,G,parameters,data,Participant);
     parameters                  = parameters_tmp;
-
+    toc
 
     %% Save the computed x to the corresponding group folder in Model_Parameters
 

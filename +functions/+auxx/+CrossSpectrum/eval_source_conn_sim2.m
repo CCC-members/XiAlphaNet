@@ -21,7 +21,7 @@ else
     D = parameters.Model.D;
 end
 C = 0.5*(C+C');
-C = 0.5*(D+D');
+D = 0.5*(D+D');
 I = speye(Nv);
 
 % Unpack the input vector x into e, a, and sigma^2 components

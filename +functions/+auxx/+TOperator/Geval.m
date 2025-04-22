@@ -1,5 +1,4 @@
-function G = Geval(parameters);
-
+function [G] = Geval(parameters)
 import functions.*
 import functions.auxx.*
 import functions.auxx.Regularization.*
@@ -18,24 +17,29 @@ else
     D = parameters.Model.D;
 end
 
-
+Kinv = pinv(K);
 freq = parameters.Data.freq;
 %%
 
 I = eye(size(C));
-G = zeros(Nv,Nv,Nw);
-
+G = zeros(Nv,Ne,Nw);
+PF = floor(Nw/2)+1;
 if parameters.Parallel.T == 1
-    parfor w = 1:Nw
-       %fprintf('-->Frequency %d/%d\n',w,Nw)
-       Ts = (I - C .* exp(-2 * pi*i * freq(w) * D));
-       G(:,:,w) = inv(Ts);
+    parfor w = 1:PF
+        %fprintf('-->Frequency %d/%d\n',w,Nw)
+        Ts = (I - C .* exp(-2 * pi*1i * freq(w) * D));
+        G(:,:,w) = Ts*Kinv;
+    end
+    parfor w = PF+1:Nw
+        %fprintf('-->Frequency %d/%d\n',w,Nw)
+        Ts = (I - C .* exp(-2 * pi*1i * freq(w) * D));
+        G(:,:,w) = Ts*Kinv;
     end
 else
    for w = 1:Nw
        %fprintf('-->Frequency %d/%d\n',w,Nw)
-       Ts = (I - C .* exp(-2 * pi*i * freq(w) * D));
-       G(:,:,w) = inv(Ts);
+       Ts = (I - C .* exp(-2 * pi*1i * freq(w) * D));
+       G(:,:,w) = Ts*Kinv;
     end
 end 
 
