@@ -13,6 +13,9 @@ import functions.auxx.CrossSpectrum.*
 import functions.auxx.ModelVectorization.*
 import functions.auxx.Regularization.*
 import functions.auxx.TOperator.*
+import functions.auxx.GenerateSourceSample.*
+import functions.auxx.RegSpace.*
+import functions.auxx.Simulations.*
 import tools.*
 
 input_path                              = properties.general_params.input_path;
