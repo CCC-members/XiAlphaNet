@@ -16,12 +16,12 @@ Nv = parameters.Dimensions.Nv;
 
 % Read Structural Data
 if Nv==Nr
-    c     = nulldiag(parameters.Compact_Model.C);
+    C     = nulldiag(parameters.Compact_Model.C);
     D     = parameters.Compact_Model.D;
     R     = eye(size(C));
 else
     C     = nulldiag(parameters.Model.C);
-    D     = parameters.Model.D;
+    D     = parameters.Model.D;s
 end
 C         = 0.5*(C+C');
 D         = 0.5*(D+D');
