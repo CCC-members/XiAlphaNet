@@ -6,8 +6,16 @@ clear; clc;
 
 
 %Directory containing .mat files
-dataset = jsondecode(fileread('/Users/ronald/Desktop/Results/XIALPHANET.json'));
-dataset.Location = '/Users/ronald/Desktop/Results';
+
+% Path to the JSON file with model result metadata
+json_path = '/mnt/Store/Ronaldo/dev/Data/NewFolder/XIALPHANET.json';
+% Automatically determine base directory from JSON file path
+[dataset_dir, ~, ~] = fileparts(json_path);
+% Load and decode dataset JSON
+dataset = jsondecode(fileread(json_path));
+
+% Set the location field automatically based on JSON file directory
+dataset.Location = dataset_dir;
 import templates.*
 import functions.auxx.ModelVectorization.* 
 import guide.Visualization.*
@@ -15,41 +23,13 @@ import functions.auxx.ZeroInflatedModels.*
 import functions.auxx.Refine_Solution.*
 load("templates/mylin_data.mat")
 % Initialize arrays for storing delays and ages
-% delays = [];
-% ages = [];
-% alpha_powers= [];
-% xi_powers= [];
-% alpha_pfs = [];
-index=1;
-parfor i=1:length(dataset.Participants)
-    i
-    participant = dataset.Participants(i);
-    participant_age = participant.Age;
-    if(isequal(participant.Status,'Completed'))
-        ages(i) = participant_age;
-        Part_Info = jsondecode(fileread(fullfile(dataset.Location,participant.SubID,participant.FileInfo)));
-        Mod_Weights = load(fullfile(dataset.Location,participant.SubID,Part_Info.Mod_Weights));
-        Delay_Matrix = load(fullfile(dataset.Location,participant.SubID,Part_Info.Delay_Matrix));
+delays = [];
+ages = [];
+alpha_powers= [];
+xi_powers= [];
+alpha_pfs = [];
 
-        Alpha_estimate = load(fullfile(dataset.Location,participant.SubID,Part_Info.Alpha_estimate));
-        Xi_estimate = load(fullfile(dataset.Location,participant.SubID,Part_Info.Xi_estimate));
-        %
-        threshold_alpha =  set_threshold_em(Alpha_estimate.Power);
-        %pos_alpha = (Alpha_estimate.Power>threshold_alpha);
-        alpha_powers(:,i) =real( (Alpha_estimate.Power).*(Alpha_estimate.Power> threshold_alpha));
-        alpha_pfs(:,i) = real((Alpha_estimate.PAF).*(Alpha_estimate.Power> threshold_alpha));
-        threshold_xi = set_threshold_em(Xi_estimate.Power);
-        %pos_xi = (Xi_estimate.Power>threshold_xi);
-        xi_powers(:,i) = real((Xi_estimate.Power));
-       % if participant_age <=15
-            delays(i) =  mean(Delay_Matrix.Delay_Matrix(:));%11 * Mod_Weights.Mod_Weights(1);
-        %else
-         %   delays(i) = mean(Delay_Matrix(:));%9.5 * Mod_Weights.Mod_Weights(1); 
-        %end
-        index = index +1;
-    end
-end
-%%
+
 %--------------------------- Data Extraction -----------------------
 index = 1;
 parfor i=1:length(dataset.Participants)
@@ -72,11 +52,7 @@ parfor i=1:length(dataset.Participants)
         threshold_xi = set_threshold_em(Xi_estimate.Power);
         pos_xi = (Xi_estimate.Power>threshold_xi);
         xi_powers(i) = real(mean(Xi_estimate.Power(pos_xi)));
-       % if participant_age <=15
-            delays(i) =  mean(Delay_Matrix.Delay_Matrix(:));%11 * Mod_Weights.Mod_Weights(1);
-        %else
-         %   delays(i) = mean(Delay_Matrix(:));%9.5 * Mod_Weights.Mod_Weights(1); 
-        %end
+        delays(i) =  mean(Delay_Matrix.Delay_Matrix(:));
         index = index +1;
     end
 end
@@ -102,7 +78,7 @@ xi_powers = xi_powers0(:);
 % 1) Log-transform and sort
 AP = 10*log10(1e-6 + alpha_powers);          % log(Alpha Power)
 %AP =  (AP(:)-min(AP(:)))./(max(AP(:))-min(AP(:)));
-Del = (delays0);               % log(tau^-2)
+Del = 1000*(delays0);               % log(tau^-2)
 %Del =  (Del(:)-min(Del(:)))./(max(Del(:))-min(Del(:)));
 % Example IQR-based outlier removal on PAF:
 Q1 = quantile(AP, 0.25);
@@ -200,7 +176,7 @@ grid on; hold off;
 % 1) Log-transform and sort
 AP = alpha_pfs; % log(Alpha Power)
 %AP =  (AP(:)-min(AP(:)))./(max(AP(:))-min(AP(:)));
-Del = (1000*delays0).^(-2);               % log(tau^-2)
+Del = (1000*delays0);               % log(tau^-2)
 %Del =  (Del(:)-min(Del(:)))./(max(Del(:))-min(Del(:)));
 
 % Example IQR-based outlier removal on PAF:
@@ -300,7 +276,7 @@ grid on; hold off;
 %% --------------------------- Xi Power vs Delays ---------------------------
 XIP = 10*log10(10^(-6)+xi_powers); 
 %XIP =  (XIP(:)-min(XIP(:)))./(max(XIP(:))-min(XIP(:)));
-Del = (delays0);               % log(tau^-2)
+Del = 1000*(delays0);               % log(tau^-2)
 %Del =  (Del(:)-min(Del(:)))./(max(Del(:))-min(Del(:)));
 
 % Example IQR-based outlier removal on PAF:
@@ -679,132 +655,3 @@ legQuad = sprintf('Quadratic: b0=%.3f (p=%.3g), b1=%.3f (p=%.3g), b2=%.3f (p=%.3
 legend({legLin, 'Linear \pm1SE', legQuad, 'Quadratic \pm1SE'}, ...
     'Location', 'best');
 grid on; hold off;
-%%
-X = ages; 
- M = 1000*delays.^2;  Y = log(alpha_pfs);
-X= (X-mean(X))/std(X);
-Y =  (Y-mean(Y))/std(Y);
-M =  (M-mean(M))/std(M);
-% Step 1: Regress mediator (M) on X (quadratic terms included)
-X2 = X.^2; % Compute quadratic term for X
-mdl1 = fitlm([X, X2], M); % Fit linear model with X and X^2 as predictors
-alpha1 = mdl1.Coefficients.Estimate(2); % Coefficient for X
-alpha2 = mdl1.Coefficients.Estimate(3); % Coefficient for X^2
-
-% Display coefficients for path a
-disp('Coefficients for path a (X -> M):');
-disp(['alpha1 (X): ', num2str(alpha1)]);
-disp(['alpha2 (X^2): ', num2str(alpha2)]);
-
-% Step 2: Regress Y on both X and M (quadratic terms included)
-M2 = M.^2; % Compute quadratic term for M
-X2 = X.^2; % Recompute quadratic term for X if needed
-mdl2 = fitlm([X, X2, M, M2], Y); % Fit linear model with X, X^2, M, M^2 as predictors
-beta1 = mdl2.Coefficients.Estimate(2); % Coefficient for X
-beta2 = mdl2.Coefficients.Estimate(3); % Coefficient for X^2
-beta3 = mdl2.Coefficients.Estimate(4); % Coefficient for M
-beta4 = mdl2.Coefficients.Estimate(5); % Coefficient for M^2
-
-% Display coefficients for path b and direct effect path (X -> Y)
-disp('Coefficients for path b (M -> Y) and direct effects (X -> Y):');
-disp(['beta1 (X): ', num2str(beta1)]);
-disp(['beta2 (X^2): ', num2str(beta2)]);
-disp(['beta3 (M): ', num2str(beta3)]);
-disp(['beta4 (M^2): ', num2str(beta4)]);
-
-% Step 3: Calculate indirect effect (a * b)
-indirect_effect = (alpha1 * beta3) + (alpha2 * beta4);
-
-% Step 4: Calculate direct effect (X -> Y)
-direct_effect = beta1 + beta2;
-
-% Display results
-disp('Indirect Effect (a * b):');
-disp(indirect_effect);
-
-disp('Direct Effect (X -> Y):');
-disp(direct_effect);
-
-% Step 5: Calculate total effect (Direct + Indirect)
-total_effect = direct_effect + indirect_effect;
-disp('Total Effect (Direct + Indirect):');
-disp(total_effect);
-
-% Step 6: Bootstrap the indirect effect to get confidence intervals
-numBootstraps = 1000;
-indirectEffects = zeros(numBootstraps, 1);
-
-for i = 1:numBootstraps
-    % Resample the data
-    idx = randi(length(X), length(X), 1);
-    X_resampled = X(idx);
-    M_resampled = M(idx);
-    Y_resampled = Y(idx);
-    
-    % Regress mediator (M) on X (quadratic terms)
-    X2_resampled = X_resampled.^2;
-    mdl1_resampled = fitlm([X_resampled, X2_resampled], M_resampled);
-    alpha1_resampled = mdl1_resampled.Coefficients.Estimate(2);
-    alpha2_resampled = mdl1_resampled.Coefficients.Estimate(3);
-    
-    % Regress Y on X and M (quadratic terms)
-    M2_resampled = M_resampled.^2;
-    mdl2_resampled = fitlm([X_resampled, X2_resampled, M_resampled, M2_resampled], Y_resampled);
-    beta3_resampled = mdl2_resampled.Coefficients.Estimate(4);
-    beta4_resampled = mdl2_resampled.Coefficients.Estimate(5);
-    
-    % Calculate indirect effect for this bootstrap sample
-    indirectEffects(i) = (alpha1_resampled * beta3_resampled) + (alpha2_resampled * beta4_resampled);
-end
-
-% Get confidence intervals for the indirect effect
-CI = prctile(indirectEffects, [2.5, 97.5]);
-disp('Bootstrapped Confidence Interval for Indirect Effect:');
-disp(CI);
-
-%%
-% c_d = zeros(8003, 1);  % R² for delays (quadratic fit)
-% c_a = zeros(8003, 1);  % R² for ages (quadratic fit)
-% % pos=ones(8003,1);
-% % for j=1:size(alpha_powers,2)
-% %     j
-% %     pos = pos.*(alpha_powers>0);
-% % end
-% 
-% 
-% for j = 1:8003
-%     j
-%     y = alpha_powers(j, :);
-%     pos = find(y > 0);
-%     y_r = y(pos);
-%     ages_r = ages(pos);
-%     delays_r = delays(pos);
-% 
-%     % Quadratic R² for delays
-%     X = [ones(length(delays_r(:)), 1), delays_r(:), delays_r(:).^2];
-%     beta = pinv(X) * y_r(:);
-%     y_hat = X * beta;
-%     SS_res = sum((y_r(:) - y_hat).^2);
-%     SS_tot = sum((y_r(:) - mean(y_r)).^2);  % also updated this to use y_r!
-%     c_d(j) = 1 - (SS_res / SS_tot);
-% 
-%     % Quadratic R² for ages
-%     X = [ones(length(ages_r(:)), 1), ages_r(:), ages_r(:).^2];
-%     beta = pinv(X) * y_r(:);
-%     y_hat = X * beta;
-%     SS_res = sum((y_r(:) - y_hat).^2);
-%     SS_tot = sum((y_r(:) - mean(y_r)).^2);  % updated here too
-%     c_a(j) = 1 - (SS_res / SS_tot);
-% end
-% 
-% %% Plotting
-% import functions.auxx.Refine_Solution.*
-% J = c_d;%.*alpha_pfs(:,1)./max(alpha_pfs(:,1));
-% import guide.Visualization.*
-% esi_plot_single;
-% colormap('parula');
-
-
-
-
-

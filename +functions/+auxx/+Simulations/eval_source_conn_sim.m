@@ -20,7 +20,7 @@ j_xi = zeros(Nv,Nsw);
 j_alpha = zeros(Nv,Nsw);
 % Iterate over each frequency and compute cxi and calpha
 if conn_delay == 1
-    for j = 1:Nsw
+    parfor j = 1:Nsw
         %fprintf('Processing frequency %d of %d\n', j, Nsw);
         omega = freq(j);
         Tj_cross = G(:,:,j);

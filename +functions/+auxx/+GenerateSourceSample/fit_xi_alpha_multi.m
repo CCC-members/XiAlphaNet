@@ -23,11 +23,11 @@ function [best_params, best_fit, all_fits] = fit_xi_alpha_multi(S, omega, N_init
     xi_omega = @(e, omega) e(1) ./ (1 + e(2) * omega.^2).^e(3);
     alpha_omega = @(a, omega) a(1) ./ (1 + a(2) * (omega - a(4)).^2).^a(3);
     model_fun = @(params, omega) ...
-        xi_omega(params(1:3), omega) + alpha_omega(params(4:7), omega);
+        log(xi_omega(params(1:3), omega) + alpha_omega(params(4:7), omega));
 
     % === Bounds ===
     lb = [0, 0, 0,     0, 0, 0, 7];     % [e1, e2, e3, a1, a2, a3, a4]
-    ub = [Inf, 10, 10,  Inf, 10, 100, 13];
+    ub = [Inf, 10, 10,  Inf, 10, 10, 13];
 
     % === Optimizer options ===
     options = optimoptions('lsqcurvefit', 'Display', 'off', ...
@@ -56,7 +56,7 @@ function [best_params, best_fit, all_fits] = fit_xi_alpha_multi(S, omega, N_init
         % Fit
         [params_k, resnorm_k] = lsqcurvefit( ...
             @(params, omega) model_fun(params, omega), ...
-            init_params, omega, S, lb, ub, options);
+            init_params, omega, log(S), lb, ub, options);
 
         all_params(k, :) = params_k;
         all_resnorm(k) = resnorm_k;

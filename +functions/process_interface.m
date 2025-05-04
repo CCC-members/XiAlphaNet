@@ -196,7 +196,7 @@ for s=1:length(subjects)
     Lipschitz                   = estimateLipschitzConstant(freq, T, Cross, 1, 25, stoch1, 0.001, 100, x0);
    
     disp('-->> Cross Validating Initial Regularization Space...');
-    [lambda_space, ~, ~]        = find_best_lambda(freq, T, Cross, stoch1, stoch2, 20, x0, Ne, Nr, Nr, 5, index_parall_bayes, Nrand1, Nrand2, Lipschitz, conn_delay);
+    [lambda_space, ~, ~]        = find_best_lambda(freq, T, Cross, 1, 1, 20, x0, Ne, Nr, Nr, 10, index_parall_bayes, Nrand1, Nrand2, Lipschitz, conn_delay);
 
     disp('-->> Estimating Connectivity & Delays Weights...');
     [lambda_opt_dc]             = bayes_search_conn_delay(lambda_space_cd, Ne, Nr, Nw, freq, Cross, BayesIter_Reg1, K, D, C, 1, BayesIter_Delay, x0, Lipschitz, lambda_space);
@@ -211,8 +211,8 @@ for s=1:length(subjects)
     parameters.Parallel.T       = 1*conn_delay;
     T                           = Teval(parameters);
     % 
-    % disp('-->> Cross Validating Final Regularization Space...');
-    % [lambda_space, ~, ~]        = find_best_lambda(freq, T, Cross, stoch1, stoch2, Nsfreq, x0, Ne, Nr, Nr, 10, index_parall_bayes, Nrand1, Nrand2, Lipschitz, conn_delay);
+    disp('-->> Cross Validating Final Regularization Space...');
+    [lambda_space, ~, ~]        = find_best_lambda(freq, T, Cross, 1, 1, 20, x0, Ne, Nr, Nr, 10, index_parall_bayes, Nrand1, Nrand2, Lipschitz, conn_delay);
 
     % Initializing Bayesian Optimization On Regularization
     disp('-->> Bayesian Optimization On Regularization Parameters...');
@@ -232,7 +232,7 @@ for s=1:length(subjects)
 
     % Initializing Stochastic FISTA global optimizer
     disp('-->> Fixing Initial Parameters...');
-    x0                           = generateRandomSample_fit(Nv, Cross, G, freq, 20); 
+    x0                           = generateRandomSample_fit(Nv, Cross, G, freq, 1); 
     disp('-->> Running Stochastic FISTA Global Optimization...');
     [x_opt, ~]                  = stoch_fista_global(lambda_opt, Ne, Nv, T, freq, stoch2, conn_delay, Nsfreq, Cross, Nrand2, Lipschitz, x0);
     [e,a,s2]                    = x2v(x_opt.Solution);

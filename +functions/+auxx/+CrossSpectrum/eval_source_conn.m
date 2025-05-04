@@ -21,7 +21,7 @@ if Nv==Nr
     R     = eye(size(C));
 else
     C     = nulldiag(parameters.Model.C);
-    D     = parameters.Model.D;s
+    D     = parameters.Model.D;
 end
 C         = 0.5*(C+C');
 D         = 0.5*(D+D');

@@ -8,8 +8,8 @@
 clear; clc;
 
 %Directory containing .mat files
-dataset = jsondecode(fileread('D:\data\Results\XIALPHANET.json'));
-dataset.Location = 'D:\data\Results';
+dataset = jsondecode(fileread('/mnt/Store/Ronaldo/dev/Data/NewFolder/XIALPHANET.json'));
+dataset.Location = '/mnt/Store/Ronaldo/dev/Data/NewFolder';
 import templates.*
 load("templates/mylin_data.mat")
 %Initialize arrays for storing delays and ages
@@ -23,18 +23,14 @@ for i=1:length(dataset.Participants)
     if(isequal(participant.Status,'Completed'))
         ages(index) = participant_age;
         Part_Info = jsondecode(fileread(fullfile(dataset.Location,participant.SubID,participant.FileInfo)));
-        Mod_Weights = load(fullfile(dataset.Location,participant.SubID,Part_Info.Mod_Weights));
-        if participant_age <=15
-            delays(index) =  11 * Mod_Weights.Mod_Weights(1);
-        else
-            delays(index) = 9.5 * Mod_Weights.Mod_Weights(1);
-        end
+        Delay_Matrix = load(fullfile(dataset.Location,participant.SubID,Part_Info.Delay_Matrix));
+        delays(index) =  1000*mean(Delay_Matrix.Delay_Matrix(:));
         index = index +1;
     end
 end
 
 
-% Convert to column vectors 
+% Convert to column vectors
 delays0=delays(:);
 delays = delays(:);
 ages = ages(:);
@@ -58,7 +54,7 @@ end
 % 2. Interquartile Range (IQR) Method
 
 % Select the method by setting methodVariable to 'zscore' or 'iqr'
-method = 'zscore'; % Change to 'iqr' if preferred
+method = 'iqr'; % Change to 'iqr' if preferred
 
 switch lower(method)
     case 'zscore'
@@ -84,8 +80,8 @@ switch lower(method)
         IQR = Q3 - Q1;
 
         % Define outlier bounds
-        lowerBound = Q1 - 1.5 * IQR;
-        upperBound = Q3 + 1.5 * IQR;
+        lowerBound = Q1 - 2.5 * IQR;
+        upperBound = Q3 + 2.5 * IQR;
 
         % Identify non-outlier indices
         nonOutliers = (delays >= lowerBound) & (delays <= upperBound);
@@ -165,8 +161,8 @@ fprintf('Quadratic regression performed on %d valid data points after outlier re
 %%
 % Define the ages to fit
 % Construct design matrix for quadratic robust fit
-invsquare_delays = log(1./(delays.^2));
-ages = ages;
+invsquare_delays = log(1./(cleanDelays.^2));
+ages = cleanAges;
 X = [ones(size(ages)), ages, ages.^2];
 %
  %Perform robust regression on the transformed data with quadratic model

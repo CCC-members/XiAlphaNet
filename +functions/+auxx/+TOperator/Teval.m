@@ -29,7 +29,7 @@ if Nv>Nr
         parfor w = 1:PF
             %fprintf('-->Frequency %d/%d\n',w,Nw)
             Z = C .* exp(-2 * pi * 1i * freq(w) * D);
-            if rho_C < 0.8
+            if rho_C < 0.1
                 T(:,:,w) = K + K * Z;
             else
                 T(:,:,w) = K/(I-Z);
@@ -38,7 +38,7 @@ if Nv>Nr
         parfor w = 1+PF:Nw
             %fprintf('-->Frequency %d/%d\n',w,Nw)
             Z = C .* exp(-2 * pi * 1i * freq(w) * D);
-            if rho_C < 0.8
+            if rho_C < 0.1
                 T(:,:,w) = K + K * Z;
             else
                 T(:,:,w) = K/(I-Z);
@@ -48,7 +48,7 @@ if Nv>Nr
         for w = 1:Nw
             %fprintf('-->Frequency %d/%d\n',w,Nw)
             Z = C .* exp(-2 * pi * 1i * freq(w) * D);
-            if rho_C < 0.8
+            if rho_C < 0.1
                 T(:,:,w) = K + K * Z;
             else
                 T(:,:,w) = K/(I-Z);

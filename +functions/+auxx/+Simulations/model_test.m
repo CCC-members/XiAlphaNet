@@ -5,14 +5,14 @@
 clear all;
 clc;
 
-% Load structural data /Users/ronald/Desktop/Results
-load("/Users/ronald/Desktop/Results/structural/parameters.mat");
+% Load structural data
+load("/mnt/Store/Ronaldo/dev/Data/Results/structural/parameters.mat");
 
 % Set parameters for simulation in ROI space
-parameters.Model = Compact_Model;
+parameters.Model = Model;
 parameters.Compact_Model = Compact_Model;
 parameters.Dimensions = Dimensions;
-parameters.Dimensions.Nv = parameters.Dimensions.Nr;
+%parameters.Dimensions.Nv = parameters.Dimensions.Nr;
 % Clear temporary variables to save memory
 clear Compact_Model Model Dimensions;
 
@@ -31,7 +31,7 @@ import functions.auxx.DataPreprocessing.*;
 % Set up simulation parameters
 Ne = parameters.Dimensions.Ne;  % Number of electrodes
 Nr = parameters.Dimensions.Nr;  % Number of ROIs
-Nv = parameters.Dimensions.Nr;  % Set voxel to ROI  
+Nv = parameters.Dimensions.Nv;  % Set voxel to ROI  
 Nw = parameters.Dimensions.Nw;  % Number of frequency bins
 Nsim = 10;  % Number of simulations
 N_wishart = 1000;
@@ -44,9 +44,9 @@ disp("--> Estimating source cross-spectrum");
 properties.model_params.nFreqs = Nw;
 properties.model_params.BayesIter_Delay = 30;
 properties.model_params.BayesIter_Reg1 = 20;
-properties.model_params.BayesIter_Reg2 = 30;
-properties.model_params.Nrand1 = 1;
-properties.model_params.Nrand2 = 1;
+properties.model_params.BayesIter_Reg2 = 100;
+properties.model_params.Nrand1 = 10;
+properties.model_params.Nrand2 = 50;
 properties.model_params.delay.lambda_space_cd = [[0.4, 1.6]; [10^(-10), 1/conn_spec]];
 properties.general_params.parallel.conn_delay = 1;
 properties.model_params.stoch1 = 1;
@@ -72,8 +72,8 @@ import functions.auxx.Simulations.private.*;
 % Load model and transformation matrices
 L = parameters.Model.K;  % Transformation matrix for cross-spectrum
 
-% Set data directory for simulation %/Users/ronald/Downloads/MultinationalNorms
-dir_data = '/Users/ronald/Downloads/MultinationalNorms';
+% Set data directory for simulation
+dir_data = '/mnt/Store/Ronaldo/dev/Data/norms';
 subject_folders = dir(fullfile(dir_data, '*'));
 subject_folders = subject_folders([subject_folders.isdir] & ~startsWith({subject_folders.name}, '.'));
 selected_folders = subject_folders(randperm(length(subject_folders), Nsim));
@@ -117,14 +117,14 @@ for j = 1:Nsim
     
     
     % Prepare data for Xi-AlphaNET estimation
-    data.Cross = Svv_cross;
+    data.Cross = Svv;
     data.age = 25;  % Age of the subject
     data.freq = freq;
    
     % Perform Xi-AlphaNET estimation
     disp('->> Xi-AlphaNeT Inverse Solution')
     [x, ~, G,x0] = Xi_ALphaNET(properties, data, parameters);
-    [source_act_cross] = functions.auxx.CrossSpectrum.eval_source_conn(x.Solution, freq,parameters.Model.R,properties,parameters);
+    [source_act_cross] = functions.auxx.Simulations.eval_source_conn_sim(x.Solution, data.freq, G, parameters.Model.K, parameters.Model.R, properties);
     
     % Store the results of the Xi-AlphaNET simulation
     XA_Sjj_cross = source_act_cross.Cross.Full;

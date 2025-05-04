@@ -1,21 +1,39 @@
 clc;
 clear all;
 
+% Import required helper functions
 import functions.auxx.ModelVectorization.*
 import guide.Visualization.*
 import functions.auxx.ZeroInflatedModels.*
 import functions.auxx.Refine_Solution.*
-prc = 90;
-cross_index = 0; % 
-age_min = 80;%age_range(1);
-age_max = 100;%age_range(2);
-dataset = jsondecode(fileread('D:\new_last_data_new\NewFolder\XIALPHANET.json'));
-dataset.Location = 'D:\new_last_data_new\NewFolder';
-parameters = load('D:\new_last_data_new\NewFolder\structural\parameters.mat');
+
+% Define parameters for analysis
+prc = 90;             % Percentile threshold (e.g., for visualizing distributions)
+cross_index = 0;      % Cross-validation index (0 = not using CV)
+num_groups = 1;       % Number of age groups (for age stratification)
+mode = 0;             % 0 = amplitude plots, 1 = zero-inflation probability plots
+age_min = 0;          % Minimum age for inclusion
+age_max = 100;        % Maximum age for inclusion
+
+% Path to the JSON file with model result metadata
+json_path = '/mnt/Store/Ronaldo/dev/Data/NewFolder/XIALPHANET.json';
+
+% Automatically determine base directory from JSON file path
+[dataset_dir, ~, ~] = fileparts(json_path);
+
+% Load and decode dataset JSON
+dataset = jsondecode(fileread(json_path));
+
+% Set the location field automatically based on JSON file directory
+dataset.Location = dataset_dir;
+
+% Load structural model parameters
+parameters = load(fullfile(dataset_dir, 'structural', 'parameters.mat'));
+
 ages = [];
 All_Data = {}; 
 index = 1;
-for i=1:length(dataset.Participants)-20
+for i=1:length(dataset.Participants)
     i
     participant = dataset.Participants(i);
     participant_age = participant.Age;
@@ -41,29 +59,71 @@ end
 
 %% Cross Validation
 % Initialize storage for Peak Alpha Frequency (PAF), Amplitude of the Alpha, and Amplitude of Xi
+% Initialize storage
 PAF_all = [];
 AlphaAmp_all = [];
 XiAmp_all = [];
 
-% Convert each data.x to [e, a, s2] and store PAF (a(:,4)), Alpha Amplitude (a(:,1)), and Xi Amplitude
-threshold_PAF = 8;
+threshold_PAF = 7;
 import functions.auxx.Refine_Solution.*
-import functions.auxx.ModelVectorization.*
-parfor j = 1:length(All_Data(1,:))
+
+% Temporary storage for thresholds
+threshold_Alpha = zeros(1, length(All_Data));
+threshold_Xi = zeros(1, length(All_Data));
+
+% First pass: extract features
+for j = 1:length(All_Data)
     fprintf('Processing subject %d\n', j);
     [e, a, s2] = x2v(All_Data{1,j});  % Assuming x2v returns [e, a, s2]
-    PAF_all(:,j) = a(:,4);            % Store Peak Alpha Frequency
-    AlphaAmp_all(:,j) = a(:,1);       % Store Amplitude of the Alpha
-    XiAmp_all(:,j) = e(:,1);
-    % Binarize the Amplitud by selecting nonparametrically a threshold
-    threshold_Alpha(j)   =  set_threshold_em(AlphaAmp_all(:,j));
-    threshold_Xi(j)   =  set_threshold_em(XiAmp_all(:,j));
-    PAF_all(:,j) = PAF_all(:,j).*(AlphaAmp_all(:,j)>threshold_Alpha(j));
-    PAF_all(:,j) = PAF_all(:,j) > threshold_PAF;                 % Apply threshold for PAF
-    AlphaAmp_all(:,j) = AlphaAmp_all(:,j).*(AlphaAmp_all(:,j)>threshold_Alpha(j));
-    XiAmp_all(:,j) = XiAmp_all(:,j)> threshold_Xi(j);
+    PAF_all(:,j) = a(:,4);            % Peak Alpha Frequency
+    AlphaAmp_all(:,j) = a(:,1);       % Alpha Amplitude
+    XiAmp_all(:,j) = e(:,1);          % Xi Amplitude
 end
 
+% Compute mean across voxels for each subject
+mean_PAF = mean(PAF_all, 1, 'omitnan');
+mean_Alpha = mean(AlphaAmp_all, 1, 'omitnan');
+mean_Xi = mean(XiAmp_all, 1, 'omitnan');
+
+% Z-score computation
+z_PAF = zscore(mean_PAF);
+z_Alpha = zscore(mean_Alpha);
+z_Xi = zscore(mean_Xi);
+
+% Identify outliers: abs(z) > 3 in any metric
+outlier_idx = abs(z_PAF) > 2.5 | abs(z_Alpha) > 2.5 | abs(z_Xi) > 2.5;
+valid_idx = ~outlier_idx;
+fprintf('Removed %d outlier subjects\n', sum(outlier_idx));
+
+% Filter out outliers
+PAF_all = PAF_all(:, valid_idx);
+AlphaAmp_all = AlphaAmp_all(:, valid_idx);
+XiAmp_all = XiAmp_all(:, valid_idx);
+All_Data = All_Data(:, valid_idx);
+
+% Second pass: Apply thresholds
+parfor j = 1:length(All_Data)
+    [e, a, s2] = x2v(All_Data{1,j});
+    Alpha_j = a(:,1);
+    Xi_j = e(:,1);
+    PAF_j = a(:,4);
+
+    threshold_Alpha(j) = set_threshold_em(Alpha_j);
+    threshold_Xi(j) = set_threshold_em(Xi_j);
+    if mode == 1 % For probability
+        Alpha_j =  (Alpha_j > threshold_Alpha(j));
+        Xi_j_bin = Xi_j > threshold_Alpha(j);
+        PAF_j_bin = (PAF_j .* (Alpha_j > threshold_Alpha(j))) > threshold_PAF;
+    else % For amplitude Distribution
+        Alpha_j =  Alpha_j.*(Alpha_j > threshold_Alpha(j));
+        Xi_j_bin = Xi_j.*(Xi_j > threshold_Alpha(j));
+        PAF_j_bin = PAF_j.*((PAF_j .* (Alpha_j > threshold_Alpha(j))) > threshold_PAF);
+    end
+
+    AlphaAmp_all(:,j) = Alpha_j;
+    XiAmp_all(:,j) = Xi_j_bin;
+    PAF_all(:,j) = PAF_j_bin;
+end
 
 % Get unique ages
 ages = cell2mat(All_Data(2,:));  % Get the ages
@@ -78,7 +138,7 @@ if cross_index == 1
     kernel = @(u) (3/4)*(1 - u.^2) .* (abs(u) <= 1);
 
     % Define a range of bandwidths to search
-    bandwidths = linspace(0.1, 10, 20);  % Adjust range and number of points as needed
+    bandwidths = linspace(0.1, 100, 30);  % Adjust range and number of points as needed
 
     % Number of folds for cross-validation
     K = 10;
@@ -187,9 +247,9 @@ if cross_index == 1
     fprintf('XiAmp: %.2f\n', h_t_XiAmp);
 else
     % Default Values 
-    h_t_PAF = 8.96;
-    h_t_AlphaAmp = 8.96;
-    h_t_XiAmp = 2.71;
+    h_t_PAF = 100;
+    h_t_AlphaAmp = 100;
+    h_t_XiAmp = 100;
 end
 %% Kernel Density
 
@@ -205,9 +265,10 @@ kernel_epanechnikov = @(u) (3/4)*(1 - u.^2) .* (abs(u) < 1);  % Epanechnikov Ker
 
 % Define bandwidths for spatial and temporal kernels
 % Optimal Bandwidths (you can adjust these as needed)
-h_s_PAF = 1;          % Spatial bandwidth for PAF 
-h_s_AlphaAmp = 1;     % Spatial bandwidth for Alpha Amplitude 
-h_s_XiAmp = 1;        % Spatial bandwidth for Xi Amplitude 
+h0 = mean(L(:));
+h_s_PAF = h0;          % Spatial bandwidth for PAF 
+h_s_AlphaAmp = h0;     % Spatial bandwidth for Alpha Amplitude 
+h_s_XiAmp = h0;        % Spatial bandwidth for Xi Amplitude 
 
 
 % Precompute spatial kernel matrices for each measure
@@ -293,8 +354,7 @@ for i = 1:num_age_points
     XiAmp_kernel(:,i) = XiAmp_estimate;
 end
 %% Marginalization 
-age_group_edges = linspace(age_min,age_max,2);
-num_groups =  1;
+age_group_edges = linspace(0,100,num_groups+1);
 
 % Extract and preprocess ages
 ages = cell2mat(All_Data(2,:));
@@ -366,14 +426,13 @@ AlphaAmp_avg_intervals = AlphaAmp_marginalized;% 1 x num_groups
 XiAmp_avg_intervals = XiAmp_marginalized;      % 1 x num_groups
 import guide.Visualization.esi_plot_single
 % === Step 2: Define Age Intervals ===
-age_intervals =  linspace(age_min,age_max,2);% Adjust as needed
-num_groups = 1;
+age_intervals =  linspace(0,100,num_groups+1);% Adjust as needed
 
 % === Step 3: Create the Plots ===
 %figure('Position', [100, 100, 1500, 900]);  % Adjust figure size as needed
 
 % === Plot PAF ===
-for i = 1:num_groups
+for i = 1:max(num_groups-1,1)
    % subplot(3, num_groups, i);  % First row for PAF
     J_age_interval = PAF_avg_intervals(:,i);
     
@@ -393,7 +452,7 @@ for i = 1:num_groups
 end
 
 % === Plot AlphaAmp ===
-for i = 1:num_groups
+for i = 1:max(num_groups-1,1)
     %subplot(3, num_groups, i + num_groups);  % Second row for AlphaAmp
     J_age_interval = AlphaAmp_avg_intervals(:,i);
     
@@ -413,7 +472,7 @@ for i = 1:num_groups
 end
 
 % === Plot XiAmp ===
-for i = 1:num_groups
+for i = 1:max(num_groups-1,1)
     %subplot(3, num_groups, i + 2*num_groups);  % Third row for XiAmp
     J_age_interval = XiAmp_avg_intervals(:,i);
     
