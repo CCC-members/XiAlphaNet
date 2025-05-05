@@ -1,100 +1,117 @@
-function result = fitZIG_random(Y_roi, age, max_iter, tol, verbose)
-% FITZIG_FIXED - EM estimation of ZIG with only fixed effects
+function result = fitZIG_two_step(Y_roi, age)
+% FITZIG_TWO_STEP - Two-step estimation of Zero-Inflated Gaussian (ZIG) model
+%
+% INPUTS:
+%   Y_roi : [Nv x N] matrix of voxel-level data (voxels × subjects)
+%   age   : [N x 1] vector of subject ages
+%
 % OUTPUT:
-%   result: struct with beta, gamma, sigma, p-values
+%   result : struct with fields:
+%     - beta     : [Nv x 3] regression coefficients for Gaussian part
+%     - gamma    : [Nv x 2] regression coefficients for zero inflation
+%     - sigma    : [Nv x 1] residual standard deviation (Gaussian)
+%     - loglik   : [Nv x 1] approximate log-likelihood
+%     - iter     : [Nv x 1] number of iterations (always 1 for 2-step)
+%     - p_beta   : [Nv x 3] p-values for Gaussian coefficients
+%     - p_gamma  : [Nv x 2] p-values for logistic coefficients
+%     - mu_est   : [Nv x N] conditional mean predictions (only where Y > 0)
+%     - pi_est   : [Nv x N] predicted zero-inflation probabilities
 
-    if nargin < 3, max_iter = 100; end
-    if nargin < 4, tol = 1e-6; end
-    if nargin < 5, verbose = true; end
+    [Nv, N] = size(Y_roi);
+    age = age(:);  % Ensure column vector
 
-    [Nr, N] = size(Y_roi);
-    age = age(:);
-    Age_long = repmat(age, Nr, 1);
-    Age2_long = Age_long.^2;
+    % Standardize age
+    age_std = (age - mean(age)) / std(age);
 
-    % Fixed effects design matrices
-    X_mu = [ones(Nr*N, 1), Age_long, Age2_long];
-    X_pi = [ones(Nr*N, 1), Age_long];
+    % Design matrices
+    X_mu = [ones(N,1), age_std, age_std.^2];  % [N x 3]
+    X_pi = [ones(N,1), age_std];              % [N x 2]
 
-    % Flatten data
-    Y_long = reshape(Y_roi', [], 1);
-    is_pos = Y_long > 0;
+    % Preallocate outputs
+    beta     = zeros(Nv, 3);
+    gamma    = zeros(Nv, 2);
+    sigma    = zeros(Nv, 1);
+    loglik   = zeros(Nv, 1);
+    iter     = ones(Nv, 1);
+    p_beta   = zeros(Nv, 3);
+    p_gamma  = zeros(Nv, 2);
+    mu_est   = zeros(Nv, N);
+    pi_est   = zeros(Nv, N);
 
-    % Initialize parameters
-    beta = X_mu(is_pos, :) \ Y_long(is_pos);
-    gamma = glmfit(Age_long, ~is_pos, 'binomial', 'link', 'logit');
-    sigma = std(Y_long(is_pos));
+    % Options for logistic regression
+    opts = statset('fitglm');
+    opts.MaxIter = 1000;
 
-    prev_ll = -Inf;
+    for v = 1:Nv
+        y = Y_roi(v,:)';
+        is_pos = y > 0;
 
-    for iter = 1:max_iter
-        % === E-step ===
-        mu = X_mu * beta;
-        pi_logit = X_pi * gamma;
-        pi = 1 ./ (1 + exp(-pi_logit));
-        pi = min(max(pi, 1e-6), 1 - 1e-6);
-
-        phi0 = normpdf(0, mu, sigma);
-        tau = zeros(Nr*N, 1);
-        tau(is_pos) = 1;
-
-        nonpos = ~is_pos;
-        denom = pi(nonpos) + (1 - pi(nonpos)) .* phi0(nonpos) + eps;
-        tau(nonpos) = ((1 - pi(nonpos)) .* phi0(nonpos)) ./ denom;
-        tau = min(max(tau, 1e-6), 1 - 1e-6);
-
-        % === M-step ===
-        % Update fixed effects for mean
-        % Now we update W diagonally using tau directly, no need to form the full W matrix
-        W_diag = tau;  % This is the diagonal of W, a vector of length Nr*N
-
-        % Update beta (weighted least squares)
-        beta = (X_mu' * (W_diag .* X_mu)) \ (X_mu' * (W_diag .* Y_long));
-
-        % Update residual variance
-        residuals = Y_long - X_mu * beta;
-        sigma2 = sum(W_diag .* residuals.^2) / sum(W_diag);
-        sigma = sqrt(sigma2);
-
-        % Update zero-inflation parameters
-        [gamma, dev, stats] = glmfit(Age_long, 1 - tau, 'binomial', 'link', 'logit');
-        se_gamma = stats.se;
-
-        % Log-likelihood
-        logL_zero = log(pi + (1 - pi) .* phi0 + eps);
-        logL_pos  = log(1 - pi + eps) + log(normpdf(Y_long, mu, sigma) + eps);
-        ll = sum((1 - tau) .* logL_zero) + sum(tau .* logL_pos);
-
-        if verbose
-            fprintf('Iter %3d: loglik = %.6f, mean(1-tau) = %.4f\n', iter, ll, mean(1 - tau));
+        %% === STEP 1: Logistic Regression ===
+        if all(is_pos) || all(~is_pos)
+            gamma(v,:)   = 0;
+            p_gamma(v,:) = 1;
+            pi_est(v,:)  = mean(~is_pos) * ones(1,N);
+        else
+            try
+                glm = fitglm(X_pi, is_pos, ...
+                    'Distribution', 'binomial', ...
+                    'Link', 'logit', ...
+                    'Intercept', false, ...
+                    'Options', opts);
+                gamma(v,:)   = glm.Coefficients.Estimate';
+                p_gamma(v,:) = glm.Coefficients.pValue';
+                pi_hat       = glm.Fitted.Probability';  % Pr(Y > 0)
+                pi_est(v,:)  = 1 - pi_hat;               % p = Pr(Y = 0)
+            catch
+                gamma(v,:)   = 0;
+                p_gamma(v,:) = 1;
+                pi_est(v,:)  = mean(~is_pos) * ones(1,N);
+            end
         end
-        if abs(ll - prev_ll) < tol, break; end
-        prev_ll = ll;
+
+        %% === STEP 2: Gaussian Regression on Positives ===
+        if sum(is_pos) > 10  % Conservative threshold
+            try
+                X_mu_pos = X_mu(is_pos,:);
+                y_pos    = y(is_pos);
+
+                % Check for rank deficiency
+                if rank(X_mu_pos) < size(X_mu_pos,2)
+                    warning('Rank deficiency at voxel %d; skipping linear regression.', v);
+                    continue;
+                end
+
+                lm = fitlm(X_mu_pos, y_pos, 'Intercept', false);
+                beta(v,:)   = lm.Coefficients.Estimate';
+                p_beta(v,:) = lm.Coefficients.pValue';
+                sigma(v)    = sqrt(lm.MSE);
+
+                % Predict conditional means
+                mu_pos = X_mu_pos * beta(v,:)';
+                mu_est(v, is_pos) = mu_pos;
+
+                % Approximate log-likelihood
+                pi_v = pi_est(v,:);
+                ll_zeros = sum(log(pi_v(~is_pos) + eps));
+                ll_pos   = sum(log(1 - pi_v(is_pos) + eps)) + ...
+                           sum(log(normpdf(y_pos, mu_pos, sigma(v)) + eps));
+                loglik(v) = ll_zeros + ll_pos;
+            catch
+                beta(v,:)   = 0;
+                p_beta(v,:) = 1;
+                sigma(v)    = 0;
+            end
+        end
     end
 
-    % Standard errors and p-values
-    XtWX = X_mu' * (W_diag .* X_mu);
-    se_beta = sqrt(diag(pinv(XtWX) * sigma2));
-    z_beta = beta ./ se_beta;
-    p_beta = 2 * (1 - normcdf(abs(z_beta)));
-
-    if all(~isnan(se_gamma))
-        z_gamma = gamma ./ se_gamma;
-        p_gamma = 2 * (1 - normcdf(abs(z_gamma)));
-    else
-        p_gamma = NaN(size(gamma));
-    end
-    mu_est = beta(1) + beta(2)*age + beta(3)*age.^2;
-    pi_est = 1 ./ (1 + exp(-(gamma(1) + gamma(2)*age)));
-
-    % === Output ===
-    result.beta = beta;
-    result.gamma = gamma;
-    result.sigma = sigma;
-    result.loglik = ll;
-    result.iter = iter;
-    result.p_beta = p_beta;
+    % Assemble result
+    result.beta    = beta;
+    result.gamma   = gamma;
+    result.sigma   = sigma;
+    result.loglik  = loglik;
+    result.iter    = iter;
+    result.p_beta  = p_beta;
     result.p_gamma = p_gamma;
-    result.mu_est = mu_est;
-    result.pi_est = pi_est;
+    result.mu_est  = mu_est;
+    result.pi_est  = pi_est;
 end

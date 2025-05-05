@@ -10,8 +10,8 @@ import functions.auxx.Refine_Solution.*
 % Define parameters for analysis
 prc = 90;             % Percentile threshold (e.g., for visualizing distributions)
 cross_index = 0;      % Cross-validation index (0 = not using CV)
-num_groups = 1;       % Number of age groups (for age stratification)
-mode = 0;             % 0 = amplitude plots, 1 = zero-inflation probability plots
+num_groups = 6;       % Number of age groups (for age stratification)
+mode = 1;             % 0 = amplitude plots, 1 = zero-inflation probability plots
 age_min = 0;          % Minimum age for inclusion
 age_max = 100;        % Maximum age for inclusion
 
