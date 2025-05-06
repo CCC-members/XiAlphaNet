@@ -374,7 +374,3 @@ for i = 1:3
 end
 
 %%
-for  j=1:N_voxel
-    plot(ages(:),result_all{j}.p_beta(3),'.')
-end
-

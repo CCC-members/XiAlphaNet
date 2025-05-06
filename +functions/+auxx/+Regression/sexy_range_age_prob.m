@@ -10,7 +10,7 @@ import functions.auxx.Refine_Solution.*
 % Define parameters for analysis
 prc = 90;             % Percentile threshold (e.g., for visualizing distributions)
 cross_index = 0;      % Cross-validation index (0 = not using CV)
-num_groups = 6;       % Number of age groups (for age stratification)
+num_groups = 1;       % Number of age groups (for age stratification)
 mode = 1;             % 0 = amplitude plots, 1 = zero-inflation probability plots
 age_min = 0;          % Minimum age for inclusion
 age_max = 100;        % Maximum age for inclusion
@@ -91,7 +91,7 @@ z_Alpha = zscore(mean_Alpha);
 z_Xi = zscore(mean_Xi);
 
 % Identify outliers: abs(z) > 3 in any metric
-outlier_idx = abs(z_PAF) > 2.5 | abs(z_Alpha) > 2.5 | abs(z_Xi) > 2.5;
+outlier_idx = abs(z_PAF) > 3 | abs(z_Alpha) > 3 | abs(z_Xi) > 3;
 valid_idx = ~outlier_idx;
 fprintf('Removed %d outlier subjects\n', sum(outlier_idx));
 
@@ -112,11 +112,11 @@ parfor j = 1:length(All_Data)
     threshold_Xi(j) = set_threshold_em(Xi_j);
     if mode == 1 % For probability
         Alpha_j =  (Alpha_j > threshold_Alpha(j));
-        Xi_j_bin = Xi_j > threshold_Alpha(j);
+        Xi_j_bin = Xi_j > threshold_Xi(j);
         PAF_j_bin = (PAF_j .* (Alpha_j > threshold_Alpha(j))) > threshold_PAF;
     else % For amplitude Distribution
         Alpha_j =  Alpha_j.*(Alpha_j > threshold_Alpha(j));
-        Xi_j_bin = Xi_j.*(Xi_j > threshold_Alpha(j));
+        Xi_j_bin = Xi_j.*(Xi_j > 0);
         PAF_j_bin = PAF_j.*((PAF_j .* (Alpha_j > threshold_Alpha(j))) > threshold_PAF);
     end
 
@@ -433,61 +433,68 @@ age_intervals =  linspace(0,100,num_groups+1);% Adjust as needed
 
 % === Plot PAF ===
 for i = 1:max(num_groups-1,1)
-   % subplot(3, num_groups, i);  % First row for PAF
+    % subplot(3, num_groups, i);  % First row for PAF
     J_age_interval = PAF_avg_intervals(:,i);
-    
+
     % Assign the current axis and set colormap
     %ax = gca;
     %colormap(ax, colormap_PAF);
-    
+
     % Plot using custom function
     J = J_age_interval;
+    p95 = prctile(J, 90);
+    J(J > p95) = p95;
     esi_plot_single;  % Pass J as an argument
-    colormap('hot')
+    %colormap('hot')
     % Set title and labels
     title(sprintf('PAF vs Age %.0f - %.0f', age_intervals(i), age_intervals(i+1)));
-    ylabel('PAF');
+    ylabel('hot');
     %ylim([0, max_PAF * 1.1]);
-   % xlabel('');  % Remove x-label for clarity
+    % xlabel('');  % Remove x-label for clarity
 end
 
 % === Plot AlphaAmp ===
 for i = 1:max(num_groups-1,1)
     %subplot(3, num_groups, i + num_groups);  % Second row for AlphaAmp
     J_age_interval = AlphaAmp_avg_intervals(:,i);
-    
+
     % Assign the current axis and set colormap
     %ax = gca;
     %colormap(ax, colormap_AlphaAmp);
-    
+
     % Plot using custom function
     J = J_age_interval;
+    p95 = prctile(J, 90);
+    J(J > p95) = p95;
     esi_plot_single;  % Pass J as an argument
-    colormap('hot')
+    %colormap('hot')
     % Set title and labels
     title(sprintf('Alpha Amp vs Age %.0f - %.0f', age_intervals(i), age_intervals(i+1)));
     ylabel('Alpha Amp');
-%     ylim([0, max_AlphaAmp * 1.1]);
-%     xlabel('');  % Remove x-label for clarity
+    %     ylim([0, max_AlphaAmp * 1.1]);
+    %     xlabel('');  % Remove x-label for clarity
 end
 
 % === Plot XiAmp ===
 for i = 1:max(num_groups-1,1)
     %subplot(3, num_groups, i + 2*num_groups);  % Third row for XiAmp
     J_age_interval = XiAmp_avg_intervals(:,i);
-    
+
     % Assign the current axis and set colormap
-%     ax = gca;
-%     colormap(ax, colormap_XiAmp);
-    
+    %     ax = gca;
+    %     colormap(ax, colormap_XiAmp);
+
     % Plot using custom function
     J=J_age_interval;
-    esi_plot_single;  % Pass J as an argument
-    colormap('hot')
+    % Cap values above the 95th percentile
+    p95 = prctile(J, 90);
+    J(J > p95) = p95;
+   esi_plot_single;  % Pass J as an argument
+    %colormap('hot')
     % Set title and labels
     title(sprintf('Xi Amp vs Age %.0f - %.0f', age_intervals(i), age_intervals(i+1)));
     ylabel('Xi Amp');
-    
+
 end
 
 

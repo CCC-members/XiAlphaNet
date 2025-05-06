@@ -54,7 +54,7 @@ end
 % 2. Interquartile Range (IQR) Method
 
 % Select the method by setting methodVariable to 'zscore' or 'iqr'
-method = 'iqr'; % Change to 'iqr' if preferred
+method = 'zscore'; % Change to 'iqr' if preferred
 
 switch lower(method)
     case 'zscore'
@@ -63,7 +63,7 @@ switch lower(method)
         zScores = abs(zscore(delays));
 
         % Define a Z-score threshold (commonly 3)
-        zThreshold = 2.5;
+        zThreshold = 3;
 
         % Identify non-outlier indices
         nonOutliers = zScores < zThreshold;
@@ -97,6 +97,7 @@ end
 % Apply outlier removal
 cleanDelays = delays(nonOutliers);
 cleanAges = ages(nonOutliers);
+
 
 % Display the number of data points before and after outlier removal
 fprintf('Data Points Before Outlier Removal: %d\n', length(delays));
@@ -153,7 +154,7 @@ title('Lifespan of Conductions Delays (\tau)');
 legend('Estimated Conductions Delays','Estimator Uncertainty');
 grid on;
 hold off;
-
+stats.p
 % --------------------------- Informative Message -------------------
 
 % Display a message with the number of data points used
@@ -163,6 +164,10 @@ fprintf('Quadratic regression performed on %d valid data points after outlier re
 % Construct design matrix for quadratic robust fit
 invsquare_delays = log(1./(cleanDelays.^2));
 ages = cleanAges;
+pos = ages< 83;
+ages = ages(pos);
+invsquare_delays = invsquare_delays(pos);
+
 X = [ones(size(ages)), ages, ages.^2];
 %
  %Perform robust regression on the transformed data with quadratic model
@@ -171,7 +176,7 @@ X = [ones(size(ages)), ages, ages.^2];
 % Visualize robust regression results
 
 % Evaluate the robust quadratic fit on the same range as ages_fit
-ages_fit = linspace(0.3, 82, 100)'; % Same range as LOESS fit
+ages_fit = linspace(0.3, 83, 100)'; % Same range as LOESS fit
 robust_fit_interp = b(1) + b(2) * ages_fit + b(3) * ages_fit.^2;
 robust_fit_interp_exp = exp(b(1) + b(2) * ages_fit + b(3) * ages_fit.^2);
 
@@ -225,3 +230,141 @@ legend('Estimated Myelin', 'Estimator Uncertainty', 'Myelin Data', 'Myelin Uncer
 grid on
 hold off;
 
+stats.p
+
+%%
+clear; clc;
+
+% === Load data ===
+dataset = jsondecode(fileread('/mnt/Store/Ronaldo/dev/Data/NewFolder/XIALPHANET.json'));
+dataset.Location = '/mnt/Store/Ronaldo/dev/Data/NewFolder';
+import templates.*
+load("templates/mylin_data.mat") % myelin_data.Age, .myelin, .upper, .lower
+
+% === Extract conduction delays and ages ===
+delays = []; ages = [];
+index = 1;
+for i = 1:length(dataset.Participants)
+    participant = dataset.Participants(i);
+    if isequal(participant.Status, 'Completed')
+        Part_Info = jsondecode(fileread(fullfile(dataset.Location, participant.SubID, participant.FileInfo)));
+        D = load(fullfile(dataset.Location, participant.SubID, Part_Info.Delay_Matrix));
+        delays(index) = 1000 * mean(D.Delay_Matrix(:));
+        ages(index) = participant.Age;
+        index = index + 1;
+    end
+end
+
+% === Clean and preprocess ===
+delays = delays(:); ages = ages(:);
+valid = ~isnan(delays) & ~isnan(ages);
+delays = delays(valid); ages = ages(valid);
+
+% Z-score outlier removal
+z = abs(zscore(delays));
+delays = delays(z < 3);
+ages = ages(z < 3);
+
+[ages, sortIdx] = sort(ages);
+delays = delays(sortIdx);
+
+% === FIGURE 1: Conduction Delay (log fit, normal scale plot) ===
+log_delays = log(delays);
+X = [ones(size(ages)), ages, ages.^2];
+[b1, stats1] = robustfit(X(:,2:end), log_delays);
+ages_fit = linspace(min(ages), max(ages), 200)';
+X_fit = [ones(size(ages_fit)), ages_fit, ages_fit.^2];
+log_y_fit = X_fit * b1;
+y_fit = exp(log_y_fit); % back-transform
+se_log = sqrt(sum((X_fit * stats1.covb) .* X_fit, 2));
+upper = exp(log_y_fit + se_log);
+lower = exp(log_y_fit - se_log);
+
+figure('Color','w','Units','normalized','Position',[0.2 0.2 0.6 0.6]);
+
+% Main axis
+ax_main = axes('Position', [0.15 0.15 0.65 0.62]); hold on;
+fill([ages_fit; flipud(ages_fit)], [upper; flipud(lower)], 'r', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
+plot(ages_fit, y_fit, 'r--', 'LineWidth', 2);
+
+xlabel('Age (Years)', 'FontSize', 14, 'FontWeight', 'bold');
+ylabel('Conduction Delay (ms)', 'FontSize', 14, 'FontWeight', 'bold');
+set(ax_main, 'FontSize', 13, 'FontWeight', 'bold'); xlim([5 95]); grid on;
+
+% KDE (top)
+ax_top = axes('Position', [0.15 0.79 0.65 0.12]);
+[fx, xgrid] = ksdensity(ages);
+fill(ax_top, xgrid, fx, [0.5 0.5 0.5], 'FaceAlpha', 0.25, 'EdgeColor', 'k');
+axis(ax_top, 'tight'); xlim([5 95]);
+set(ax_top, 'XTick', [], 'YTick', [], 'XColor','none', 'YColor','none'); box off;
+
+% KDE (right)
+ax_right = axes('Position', [0.82 0.15 0.12 0.62]);
+[fy, ygrid] = ksdensity(delays);
+fill(ax_right, fy, ygrid, 'r', 'FaceAlpha', 0.25, 'EdgeColor', 'r');
+axis(ax_right, 'tight');
+set(ax_right, 'XTick', [], 'YTick', [], 'XColor','none', 'YColor','none'); box off;
+
+% TITLE (annotation ABOVE everything)
+annotation('textbox', [0.15, 0.93, 0.7, 0.05], ...
+    'String', sprintf('Conduction Delay vs Age (p = %.3g)', stats1.p(3)), ...
+    'EdgeColor', 'none', 'HorizontalAlignment', 'center', ...
+    'FontSize', 16, 'FontWeight', 'bold');
+
+% === FIGURE 2: Myelin Estimate (log fit, normalized, over myelin data) ===
+log_myelin = -2 * log(delays); % log(1/tau^2)
+pos = ages< 83;
+ages = ages(pos);
+log_myelin = log_myelin(pos);
+
+X = [ones(size(ages)), ages, ages.^2];
+ages_fit = linspace(0.3, 83, 100)';
+X_fit = [ones(size(ages_fit)), ages_fit, ages_fit.^2];
+[b2, stats2] = robustfit(X(:,2:end), log_myelin);
+log_y_fit = X_fit * b2;
+y_fit = exp(log_y_fit); % back-transform
+se_log = sqrt(sum((X_fit * stats2.covb) .* X_fit, 2));
+upper = exp(log_y_fit + se_log);
+lower = exp(log_y_fit - se_log);
+
+% Normalize
+y_norm = (y_fit - min(lower)) / (max(upper) - min(lower));
+upper = (upper - min(lower)) / (max(upper) - min(lower));
+lower = (lower - min(lower)) / (max(upper) - min(lower));
+
+figure('Color','w','Units','normalized','Position',[0.2 0.2 0.6 0.6]);
+
+% Main
+ax_main = axes('Position', [0.15 0.15 0.65 0.62]); hold on;
+fill([ages_fit; flipud(ages_fit)], [upper; flipud(lower)], ...
+    'r', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
+plot(ages_fit, y_norm, 'r--', 'LineWidth', 2);
+
+plot(myelin_data.Age, myelin_data.myelin, 'b--', 'LineWidth', 2);
+fill([myelin_data.Age, fliplr(myelin_data.Age)], ...
+     [myelin_data.upper, fliplr(myelin_data.lower)], ...
+     'b', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
+
+xlabel('Age (Years)', 'FontSize', 14, 'FontWeight', 'bold');
+ylabel('Normalized Estimated Myelin (1/\tau^2)', 'FontSize', 14, 'FontWeight', 'bold');
+set(ax_main, 'FontSize', 13, 'FontWeight', 'bold'); xlim([5 95]); grid on;
+
+% KDE (top)
+ax_top = axes('Position', [0.15 0.79 0.65 0.12]);
+[fx, xgrid] = ksdensity(ages);
+fill(ax_top, xgrid, fx, [0.5 0.5 0.5], 'FaceAlpha', 0.25, 'EdgeColor', 'k');
+axis(ax_top, 'tight'); xlim([5 95]);
+set(ax_top, 'XTick', [], 'YTick', [], 'XColor','none', 'YColor','none'); box off;
+
+% KDE (right)
+ax_right = axes('Position', [0.82 0.15 0.12 0.62]);
+[fy, ygrid] = ksdensity(y_norm);
+fill(ax_right, fy, ygrid, 'r', 'FaceAlpha', 0.25, 'EdgeColor', 'r');
+axis(ax_right, 'tight'); ylim([0 1]);
+set(ax_right, 'XTick', [], 'YTick', [], 'XColor','none', 'YColor','none'); box off;
+
+% TITLE
+annotation('textbox', [0.15, 0.93, 0.7, 0.05], ...
+    'String', sprintf('Estimated Myelin vs Myelin Data (p = %.3g)', stats2.p(3)), ...
+    'EdgeColor', 'none', 'HorizontalAlignment', 'center', ...
+    'FontSize', 16, 'FontWeight', 'bold');
