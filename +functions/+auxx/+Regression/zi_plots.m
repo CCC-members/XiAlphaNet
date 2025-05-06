@@ -16,7 +16,7 @@ age_min = 0;          % Minimum age for inclusion
 age_max = 100;        % Maximum age for inclusion
 
 % Path to the JSON file with model result metadata
-json_path = '/mnt/Store/Ronaldo/dev/Data/NewFolder/XIALPHANET.json';
+json_path = '/Users/ronald/Desktop/new_last_data_new/NewFolder/XIALPHANET.json';
 % Automatically determine base directory from JSON file path
 [dataset_dir, ~, ~] = fileparts(json_path);
 % Load and decode dataset JSON
@@ -97,6 +97,12 @@ subplot(3,2,6); imagesc(permute(blue_positive, [1 3 2]));  title('Blue Positive'
 
 
 %%
+% Import required helper functions
+import functions.auxx.ModelVectorization.*
+import guide.Visualization.*
+import functions.auxx.ZeroInflatedModels.*
+import functions.auxx.Refine_Solution.*
+
 
 ages = [];
 All_Data = {}; 
@@ -207,6 +213,10 @@ colormaps_all  = {
     blue_positive,   blue_negative; 
     green_positive,  green_negative
 };
+import functions.auxx.ModelVectorization.*
+import guide.Visualization.*
+import functions.auxx.ZeroInflatedModels.*
+import functions.auxx.Refine_Solution.*
 
 % === PROCESS EACH COMPONENT (VOXEL-WISE) ===
 for comp_idx = 1:3
@@ -217,7 +227,8 @@ for comp_idx = 1:3
 
     % === Fit ZIG model for each voxel ===
     result_all = cell(N_voxel, 1);
-    parfor v = 1:N_voxel
+    for v = 1:N_voxel
+        v
         Y_v = current_data(v, :);       % [1 x N] vector for voxel v
         result_all{v} = fitZIG_random(Y_v, ages);
     end
@@ -264,9 +275,106 @@ for comp_idx = 1:3
 end
 
 %%
-figure 
-hold on 
+ages = ages(:);
+N_age = length(ages);
+
+% Compute means across voxels (positive values only)
+AlphaAmp_mean = nan(N_age,1);
+XiAmp_mean    = nan(N_age,1);
+PAF_mean      = nan(N_age,1);
+
+for t = 1:N_age
+    a = AlphaAmp_all(:,t); a = a(a > 0);
+    x = XiAmp_all(:,t);    x = x(x > 0);
+    p = PAF_all(:,t);      p = p(p > 0);
+
+    AlphaAmp_mean(t) = 10*log10(mean(a));  
+    XiAmp_mean(t)    = 10*log10(mean(x));
+    PAF_mean(t)      = mean(p);
+end
+
+% Variable configs: [data, label, color]
+variables = {
+    AlphaAmp_mean, 'Alpha Amplitude (dB)', orange_negative(end,:);
+    XiAmp_mean,    'Xi Amplitude (dB)',    green_negative(end,:);
+    PAF_mean,      'PAF (Hz)',             blue_negative(end,:);
+};
+
+fontSize = 16;
+lineWidth = 2;
+
+for i = 1:3
+    y = variables{i,1};
+    y_label = variables{i,2};
+    c = variables{i,3};
+
+    % --- Remove IQR outliers
+    Q1 = quantile(y, 0.25); Q3 = quantile(y, 0.75);
+    IQR_val = Q3 - Q1;
+    idx = (y >= Q1 - 1.5*IQR_val) & (y <= Q3 + 1.5*IQR_val);
+    x = ages(idx); 
+    y = y(idx);
+
+    % --- Regression
+    [x_sorted, idxSort] = sort(x);
+    y_sorted = y(idxSort);
+    X_quad = [x_sorted, x_sorted.^2];
+    [b, stats] = robustfit(X_quad, y_sorted);
+    y_fit = b(1) + b(2)*x_sorted + b(3)*x_sorted.^2;
+    pval_b3 = stats.p(3);
+
+    % --- Confidence bands
+    X_design = [ones(size(x_sorted)), x_sorted, x_sorted.^2];
+    var_fit = sum((X_design * stats.covb) .* X_design, 2);
+    se_fit = sqrt(var_fit);
+    upper = y_fit + 2*se_fit;
+    lower = y_fit - 2*se_fit;
+
+    % === Axes layout setup
+    figure('Color','w', 'Units','normalized', 'Position', [0.3 0.3 0.6 0.6]);
+
+    ax_main = axes('Position', [0.15 0.15 0.65 0.65]); % main plot
+    hold(ax_main, 'on');
+    fill([x_sorted; flipud(x_sorted)], [upper; flipud(lower)], ...
+        c, 'FaceAlpha', 0.25, 'EdgeColor','none', 'Parent', ax_main);
+    plot(ax_main, x_sorted, y_fit, '-', 'Color', c, 'LineWidth', lineWidth);
+
+    xlabel(ax_main, 'Age (Years)', 'FontSize', fontSize, 'FontWeight', 'bold');
+    ylabel(ax_main, y_label, 'FontSize', fontSize, 'FontWeight', 'bold');
+    title(ax_main, sprintf('%s vs Age   (p = %.3g)', y_label, pval_b3), ...
+        'FontSize', fontSize+2, 'FontWeight', 'bold', 'Units','normalized', 'Position',[0.5,1.05,0]);
+
+    set(ax_main, 'FontSize', fontSize, 'FontWeight', 'bold');
+    xlim(ax_main, [5 95]); grid on;
+
+    % === TOP KDE of age (pointing upward)
+    ax_top = axes('Position', [0.15 0.81 0.65 0.12]);
+    [fx, xgrid] = ksdensity(x_sorted);
+    pd_x = fitdist(x_sorted, 'Normal');
+    fx_gauss = normpdf(xgrid, pd_x.mu, pd_x.sigma);
+
+    fill(ax_top, xgrid, fx, [0.5 0.5 0.5], ...
+        'FaceAlpha', 0.25, 'EdgeColor', [0.5 0.5 0.5], 'LineWidth', 1.5); hold on;
+    plot(ax_top, xgrid, fx_gauss, '--', 'Color', [0.3 0.3 0.3], 'LineWidth', 1.5);
+    axis(ax_top, 'tight'); set(ax_top, 'XTick', [], 'YTick', []); box off;
+    xlim(ax_top, [5 95]);
+    ax_top.XColor = 'none'; ax_top.YColor = 'none';
+
+    % === RIGHT KDE of y (pointing right)
+    ax_right = axes('Position', [0.82 0.15 0.12 0.65]);
+    [fy, ygrid] = ksdensity(y);
+    pd_y = fitdist(y, 'Normal');
+    fy_gauss = normpdf(ygrid, pd_y.mu, pd_y.sigma);
+
+    fill(ax_right, fy, ygrid, c, ...
+        'FaceAlpha', 0.25, 'EdgeColor', c, 'LineWidth', 1.5); hold on;
+    plot(ax_right, fy_gauss, ygrid, '--', 'Color', [0.3 0.3 0.3], 'LineWidth', 1.5);
+    axis(ax_right, 'tight'); set(ax_right, 'XTick', [], 'YTick', []); box off;
+    ax_right.XColor = 'none'; ax_right.YColor = 'none';
+end
+
+%%
 for  j=1:N_voxel
     plot(ages(:),result_all{j}.p_beta(3),'.')
 end
-hold of 
+
