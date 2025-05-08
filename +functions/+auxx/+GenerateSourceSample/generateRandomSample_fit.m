@@ -45,3 +45,7 @@ function x = generateRandomSample_fit(Nv, Svv, K, freq, var)
     s2 = 1;
     x = v2x(me, ma, s2);
 end
+
+
+
+

@@ -66,14 +66,14 @@ function [best_params, best_fit, all_fits] = fit_xi_alpha_multi(S, omega, N_init
     % === Select best result ===
     [~, best_idx] = min(all_resnorm);
     best_params = all_params(best_idx, :);
-    best_fit = all_fits{best_idx};
+    best_fit = exp(all_fits{best_idx});
 
     % === Optional Plotting ===
     if doplot
         figure;
         plot(omega, 10*log10(S), 'k.-', 'DisplayName', 'Observed');
         hold on;
-        plot(omega, 10*log10(best_fit), 'r-', 'LineWidth', 2, 'DisplayName', 'Xi-Alpha Fit');
+        plot( omega,10*log10(best_fit)', 'r-', 'LineWidth', 2, 'DisplayName', 'Xi-Alpha Fit');
         xlabel('Frequency (Hz)');
         ylabel('Power (dB)');
         title('Xi-Alpha Fit (Log Scale)');
