@@ -6,13 +6,13 @@ clear all;
 clc;
 
 % Load structural data
-load("/Users/ronald/Desktop/new_last_data_new/NewFolder/structural/parameters.mat");
+load("/mnt/Store/Ronaldo/dev/Data/NewFolder/structural/parameters.mat");
 
 % Set parameters for simulation in ROI space
 parameters.Model = Model;
 parameters.Compact_Model = Compact_Model;
 parameters.Dimensions = Dimensions;
-%parameters.Dimensions.Nv = parameters.Dimensions.Nr;
+parameters.Dimensions.Nv = parameters.Dimensions.Nr;
 % Clear temporary variables to save memory
 clear Compact_Model Model Dimensions;
 
@@ -31,7 +31,7 @@ import functions.auxx.DataPreprocessing.*;
 % Set up simulation parameters
 Ne = parameters.Dimensions.Ne;  % Number of electrodes
 Nr = parameters.Dimensions.Nr;  % Number of ROIs
-Nv = parameters.Dimensions.Nv;  % Set voxel to ROI  
+Nv = parameters.Dimensions.Nr;  % Set voxel to ROI  
 Nw = parameters.Dimensions.Nw;  % Number of frequency bins
 Nsim = 10;  % Number of simulations
 N_wishart = 1000;
@@ -73,7 +73,7 @@ import functions.auxx.Simulations.private.*;
 L = parameters.Model.K;  % Transformation matrix for cross-spectrum
 
 % Set data directory for simulation
-dir_data = '/Users/ronald/Downloads/MultinationalNorms';
+dir_data = '/mnt/Store/Ronaldo/dev/Data/norms';
 subject_folders = dir(fullfile(dir_data, '*'));
 subject_folders = subject_folders([subject_folders.isdir] & ~startsWith({subject_folders.name}, '.'));
 selected_folders = subject_folders(randperm(length(subject_folders), Nsim));
@@ -86,9 +86,9 @@ for j = 1:Nsim
 
     tic;
     disp(['Processing simulation ', num2str(j), ' of ', num2str(Nsim)]);
-
+%%
     % Select subject folder and load data
-    subject_folder = selected_folders(j).name;
+    subject_folder = selected_folders(9).name;
     mat_file_path = fullfile(dir_data, subject_folder, [subject_folder, '.mat']);
     data_struct = load(mat_file_path);
     
@@ -100,14 +100,15 @@ for j = 1:Nsim
      % Set frequency range and parameters for the current simulation
     freq = data_struct.data_struct.freqrange(1:Nw);
     parameters.Data.freq = freq;
-    
+    %%
     % Source cross-spectrum 
     disp('->> Estimating Source Cross with MN')
     Sjj = mn_cross(Svv,K,0);
 
     % Generate and process simulated cross-spectrum
     disp('->> Simulating Scalp Cross Wishart Noise + FModel')
-    for i = 1:Nw
+    parfor i = 1:Nw
+        i
         % Generate complex Wishart matrices and simulate cross-spectrum
         Sjj_cross(:,:,i) = generate_complex_wishart(Sjj(:,:,i), N_wishart);
         Svv_cross(:,:,i) = L * Sjj_cross(:,:,i) * L';  % Apply transformation

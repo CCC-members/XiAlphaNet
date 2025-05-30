@@ -10,7 +10,7 @@ import functions.auxx.Refine_Solution.*
 % Define parameters for analysis
 prc = 90;             % Percentile threshold (e.g., for visualizing distributions)
 cross_index = 0;      % Cross-validation index (0 = not using CV)
-num_groups = 1;       % Number of age groups (for age stratification)
+num_groups = 6;       % Number of age groups (for age stratification)
 mode = 1;             % 0 = amplitude plots, 1 = zero-inflation probability plots
 age_min = 0;          % Minimum age for inclusion
 age_max = 100;        % Maximum age for inclusion
@@ -445,7 +445,7 @@ for i = 1:max(num_groups-1,1)
     p95 = prctile(J, 90);
     J(J > p95) = p95;
     esi_plot_single;  % Pass J as an argument
-    %colormap('hot')
+   % colormap('parula')
     % Set title and labels
     title(sprintf('PAF vs Age %.0f - %.0f', age_intervals(i), age_intervals(i+1)));
     ylabel('hot');
@@ -468,6 +468,8 @@ for i = 1:max(num_groups-1,1)
     J(J > p95) = p95;
     esi_plot_single;  % Pass J as an argument
     %colormap('hot')
+     %   colormap('parula')
+
     % Set title and labels
     title(sprintf('Alpha Amp vs Age %.0f - %.0f', age_intervals(i), age_intervals(i+1)));
     ylabel('Alpha Amp');
@@ -490,7 +492,9 @@ for i = 1:max(num_groups-1,1)
     p95 = prctile(J, 90);
     J(J > p95) = p95;
    esi_plot_single;  % Pass J as an argument
-    %colormap('hot')
+    %colormap('hot')   
+   % colormap('parula')
+
     % Set title and labels
     title(sprintf('Xi Amp vs Age %.0f - %.0f', age_intervals(i), age_intervals(i+1)));
     ylabel('Xi Amp');

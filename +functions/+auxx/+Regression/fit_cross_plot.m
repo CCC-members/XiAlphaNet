@@ -20,7 +20,7 @@ model_full = @(params, omega) ...
         j
         %fprintf("Fitting ROI %d/%d...\n", j, Nv);
         try
-            parms_j = functions.auxx.GenerateSourceSample.fit_xi_alpha_multi(l(j,:), freq(:), 20, 0);  % doplot = 0
+            parms_j = functions.auxx.GenerateSourceSample.fit_xi_alpha_multi(l(j,:), freq(:), 50, 0);  % doplot = 0
             me(j, :) = parms_j(1:3);   % Xi parameters
             ma(j, :) = parms_j(4:7);   % Alpha parameters
             t_parm{j}  = parms_j;
@@ -94,9 +94,9 @@ log_full_all  = nan(Nv, Nw);
 % Define model components
 xi_omega = @(e, omega) e(1) ./ (1 + e(2) * omega.^2).^e(3);
 alpha_omega = @(a, omega) a(1) ./ (1 + a(2) * (omega - a(4)).^2).^a(3);
-model_fun_a = @(params, omega) log(alpha_omega(params(4:7), omega));
-model_fun_x = @(params, omega) log(xi_omega(params(1:3), omega));
-model_full  = @(params, omega) log(xi_omega(params(1:3), omega) + alpha_omega(params(4:7), omega));
+model_fun_a = @(params, omega) 10*log10(alpha_omega(params(4:7), omega));
+model_fun_x = @(params, omega) 10*log10(xi_omega(params(1:3), omega));
+model_full  = @(params, omega) 10*log10(xi_omega(params(1:3), omega) + alpha_omega(params(4:7), omega));
 
 % Evaluate models for each source
 for j = 1:Nv
@@ -107,7 +107,7 @@ for j = 1:Nv
     end
 end
 
-% Compute mean and std across ROIs
+% Compute mean and std across Channels
 mean_alpha = nanmean(log_alpha_all, 1);
 std_alpha  = nanstd(log_alpha_all, 0, 1);
 mean_xi    = nanmean(log_xi_all, 1);
@@ -136,15 +136,82 @@ fill([freq, fliplr(freq)], [mean_full+std_full, fliplr(mean_full-std_full)], ...
 plot(freq, mean_alpha, '-', 'Color', orange, 'LineWidth', 2);
 plot(freq, mean_xi,    '-', 'Color', green,  'LineWidth', 2);
 plot(freq, mean_full,  '-', 'Color', black,  'LineWidth', 2);
+xlim([min(freq) max(freq)])
+ylim([5 40])
 
 % Axes and labels
 xlabel('Frequency (Hz)', 'FontSize', 14, 'FontWeight', 'bold');
-ylabel('log Power', 'FontSize', 14, 'FontWeight', 'bold');
+ylabel('Power (dB)', 'FontSize', 14, 'FontWeight', 'bold');
 set(gca, 'FontSize', 12, 'FontWeight', 'bold');
+
 grid on;
 box on;
 
-legend({'Alpha ±1σ', 'Xi ±1σ', 'Full ±1σ', ...
+legend({'Alpha ±1σ', 'Xi ±1σ', 'Data ±1σ', ...
         'Alpha Component', 'Xi Component', 'Xi-Alpha Model'}, ...
        'FontSize', 12, 'Location', 'northeast');
-title('Mean Spectral Fits Across ROIs', 'FontSize', 16, 'FontWeight', 'bold');
+title('Average Xi-Alpha Components', 'FontSize', 16, 'FontWeight', 'bold');
+
+
+% Assumes: freq (1 x Nw), t_parm{1:Nv}, Nv known
+Nw = length(freq);
+log_alpha_all = nan(Nv, Nw);
+log_xi_all    = nan(Nv, Nw);
+log_full_all  = nan(Nv, Nw);
+
+% Define model components
+xi_omega = @(e, omega) e(1) ./ (1 + e(2) * omega.^2).^e(3);
+alpha_omega = @(a, omega) a(1) ./ (1 + a(2) * (omega - a(4)).^2).^a(3);
+model_fun_a = @(params, omega) 10*log10(alpha_omega(params(4:7), omega));
+model_fun_x = @(params, omega) 10*log10(xi_omega(params(1:3), omega));
+model_full  = @(params, omega) 10*log10(xi_omega(params(1:3), omega) + alpha_omega(params(4:7), omega));
+
+% Evaluate models for each source
+for j = 1:Nv
+    if ~isempty(t_parm{j}) && all(isfinite(t_parm{j}))
+        log_alpha_all(j, :) = model_fun_a(t_parm{j}, freq);
+        log_xi_all(j, :)    = model_fun_x(t_parm{j}, freq);
+        log_full_all(j, :)  = model_full(t_parm{j}, freq);
+    end
+end
+
+% Compute mean and std across Channels
+mean_alpha = nanmean(log_alpha_all, 1);
+std_alpha  = nanstd(log_alpha_all, 0, 1);
+mean_xi    = nanmean(log_xi_all, 1);
+std_xi     = nanstd(log_xi_all, 0, 1);
+mean_full  = nanmean(log_full_all, 1);
+std_full   = nanstd(log_full_all, 0, 1);
+
+% === Colors ===
+orange = orange_negative(end,:);
+green  = green_negative(end,:);
+black  = [0 0 0];
+
+% === Plot ===
+figure('Color','w','Units','normalized','Position',[0.2 0.2 0.6 0.6]);
+hold on;
+
+% Shaded error bands
+fill([freq, fliplr(freq)], [mean_alpha+std_alpha, fliplr(mean_alpha-std_alpha)], ...
+    orange, 'FaceAlpha', 0.2, 'EdgeColor', 'none');
+fill([freq, fliplr(freq)], [mean_xi+std_xi, fliplr(mean_xi-std_xi)], ...
+    green, 'FaceAlpha', 0.2, 'EdgeColor', 'none');
+
+% Mean curves
+plot(freq, mean_alpha, '-', 'Color', orange, 'LineWidth', 2);
+plot(freq, mean_xi,    '-', 'Color', green,  'LineWidth', 2);
+xlim([min(freq) max(freq)])
+ylim([5 40])
+% Axes and labels
+xlabel('Frequency (Hz)', 'FontSize', 14, 'FontWeight', 'bold');
+ylabel('Power (dB)', 'FontSize', 14, 'FontWeight', 'bold');
+set(gca, 'FontSize', 12, 'FontWeight', 'bold');
+
+grid on;
+box on;
+
+legend({'Alpha ±1σ', 'Xi ±1σ', 'Data ±1σ', ...
+        'Alpha Component', 'Xi Component', 'Xi-Alpha Model'}, ...
+       'FontSize', 12, 'Location', 'northeast');
+title('Average Xi-Alpha Components', 'FontSize', 16, 'FontWeight', 'bold');
