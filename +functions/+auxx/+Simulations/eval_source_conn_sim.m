@@ -41,8 +41,8 @@ else
     for j = 1:Nsw
         %fprintf('Processing frequency %d of %d\n', j, Nsw);
         omega = freq(j);
-        Tj_cross = U*G(:,:,j);
-        Tj_act = K_inv*G(:,:,j);
+        Tj_cross = G(:,:,j);
+        Tj_act = G(:,:,j);
         % Calculate xi_omega and alpha_omega based on the model parameters
         xi_omega = e(:,1) ./ (1 + e(:,2) .* omega.^2).^e(:,3);
         alpha_omega = a(:,1) ./ (1 + a(:,2) .* (omega - a(:,4)).^2).^a(:,3);

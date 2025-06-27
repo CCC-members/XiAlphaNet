@@ -46,6 +46,7 @@ F_vals = inf(1, Nrand);
 % Iterate over each random simulation in parallel
 if index_parll == 1
     parfor j = 1:Nrand
+        tol = 10^(-8);
         x0 = generateRandomSample(xx0, var);%Ne,Nv,Cross,T,freq, var);
         [x, hist, FSmooth] = fista_with_backtracking(f, grad_f, g, prox2, x0, lambda, L0, eta, max_iter, tol, max_backtracking_iter);
         History{j} = hist;

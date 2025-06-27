@@ -70,7 +70,9 @@ R = parameters.Compact_Model.R;
 disp('-->> Fixing Initial Parameters...');
 parameters.Parallel.T = 0;
 %parameters.Dimensions.Nv = Nr;
-[T,G] = Teval(parameters);
+[T] = Teval(parameters);
+ G  = Geval(parameters);
+
 parameters.Model.T = T;
 
 % Generate initial random sample
@@ -121,7 +123,8 @@ if tf_default
     T = read_tensor_field(lambda1, lambda2, age, TF_path);
 else
     parameters.Parallel.T = 1;
-    [T,G] = Teval(parameters);
+    [T] = Teval(parameters);
+    [G] = Geval(parameters);
 end
 %clear parameters;
 
