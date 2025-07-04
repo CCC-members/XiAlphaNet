@@ -6,9 +6,18 @@ clear; clc;
 
 
 %Directory containing .mat files
-dataset = jsondecode(fileread('D:\data\data\Results\XIALPHANET.json'));
+
+% Path to the JSON file with model result metadata
+json_path = '/mnt/Store/Ronaldo/dev/Data/NewFolder/XIALPHANET.json';
+% Automatically determine base directory from JSON file path
+[dataset_dir, ~, ~] = fileparts(json_path);
+% Load and decode dataset JSON
+dataset = jsondecode(fileread(json_path));
+
+% Set the location field automatically based on JSON file directory
+dataset.Location = dataset_dir;
 import templates.*
-import functions.auxx.ModelVectorization.*
+import functions.auxx.ModelVectorization.* 
 import guide.Visualization.*
 import functions.auxx.ZeroInflatedModels.*
 import functions.auxx.Refine_Solution.*
@@ -19,6 +28,8 @@ ages = [];
 alpha_powers= [];
 xi_powers= [];
 alpha_pfs = [];
+
+
 %--------------------------- Data Extraction -----------------------
 index = 1;
 parfor i=1:length(dataset.Participants)
@@ -29,6 +40,8 @@ parfor i=1:length(dataset.Participants)
         ages(i) = participant_age;
         Part_Info = jsondecode(fileread(fullfile(dataset.Location,participant.SubID,participant.FileInfo)));
         Mod_Weights = load(fullfile(dataset.Location,participant.SubID,Part_Info.Mod_Weights));
+        Delay_Matrix = load(fullfile(dataset.Location,participant.SubID,Part_Info.Delay_Matrix));
+
         Alpha_estimate = load(fullfile(dataset.Location,participant.SubID,Part_Info.Alpha_estimate));
         Xi_estimate = load(fullfile(dataset.Location,participant.SubID,Part_Info.Xi_estimate));
         %
@@ -39,11 +52,7 @@ parfor i=1:length(dataset.Participants)
         threshold_xi = set_threshold_em(Xi_estimate.Power);
         pos_xi = (Xi_estimate.Power>threshold_xi);
         xi_powers(i) = real(mean(Xi_estimate.Power(pos_xi)));
-        if participant_age <=15
-            delays(i) =  11 * Mod_Weights.Mod_Weights(1);
-        else
-            delays(i) = 9.5 * Mod_Weights.Mod_Weights(1); 
-        end
+        delays(i) =  mean(Delay_Matrix.Delay_Matrix(:));
         index = index +1;
     end
 end
@@ -69,7 +78,7 @@ xi_powers = xi_powers0(:);
 % 1) Log-transform and sort
 AP = 10*log10(1e-6 + alpha_powers);          % log(Alpha Power)
 %AP =  (AP(:)-min(AP(:)))./(max(AP(:))-min(AP(:)));
-Del = (delays0);               % log(tau^-2)
+Del = 1000*(delays0);               % log(tau^-2)
 %Del =  (Del(:)-min(Del(:)))./(max(Del(:))-min(Del(:)));
 % Example IQR-based outlier removal on PAF:
 Q1 = quantile(AP, 0.25);
@@ -163,11 +172,11 @@ legQuad = sprintf('Quadratic: b0=%.3f (p=%.3g), b1=%.3f (p=%.3g), b2=%.3f (p=%.3
 legend({legLin, 'Linear \pm1SE', legQuad, 'Quadratic \pm1SE'}, ...
     'Location', 'best');
 grid on; hold off;
-% --------------------------- Peak Alpha Frequency vs Delays ---------------------------
+%% --------------------------- Peak Alpha Frequency vs Delays ---------------------------
 % 1) Log-transform and sort
 AP = alpha_pfs; % log(Alpha Power)
 %AP =  (AP(:)-min(AP(:)))./(max(AP(:))-min(AP(:)));
-Del = (delays0);               % log(tau^-2)
+Del = (1000*delays0);               % log(tau^-2)
 %Del =  (Del(:)-min(Del(:)))./(max(Del(:))-min(Del(:)));
 
 % Example IQR-based outlier removal on PAF:
@@ -253,7 +262,7 @@ fill([logDel_sorted; flipud(logDel_sorted)], ...
 xlabel('Delays (ms)', 'FontWeight', 'bold');
 ylabel('PAF (Hz)', 'FontWeight', 'bold');
 title('Average Source Peak Alpha Frequency (PAF) ~ \tau  (Robust Linear & Quadratic)');
-xlim([4 18])
+%xlim([4 18])
 % Legend with parameter values, RMSE, BIC and p-values
 legLin = sprintf('Linear: Intercept=%.3f (p=%.3g), Slope=%.3f (p=%.3g), RMSE=%.3f, BIC=%.3f', ...
     b_lin(1), stats_lin.p(1), b_lin(2), stats_lin.p(2), rmse_lin, bic_lin);
@@ -264,10 +273,10 @@ legend({legLin, 'Linear \pm1SE', legQuad, 'Quadratic \pm1SE'}, ...
     'Location', 'best');
 grid on; hold off;
 
-% --------------------------- Xi Power vs Delays ---------------------------
+%% --------------------------- Xi Power vs Delays ---------------------------
 XIP = 10*log10(10^(-6)+xi_powers); 
 %XIP =  (XIP(:)-min(XIP(:)))./(max(XIP(:))-min(XIP(:)));
-Del = (delays0);               % log(tau^-2)
+Del = 1000*(delays0);               % log(tau^-2)
 %Del =  (Del(:)-min(Del(:)))./(max(Del(:))-min(Del(:)));
 
 % Example IQR-based outlier removal on PAF:

@@ -1,7 +1,7 @@
 
 import tools.*
 
-input_path = "/mnt/Data/Ronaldo/MultinationalNorms";
+input_path = "/Users/ronald/Downloads/MultinationalNorms";
 
 subjects = dir(input_path);
 subjects(ismember({subjects.name},{'.','..'})) = [];

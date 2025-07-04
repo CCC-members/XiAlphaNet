@@ -5,7 +5,7 @@ import functions.auxx.ModelVectorization.*
 import functions.auxx.ProximalOperators.*
 
 % Split x into parts e, a, s2 using x2v function
-[e, a, s2] = x2v(x);
+[e, a, s2] = x2v(real(x));
 
 % Retrieve the threshold parameter
 
@@ -23,15 +23,15 @@ nonzero_positions_e = e(:, 1) ~= 0;
 %     % Apply conditional modifications based on non-zero positions in a
 if any(nonzero_positions_a)
     a(nonzero_positions_a, 4) = max(min(a(nonzero_positions_a, 4), 13), 7);
-    a(nonzero_positions_a, 2) = max(min(a(nonzero_positions_a, 2), 0.009), 0.0009);
-    a(nonzero_positions_a, 3) = max(min(a(nonzero_positions_a, 3), 40), 20);
+    a(nonzero_positions_a, 2) = max(a(nonzero_positions_a, 2), 0);
+    a(nonzero_positions_a, 3) = max(a(nonzero_positions_a, 3),  0);
     % a(nonzero_positions_a, 1) = min(a(nonzero_positions_a,1),e(nonzero_positions_a,1)/5);
 end
 %
 %     % Apply conditional modifications based on non-zero positions in e
 if any(nonzero_positions_e)
-    e(nonzero_positions_e, 2) = max(min(e(nonzero_positions_e, 2), 0.009), 0.0009);
-    e(nonzero_positions_e, 3) = max(min(e(nonzero_positions_e, 3), 3), 1.5);
+    e(nonzero_positions_e, 2) = max(e(nonzero_positions_e, 2),  0);
+    e(nonzero_positions_e, 3) = max(e(nonzero_positions_e, 3), 0);
 end
 
 % Identify zero entries in a and e

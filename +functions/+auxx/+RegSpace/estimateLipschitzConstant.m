@@ -1,4 +1,7 @@
-function L_est = estimateLipschitzConstant(freq,T,Sw,index_stoch,Nsfreq,index_parall, var, numSamples)
+function L_est = estimateLipschitzConstant(freq,T,Sw,index_stoch,Nsfreq,index_parall, var, numSamples,x0)
+import functions.auxx.StochasticEval.*
+import functions.auxx.GenerateSourceSample.*
+import functions.FunctionGrandientProx.*
     % Estimate the Lipschitz constant of the gradient of a function F
     %
     % Inputs:
@@ -16,8 +19,8 @@ function L_est = estimateLipschitzConstant(freq,T,Sw,index_stoch,Nsfreq,index_pa
         for i = 1:numSamples
             %fprintf('-->Lipschitz step %d\n',i)
             % Generate two random samples
-            x = generateRandomSample(Ne, Nv, Sw, T, freq, var); 
-            y = generateRandomSample(Ne, Nv, Sw, T, freq, var); 
+            x = generateRandomSample(x0, var); 
+            y = generateRandomSample(x0, var); 
             
             % Evaluate the gradients at x and y
             [dFx, Fx, smoothFx] = evaluatedF(x, Ne,Nv, T, sw, sp, nsf_band, Sw);
@@ -40,8 +43,8 @@ function L_est = estimateLipschitzConstant(freq,T,Sw,index_stoch,Nsfreq,index_pa
         parfor i = 1:numSamples
             %fprintf('-->Lipschitz step %d\n',i)
             % Generate two random samples
-            x = generateRandomSample(Ne, Nv, Sw, T, freq, var); 
-            y = generateRandomSample(Ne, Nv, Sw, T, freq, var); 
+            x = generateRandomSample(x0, var); 
+            y = generateRandomSample(x0, var); 
             
             % Evaluate the gradients at x and y
             [dFx, Fx, smoothFx] = evaluatedF(x, Ne,Nv, T, sw, sp, nsf_band, Sw);
@@ -64,5 +67,5 @@ function L_est = estimateLipschitzConstant(freq,T,Sw,index_stoch,Nsfreq,index_pa
     
     % The estimated Lipschitz constant is the maximum ratio found
     L_est = maxRatio;
-    fprintf('-->Lipschitz constant found %d\n',L_est)
+    fprintf('-->> Lipschitz constant found %d\n',L_est)
 end
