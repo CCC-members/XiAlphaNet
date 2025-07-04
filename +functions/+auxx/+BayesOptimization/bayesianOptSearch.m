@@ -1,4 +1,4 @@
-function [lambda_opt] = bayesianOptSearch(lambda_space,Ne,Nv,T,freq,index_stoch,index_parall_fist,index_parall_bayes,Nsfreq,Cross,Nrand,Lipschitz,BayesIter)
+function [lambda_opt] = bayesianOptSearch(lambda_space,Ne,Nv,T,freq,index_stoch,index_parall_fist,index_parall_bayes,Nsfreq,Cross,Nrand,Lipschitz,BayesIter,x0)
 % BAYESIANOPTSEARCH Uses Bayesian Optimization to find optimal regularization
 % parameters for an inverse solution model with Lasso constraints.
 %
@@ -12,12 +12,12 @@ function [lambda_opt] = bayesianOptSearch(lambda_space,Ne,Nv,T,freq,index_stoch,
 
 %% Stocastic Exploration of the Regularization space 
 % Define the objective function to be minimized using Bayesian Optimization
-    objectiveFunc = @(lambda) modelObjective(lambda, Ne,Nv,T,freq,index_stoch,index_parall_fist,Nsfreq,Cross,Nrand,Lipschitz);
+    objectiveFunc = @(lambda) modelObjective(lambda, Ne,Nv,T,freq,index_stoch,index_parall_fist,Nsfreq,Cross,Nrand,Lipschitz,x0);
     
     % Set up the domain for lambda parameters
-    l1_domain = optimizableVariable('l1', [10^(-10), lambda_space(1)], 'Transform', 'log'); % s
-    l2_domain = optimizableVariable('l2', [20, lambda_space(2)], 'Transform', 'log'); % e
-    l3_domain = optimizableVariable('l3', [20, lambda_space(3)], 'Transform', 'log'); % a
+    l1_domain = optimizableVariable('l1', [10^(-40), lambda_space(1)], 'Transform', 'log'); % s
+    l2_domain = optimizableVariable('l2', [10^(-40), lambda_space(2)], 'Transform', 'log'); % e
+    l3_domain = optimizableVariable('l3', [10^(-40), lambda_space(3)], 'Transform', 'log'); % a
     
     % Run Bayesian Optimization
     if index_parall_bayes == 1
@@ -46,12 +46,12 @@ function [lambda_opt] = bayesianOptSearch(lambda_space,Ne,Nv,T,freq,index_stoch,
 % % close Figure 2
 end
 % Model objective function that computes the AIC and solution for given lambda
-function [bic_val, solution] = modelObjective(lambda, Ne,Nv,T,freq,index_stoch,index_parall,Nsfreq,Cross,Nrand,Lipschitz)
+function [bic_val, solution] = modelObjective(lambda, Ne,Nv,T,freq,index_stoch,index_parall,Nsfreq,Cross,Nrand,Lipschitz,x0)
 import functions.*
 import functions.auxx.*
 import functions.auxx.BayesOptimization.*
 % Assuming AIC function exists and returns a structure with fields .Feval and .Solution
-BIC_result = BIC(lambda, Ne,Nv,T,freq,index_stoch,index_parall,Nsfreq,Cross,Nrand,Lipschitz);
+BIC_result = BIC(lambda, Ne,Nv,T,freq,index_stoch,index_parall,Nsfreq,Cross,Nrand,Lipschitz,x0);
 bic_val = BIC_result.Feval; % Minimize this value
 solution = BIC_result.Solution; % Save solution for output
 end

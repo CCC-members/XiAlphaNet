@@ -1,4 +1,4 @@
-function lambda = compute_lambda(gradient_matrix, L)
+function lambda = compute_lambda(gradient_matrix)
     % Function to compute the regularization parameter lambda
     % given the gradient matrix and the Lipschitz constant L.
     %
@@ -16,5 +16,5 @@ function lambda = compute_lambda(gradient_matrix, L)
     max_row_norm = max(row_norms);
     
     % Compute lambda
-    lambda = (1/L) * max_row_norm;
+    lambda = max_row_norm;
 end

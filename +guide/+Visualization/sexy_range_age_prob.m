@@ -7,15 +7,16 @@ import functions.auxx.ZeroInflatedModels.*
 import functions.auxx.Refine_Solution.*
 prc = 90;
 cross_index = 0; % 
-age_min = 0;%age_range(1);
+age_min = 80;%age_range(1);
 age_max = 100;%age_range(2);
-dataset = jsondecode(fileread('D:\data\Results\XIALPHANET.json'));
-dataset.Location = 'D:\data\Results';
-parameters = load('D:\data\Results\structural\parameters.mat');
+dataset = jsondecode(fileread('D:\new_last_data_new\NewFolder\XIALPHANET.json'));
+dataset.Location = 'D:\new_last_data_new\NewFolder';
+parameters = load('D:\new_last_data_new\NewFolder\structural\parameters.mat');
 ages = [];
 All_Data = {}; 
 index = 1;
-for i=1:length(dataset.Participants)
+for i=1:length(dataset.Participants)-20
+    i
     participant = dataset.Participants(i);
     participant_age = participant.Age;
     if(isequal(participant.Status,'Completed')) && age_min <= participant_age && participant_age <= age_max
@@ -46,6 +47,8 @@ XiAmp_all = [];
 
 % Convert each data.x to [e, a, s2] and store PAF (a(:,4)), Alpha Amplitude (a(:,1)), and Xi Amplitude
 threshold_PAF = 8;
+import functions.auxx.Refine_Solution.*
+import functions.auxx.ModelVectorization.*
 parfor j = 1:length(All_Data(1,:))
     fprintf('Processing subject %d\n', j);
     [e, a, s2] = x2v(All_Data{1,j});  % Assuming x2v returns [e, a, s2]
