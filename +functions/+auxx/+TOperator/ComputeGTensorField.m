@@ -1,5 +1,5 @@
-function ComputeTensorField(age,parameters,output_dir)
-%% Tensor_Field
+function ComputeGTensorField(age,parameters,output_dir)
+%% G Tensor_Field
 import app.*
 import app.functions.*
 import functions.*
@@ -41,15 +41,14 @@ for i = 1:num_D
         current_parameters.Model.D = lambda_D*parameters.Model.D;
         current_parameters.Model.C = lambda_C*parameters.Model.C;
         % Evaluate the Tensor Field 
-        T = Teval(current_parameters);
+        G = Geval(current_parameters);
         % Define the filename using the grid indices
-        filename = sprintf('T_%d_%d',i,j);
+        filename = sprintf('G_%d_%d',i,j);
         filepath = fullfile(output_dir,filename);
-        save(filepath,'T','-v7.3');
-        clear  T
+        save(filepath,'G','-v7.3');
+        clear  G
         clear current_parameters
     end
 end
 
 end
-

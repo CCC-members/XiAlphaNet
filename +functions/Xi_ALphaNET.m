@@ -79,21 +79,17 @@ parameters.Model.T = T;
 x0 = generateRandomSample_fit(Nr, Cross, G, freq, 3); 
 
 %% Estimate Lipschitz constant for optimization
+
 disp('-->> Estimating Lipschitz Constant...');
-k_min = 40;
+k_min = floor(length(freq)*4/5);
 index_parall_bayes = conn_delay;
 Nsfreq = k_min;
-
 Lipschitz = estimateLipschitzConstant(freq, T, Cross, 1, 25, stoch1, 0.001, 100, x0);
 
-%% Find optimal regularization space
-disp('-->> Cross Validating Initial Regularization Space...');
-[lambda_space, ~, ~] = find_best_lambda(freq, T, Cross, stoch1, stoch2, 25, x0, Ne, Nr, Nr, 10, index_parall_bayes, Nrand1, Nrand2, Lipschitz, conn_delay);
-%lambda_space  =  [100,1000,1000];
 %% Estimate connectivity and conduction delay weights
 disp('-->> Estimating Connectivity & Delay Weights...');
-[lambda_opt_dc] = bayes_search_conn_delay(lambda_space_cd, Ne, Nr, Nw, freq, Cross, BayesIter_Reg1, K, D, C, 1, BayesIter_Delay, x0, Lipschitz, lambda_space);
 
+[lambda_opt_dc] = bayes_search_conn_delay(lambda_space_cd, Ne, Nr, Nw, freq, Cross, 1, K, D, C, 1, 200, x0, Lipschitz);
 lambda1 = lambda_opt_dc(1);
 lambda2 = lambda_opt_dc(2);
 
@@ -105,8 +101,37 @@ parameters.Compact_Model.C = lambda2 * parameters.Compact_Model.C;
 
 parameters.Parallel.T = 0;
 parameters.Data.freq = freq;
-T = Teval(parameters);
+% T = Teval(parameters);
 
+
+
+%% Estimate transfer function
+disp('-->> Estimating Transfer Function...');
+Nv = 8003;
+tf_default = 1;
+parameters.Dimensions.Nv = Nv;
+if tf_default && Nv == 8003
+    TF_path = fullfile(properties.general_params.tmp.path, 'TensorField');
+    T = read_tensor_field(lambda1, lambda2, age, TF_path);
+else
+    if conn_delay
+        parameters.Parallel.T = 1;
+        [T] = Teval(parameters);
+        [G] = Geval(parameters);
+    else
+        parameters.Parallel.T = 0;
+        [T] = Teval(parameters);
+        [G] = Geval(parameters);
+    end
+end
+%clear parameters;
+x0 = generateRandomSample_fit(Nv, Cross, G, freq, 30); 
+%% Estimate Lipschitz constant for optimization
+disp('-->> Estimating Lipschitz Constant...');
+k_min = floor(length(freq)*4/5);
+index_parall_bayes = conn_delay;
+Nsfreq = k_min;
+Lipschitz = estimateLipschitzConstant(freq, T, Cross, 1, 25, stoch1, 0.001, 100, x0);
 %% Cross-validate regularization parameters
 disp('-->> Cross Validating Final Regularization Space...');
 [lambda_space, ~, ~] = find_best_lambda(freq, T, Cross, stoch1, stoch2, Nsfreq, x0, Ne, Nr, Nr, 10, index_parall_bayes, Nrand1, Nrand2, Lipschitz, conn_delay);
@@ -115,23 +140,9 @@ disp('-->> Cross Validating Final Regularization Space...');
 disp('-->> Bayesian Optimization on Regularization Parameters...');
 [lambda_opt] = bayesianOptSearch(lambda_space, Ne, Nr, T, freq, stoch1, 0, index_parall_bayes, Nsfreq, Cross, Nrand1, Lipschitz, BayesIter_Reg2, x0);
 
-%% Estimate transfer function
-disp('-->> Estimating Transfer Function...');
-parameters.Dimensions.Nv = Nv;
-if tf_default
-    TF_path = fullfile(properties.general_params.tmp.path, 'TensorField');
-    T = read_tensor_field(lambda1, lambda2, age, TF_path);
-else
-    parameters.Parallel.T = 1;
-    [T] = Teval(parameters);
-    [G] = Geval(parameters);
-end
-%clear parameters;
-
 %% Stochastic FISTA global optimization
 disp('-->> Running Stochastic FISTA Global Optimization...');
 tic;
-x0 = generateRandomSample_fit(Nv, Cross, G, freq, 30); 
 [x_opt, ~] = stoch_fista_global(lambda_opt, Ne, Nv, T, freq, stoch2, conn_delay, Nsfreq, Cross, Nrand2, Lipschitz, x0);
 toc;
 

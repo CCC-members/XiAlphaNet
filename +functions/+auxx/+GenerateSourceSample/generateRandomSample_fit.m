@@ -1,4 +1,4 @@
-function x = generateRandomSample_fit(Nv, Svv, K, freq, var)
+function x = generateRandomSample_fit(Nv, Svv, K, freq, var,parameters)
     import functions.*
     import functions.auxx.*
     import functions.auxx.GenerateSourceSample.*

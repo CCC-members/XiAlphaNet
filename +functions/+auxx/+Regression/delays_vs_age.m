@@ -1,7 +1,7 @@
 clear; clc;
 
 % Directory containing .mat files results
-json_path = '/Users/ronald/Desktop/new_last_data_new/NewFolder/XIALPHANET.json';
+json_path = '/mnt/Develop/Ronaldo/dev/test262025_delete/XIALPHANET.json';
 [dataset_dir, ~, ~] = fileparts(json_path);
 dataset = jsondecode(fileread(json_path));
 dataset.Location = dataset_dir;
@@ -27,7 +27,7 @@ end
 delays = delays(:); ages = ages(:);
 valid = ~isnan(delays) & ~isnan(ages);
 delays = delays(valid); ages = ages(valid);
-
+%plot(ages,delays,"*")
 % Z-score outlier removal
 z = abs(zscore(delays));
 delays = delays(z < 3);
@@ -35,7 +35,6 @@ ages = ages(z < 3);
 
 [ages, sortIdx] = sort(ages);
 delays = delays(sortIdx);
-%%
 % === FIGURE 1: Conduction Delay ===
 log_delays = delays;
 X = [ones(size(ages)), ages, ages.^2];
@@ -170,9 +169,8 @@ mode = 0;             % 0 = amplitude plots, 1 = zero-inflation probability plot
 age_min = 0;          % Minimum age for inclusion
 age_max = 100;        % Maximum age for inclusion
 
-% Path to the JSON file with model result metadata
-json_path = '/Users/ronald/Desktop/new_last_data_new/NewFolder/XIALPHANET.json';
 % Automatically determine base directory from JSON file path
+json_path = '/mnt/Develop/Ronaldo/dev/Data/NewFolder/XIALPHANET.json';
 [dataset_dir, ~, ~] = fileparts(json_path);
 % Load and decode dataset JSON
 dataset = jsondecode(fileread(json_path));
@@ -360,7 +358,7 @@ ages = cell2mat(All_Data(2,:));  % Get the ages
 delays = delays(valid_idx);
 ages(isnan(ages)) = mean(ages(~isnan(ages)));  % Replace NaNs with mean age
 
-%%
+%
 delays = delays(:);
 N_age = length(delays);
 
@@ -372,7 +370,7 @@ PAF_mean      = nan(N_age,1);
 for t = 1:N_age
     a = AlphaAmp_all(:,t); a = a(a > 0);
     x = XiAmp_all(:,t);    x = x(x > 0);
-    p = PAF_all(:,t);      p = p(p > 7);  % Only keep PAF > 7
+    p = PAF_all(:,t);      p = p(p >= 7 & p<= 13 );  % Only keep PAF > 7
 
     AlphaAmp_mean(t) = 10*log10(mean(a));  
     XiAmp_mean(t)    = 10*log10(mean(x));
@@ -468,115 +466,3 @@ for i = 1:3
         {'Regression Fit', 'Estimator Uncertainty', 'Gaussian Fit (Y)'}, ...
         'Location', 'southwest', 'FontSize', 12);
 end
-%%
-delays = delays(:);
-N_age = length(delays);
-
-% Compute log-power means across voxels (positive values only)
-AlphaAmp_mean = nan(N_age,1);
-XiAmp_mean    = nan(N_age,1);
-PAF_mean      = nan(N_age,1);
-
-for t = 1:N_age
-    a = AlphaAmp_all(:,t); a = a(a > 0);
-    x = XiAmp_all(:,t);    x = x(x > 0);
-    p = PAF_all(:,t);      p = p(p > 7 & p < 13);  % PAF in [7,13] only
-
-    AlphaAmp_mean(t) = 10*log10(mean(a));  
-    XiAmp_mean(t)    = 10*log10(mean(x));
-    PAF_mean(t)      = mean(p);
-end
-
-% Variable configs: [data, label, color, y-axis limits]
-variables = {
-    AlphaAmp_mean, 'Alpha Amplitude (dB)', orange_negative(end,:), [-15 -7];
-    XiAmp_mean,    'Xi Amplitude (dB)',    green_negative(end,:), [-14.5 -7.5];
-    PAF_mean,      'PAF (Hz)',             blue_negative(end,:), [9.2 10.1];
-};
-
-fontSize = 16;
-lineWidth = 2;
-
-for i = 1:3
-    y = variables{i,1};
-    y_label = variables{i,2};
-    c = variables{i,3};
-    y_limits = variables{i,4};
-
-    % --- Remove IQR outliers
-    Q1 = quantile(y, 0.25); Q3 = quantile(y, 0.75);
-    IQR_val = Q3 - Q1;
-    idx = (y >= Q1 - 3*IQR_val) & (y <= Q3 + 3*IQR_val);
-    x = delays(idx); 
-    y = y(idx);
-
-    % --- Regression
-    [x_sorted, idxSort] = sort(x);
-    y_sorted = y(idxSort);
-    X_quad = [x_sorted];
-    [b, stats] = robustfit(X_quad, y_sorted);
-    y_fit = b(1) + b(2)*x_sorted;
-    pval_b3 = stats.p(2);
-
-    % --- Confidence bands (±4 SE for shading)
-    X_design = [ones(size(x_sorted)), x_sorted];
-    var_fit = sum((X_design * stats.covb) .* X_design, 2);
-    se_fit = sqrt(var_fit);
-    upper = y_fit + 1*se_fit;
-    lower = y_fit - 1*se_fit;
-
-    % === Axes layout setup
-    figure('Color','w', 'Units','normalized', 'Position', [0.3 0.3 0.6 0.6])
-
-    ax_main = axes('Position', [0.15 0.15 0.65 0.65]); % main plot
-    hold(ax_main, 'on');
-    h_fill = fill([x_sorted; flipud(x_sorted)], [upper; flipud(lower)], ...
-        c, 'FaceAlpha', 0.25, 'EdgeColor','none', 'Parent', ax_main);
-    h_fit = plot(ax_main, x_sorted, y_fit, '-', 'Color', c, 'LineWidth', lineWidth);
-    yline(ax_main, mean(y), '--k', 'LineWidth', 1.5); % Horizontal ref line
-
-    xlabel(ax_main, 'Delays (ms)', 'FontSize', fontSize, 'FontWeight', 'bold');
-    ylabel(ax_main, y_label, 'FontSize', fontSize, 'FontWeight', 'bold');
-    title(ax_main, sprintf('%s vs Delays   (p = %.3g)', y_label, pval_b3), ...
-        'FontSize', fontSize+2, 'FontWeight', 'bold', ...
-        'Units','normalized', 'Position',[0.5, 1.12, 0]);
-
-    set(ax_main, 'FontSize', fontSize, 'FontWeight', 'bold');
-    xlim(ax_main, [min(delays), max(delays)]);
-    ylim(ax_main, y_limits);
-    grid(ax_main, 'on');
-
-    % === TOP KDE of delays
-    ax_top = axes('Position', [0.15 0.76 0.65 0.08]);
-    [fx, xgrid] = ksdensity(x_sorted);
-    pd_x = fitdist(x_sorted, 'Normal');
-    fx_gauss = normpdf(xgrid, pd_x.mu, pd_x.sigma);
-
-    fill(ax_top, xgrid, fx, 'r', ...
-        'FaceAlpha', 0.25, 'EdgeColor', 'r', 'LineWidth', 1.5); hold on;
-    h_gauss_delay = plot(ax_top, xgrid, fx_gauss, '--', ...
-        'Color', [0.5 0.5 0.5], 'LineWidth', 1.5);
-
-    axis(ax_top, 'tight'); set(ax_top, 'XTick', [], 'YTick', []); box off;
-    ax_top.XColor = 'none'; ax_top.YColor = 'none';
-
-    % === RIGHT KDE of y
-    ax_right = axes('Position', [0.82 0.15 0.12 0.62]);
-    [fy, ygrid] = ksdensity(y);
-    pd_y = fitdist(y, 'Normal');
-    fy_gauss = normpdf(ygrid, pd_y.mu, pd_y.sigma);
-
-    fill(ax_right, fy, ygrid, c, ...
-        'FaceAlpha', 0.25, 'EdgeColor', c, 'LineWidth', 1.5); hold on;
-    h_gauss_y = plot(ax_right, fy_gauss, ygrid, '--', ...
-        'Color', [0.5 0.5 0.5], 'LineWidth', 1.5);
-
-    axis(ax_right, 'tight'); set(ax_right, 'XTick', [], 'YTick', []); box off;
-    ax_right.XColor = 'none'; ax_right.YColor = 'none';
-
-    % === Legend in main axis
-    legend(ax_main, [h_fit, h_fill, h_gauss_y], ...
-        {'Regression Fit', 'Estimator Uncertainty', 'Gaussian Fit (Y)'}, ...
-        'Location', 'southwest', 'FontSize', 12);
-end
-

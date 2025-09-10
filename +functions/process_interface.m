@@ -152,6 +152,7 @@ for s=1:length(subjects)
     %%
     %% Initializing Model Parameters
     %
+    tic
     disp('-->> Initializing Model Parameters...');
     Nr                          = parameters.Dimensions.Nr;
     Nv                          = parameters.Dimensions.Nv;
@@ -170,10 +171,10 @@ for s=1:length(subjects)
     [NewCross,scale]            = global_scale_factor_correction(data.Cross);
     data.Cross                  = NewCross;
     clear NewCross;
-    if data.age<15
-        parameters.Model.D      = 0.0110*parameters.Model.D/ mean(parameters.Model.D(:));
-        parameters.Compact_Model.D  = 0.0110*parameters.Compact_Model.D/ mean(parameters.Compact_Model.D(:));
-    end
+    % if data.age<15
+    %     parameters.Model.D      = 0.0110*parameters.Model.D/ mean(parameters.Model.D(:));
+    %     parameters.Compact_Model.D  = 0.0110*parameters.Compact_Model.D/ mean(parameters.Compact_Model.D(:));
+    % end
     age                         = data.age;
 
     disp('-->> Fixing Initial Parameters...');
@@ -187,19 +188,16 @@ for s=1:length(subjects)
     T                           = Teval(parameters);
     G                           = Geval(parameters);
     parameters.Model.T          = T;
-    x0                          = generateRandomSample_fit(Nr, Cross, G, freq, 3);
+    x0                          = generateRandomSample_fit(Nr, Cross, G, freq, 10,parameters);
 
     disp('-->> Estimating Lipschitz Constant...');
-    k_min                       = 25;
+    k_min                       = floor(length(freq)*4/5);
     index_parall_bayes          = conn_delay;
     Nsfreq                      = k_min;
     Lipschitz                   = estimateLipschitzConstant(freq, T, Cross, 1, 25, stoch1, 0.001, 100, x0);
-   
-    disp('-->> Cross Validating Initial Regularization Space...');
-    [lambda_space, ~, ~]        = find_best_lambda(freq, T, Cross, 1, 1, 20, x0, Ne, Nr, Nr, 10, index_parall_bayes, Nrand1, Nrand2, Lipschitz, conn_delay);
 
     disp('-->> Estimating Connectivity & Delays Weights...');
-    [lambda_opt_dc]             = bayes_search_conn_delay(lambda_space_cd, Ne, Nr, Nw, freq, Cross, BayesIter_Reg1, K, D, C, 1, BayesIter_Delay, x0, Lipschitz, lambda_space);
+    [lambda_opt_dc]             = bayes_search_conn_delay(lambda_space_cd, Ne, Nr, Nw, freq, Cross, BayesIter_Reg1, K, D, C, 1, BayesIter_Delay, x0, Lipschitz);
     lambda1                     = lambda_opt_dc(1); % Estimated delay strenght
     lambda2                     = lambda_opt_dc(2); % Estimated connectivity delay
 
@@ -209,32 +207,37 @@ for s=1:length(subjects)
     parameters.Compact_Model.D  = lambda1 * parameters.Compact_Model.D;
     parameters.Compact_Model.C  = lambda2 * parameters.Compact_Model.C;
     parameters.Parallel.T       = 1*conn_delay;
-    T                           = Teval(parameters);
-    % 
-    disp('-->> Cross Validating Final Regularization Space...');
-    [lambda_space, ~, ~]        = find_best_lambda(freq, T, Cross, 1, 1, 20, x0, Ne, Nr, Nr, 10, index_parall_bayes, Nrand1, Nrand2, Lipschitz, conn_delay);
-
-    % Initializing Bayesian Optimization On Regularization
-    disp('-->> Bayesian Optimization On Regularization Parameters...');
-    [lambda_opt] = bayesianOptSearch(lambda_space, Ne, Nr, T, freq, stoch1, 0, index_parall_bayes, Nsfreq, Cross, Nrand1, Lipschitz, BayesIter_Reg2, x0);
-    
+       
     % Estimate transfer function
     disp('-->> Estimating Transfer Function...');
     parameters.Dimensions.Nv    = Nv;
     if(tf_default)
-        TF_path                 = fullfile(properties.general_params.tmp.path,'TensorField');
-        [T]                     = read_tensor_field(lambda1,lambda2,age,TF_path);
-        [G]                     = Geval(parameters);
+        TF_path                 = fullfile(properties.general_params.tmp.path,'T&G_TensorField');
+        [T,G,~]                     = read_tensor_field(lambda1,lambda2,25,TF_path);
     else
         [T]                     = Teval(parameters);
         [G]                     = Geval(parameters);
     end
+    
+    disp('-->> Fixing Initial Parameters...');
+    x0                           = generateRandomSample_fit(Nv, Cross, G, freq, 4,parameters); 
+
+    disp('-->> Estimating Lipschitz Constant...');
+    k_min                       = floor(length(freq)*4/5);
+    index_parall_bayes          = conn_delay;
+    Nsfreq                      = k_min;
+    Lipschitz                   = estimateLipschitzConstant(freq, T, Cross, 1, 25, stoch1, 0.001, 100, x0);
+    
+    
+    % Initializing Bayesian Optimization On Regularization
+    disp('-->> Bayesian Optimization On Regularization Parameters...');
+    [lambda_space] = lambda_regspace2(freq, T, Cross, stoch1, Nsfreq, x0);
+    [lambda_opt] = bayesianOptSearch(lambda_space, Ne, Nv, T, freq, stoch1, 0, index_parall_bayes, Nsfreq, Cross, Nrand1, Lipschitz, BayesIter_Reg2, x0);
+    toc
 
     % Initializing Stochastic FISTA global optimizer
-    disp('-->> Fixing Initial Parameters...');
-    x0                           = generateRandomSample_fit(Nv, Cross, G, freq, 1); 
     disp('-->> Running Stochastic FISTA Global Optimization...');
-    [x_opt, ~]                  = stoch_fista_global(lambda_opt, Ne, Nv, T, freq, stoch2, conn_delay, Nsfreq, Cross, Nrand2, Lipschitz, x0);
+    [x_opt, ~]                  = stoch_fista_global(lambda_opt, Ne, Nv, T, freq, 0, conn_delay, Nsfreq, Cross, Nrand2, Lipschitz, x0);
     [e,a,s2]                    = x2v(x_opt.Solution);
     e(:,1)                      = e(:,1)/scale;
     a(:,1)                      = a(:,1)/scale;

@@ -6,7 +6,7 @@ clear all;
 clc;
 
 % Load structural data
-load("/mnt/Store/Ronaldo/dev/Data/NewFolder/structural/parameters.mat");
+load("/mnt/Develop/Ronaldo/dev/Data/NewFolder/structural/parameters.mat");
 
 % Set parameters for simulation in ROI space
 parameters.Model = Compact_Model;
@@ -73,7 +73,7 @@ import functions.auxx.Simulations.private.*;
 L = parameters.Model.K;  % Transformation matrix for cross-spectrum
 
 % Set data directory for simulation
-dir_data = '/mnt/Store/Ronaldo/dev/Data/norms';
+dir_data = '/mnt/Develop/Ronaldo/dev/Data/norms';
 subject_folders = dir(fullfile(dir_data, '*'));
 subject_folders = subject_folders([subject_folders.isdir] & ~startsWith({subject_folders.name}, '.'));
 selected_folders = subject_folders(randperm(length(subject_folders), Nsim));
