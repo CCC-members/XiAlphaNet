@@ -224,14 +224,26 @@ delay_8K = nulldiag(sym_matrix(delay_8K));
 
 %% Correcting the Lead Field
 
-ref_channels = properties.general_params.data.ref_channel;
-labels = load(strcat('+templates/eeg_caps/ICBM152/',properties.anatomy_params.common_params.labels));
+ref_channel = properties.general_params.data.ref_channel;
+
+labels_file = properties.anatomy_params.common_params.labels;
+if(~isfile(labels_file))
+    labels_file = strcat('+templates/eeg_caps/ICBM152/',labels_file);
+end
+[~,~,ext] = fileparts(labels_file);
+if(isequal(ext,'.mat'))
+    labels = load(labels_file);
+    labels = {labels.Channel.Name};
+else
+    labels = jsondecode(fileread(labels_file));
+    labels = labels.Name;
+end
 labels = {labels.Channel.Name};
 disp ("-->> Removing Channels  by preprocessed EEG");
 [Cdata_r, Gain] = remove_channels_by_preproc_data(labels, Cdata, Leadfield.Gain);
 disp ("-->> Sorting Channels and LeadField by preprocessed EEG");
 [channel_layout, Gain] = sort_channels_by_preproc_data(labels, Cdata_r, Gain);
-ind_channel = find(ismember({Cdata_r.Channel.Name},ref_channels),1);
+ind_channel = find(ismember({Cdata_r.Channel.Name},ref_channel),1);
 Cdata_r.Channel(ind_channel) = [];
 Gain(12,:) = [];
 [Ne,~] = size(Gain);
