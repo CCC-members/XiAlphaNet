@@ -284,7 +284,7 @@ parameters.Dimensions.Nv = Nv;   % Number of Voxels
 parameters.Dimensions.Nw = properties.model_params.nFreqs; % Number of frequencies
 
 disp("-->> Saving Structural outputs");
-if(isequal(properties.anatomy_params.type,'defauls'))
+if(isequal(properties.anatomy_params.type,'default'))
     [XIALPHANET] = xan_save(properties,'structural',Cortex,Leadfield,parameters,XIALPHANET);
     Output = XIALPHANET;
 else
