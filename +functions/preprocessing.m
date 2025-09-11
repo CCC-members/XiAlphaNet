@@ -238,7 +238,6 @@ else
     labels = jsondecode(fileread(labels_file));
     labels = labels.Name;
 end
-labels = {labels.Channel.Name};
 disp ("-->> Removing Channels  by preprocessed EEG");
 [Cdata_r, Gain] = remove_channels_by_preproc_data(labels, Cdata, Leadfield.Gain);
 disp ("-->> Sorting Channels and LeadField by preprocessed EEG");
