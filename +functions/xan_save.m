@@ -24,6 +24,18 @@ switch lower(claf)
         XIALPHANET.Structural.Leadfield     = "structural/leadfield.mat";
         XIALPHANET.Structural.parameters    = "structural/parameters.mat";
         Output = XIALPHANET;
+    case 'pstructural'
+        structural_path = fullfile(properties.general_params.output_path,Participant.SubID,'structural');
+        if(~isfolder(structural_path))
+            mkdir(structural_path);
+        end
+        save(fullfile(structural_path,'cortex.mat'),'-struct','Cortex');
+        save(fullfile(structural_path,'leadfield.mat'),'-struct','Leadfield');
+        save(fullfile(structural_path,'parameters.mat'),'-struct','parameters');
+        Participant.Structural.Cortex        = "structural/cortex.mat";
+        Participant.Structural.Leadfield     = "structural/leadfield.mat";
+        Participant.Structural.parameters    = "structural/parameters.mat";
+        Output = Participant;
     case 'create_subject'
         subject_path                            = fullfile(properties.general_params.output_path,SubID);
         if(~isfolder(subject_path))

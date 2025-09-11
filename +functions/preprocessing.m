@@ -1,4 +1,4 @@
-function [XIALPHANET,parameters] = preprocessing(properties,XIALPHANET)
+function [Output,parameters,status] = preprocessing(properties, varargin)
  %% Preprocessing of the Data
 %     Author: Ronald Garcia, Ariosky Areaces Gonzales, Pedro A. Valdes Sosa 
 %     Create Time: 2024 
@@ -13,57 +13,90 @@ import functions.auxx.DataPreprosessing.*
 import functions.auxx.Regularization.*
 import functions.auxx.ModelVectorization.*
 
+for i=1:length(varargin)
+    eval([inputname(i+1) '= varargin{i};']);
+end
+
+status = true;
+type = properties.anatomy_params.type;
+
 %%
 %%  Tensor Field
 %%
-if(properties.model_params.tensor_field.default)
-    % Download the Tensor Field files
-    TF_path = fullfile(properties.general_params.tmp.path,'TensorField');
-    if(~isfolder(TF_path))
-        mkdir(TF_path);
-    end
-    disp(strcat("-->> Downloading Tensor Field files......."));  
-    TF9_5_dir = fullfile(TF_path,'Tensor_Field_9.5ms');
-    TF9_5_files = dir(TF9_5_dir);
-    TF9_5_files(ismember({TF9_5_files.name},{'.','..'})) = [];
-    if(~isfolder(TF9_5_dir) || isempty(TF9_5_files))
-        url = properties.test_data.tensor_field9;
-        matlab.net.http.HTTPOptions.VerifyServerName = false;
-        options = weboptions('Timeout',Inf,'RequestMethod','auto');
-        downladed_file = websave(fullfile(TF_path,strcat('Tensor_Field_9.5ms.zip')),url,options);
-        pause(1);
-        %% Unzip lasted version
-        disp(strcat("-->> Unziping files......."));
-        exampleFiles = unzip(fullfile(TF_path,strcat('Tensor_Field_9.5ms.zip')),TF_path);
-        pause(1);
-        delete(fullfile(TF_path,strcat('Tensor_Field_9.5ms.zip')));
-    end
-    TF11_dir = fullfile(TF_path,'Tensor_Field_11ms');
-    TF11_files = dir(TF11_dir);
-    TF11_files(ismember({TF11_files.name},{'.','..'})) = [];
-    if(~isfolder(TF11_dir) || isempty(TF11_files))
-        url = properties.test_data.tensor_field11;
-        matlab.net.http.HTTPOptions.VerifyServerName = false;
-        options = weboptions('Timeout',Inf,'RequestMethod','auto');
-        downladed_file = websave(fullfile(TF_path,strcat('Tensor_Field_11ms.zip')),url,options);
-        pause(1);
-        %% Unzip lasted version
-        disp(strcat("-->> Unziping files......."));
-        exampleFiles = unzip(fullfile(TF_path,strcat('Tensor_Field_11ms.zip')),TF_path);
-        pause(1);
-        delete(fullfile(TF_path,strcat('Tensor_Field_11ms.zip')));
-    end    
-else
-    % Compute the Tensor Field
+switch type
+    case "default"
+        if(properties.model_params.tensor_field.default)
+            % Download the Tensor Field files
+            TF_path = fullfile(properties.general_params.tmp.path,'TensorField');
+            if(~isfolder(TF_path))
+                mkdir(TF_path);
+            end
+            disp(strcat("-->> Downloading Tensor Field files......."));
+            TF9_5_dir = fullfile(TF_path,'Tensor_Field_9.5ms');
+            TF9_5_files = dir(TF9_5_dir);
+            TF9_5_files(ismember({TF9_5_files.name},{'.','..'})) = [];
+            if(~isfolder(TF9_5_dir) || isempty(TF9_5_files))
+                url = properties.test_data.tensor_field9;
+                matlab.net.http.HTTPOptions.VerifyServerName = false;
+                options = weboptions('Timeout',Inf,'RequestMethod','auto');
+                downladed_file = websave(fullfile(TF_path,strcat('Tensor_Field_9.5ms.zip')),url,options);
+                pause(1);
+                %% Unzip lasted version
+                disp(strcat("-->> Unziping files......."));
+                exampleFiles = unzip(fullfile(TF_path,strcat('Tensor_Field_9.5ms.zip')),TF_path);
+                pause(1);
+                delete(fullfile(TF_path,strcat('Tensor_Field_9.5ms.zip')));
+            end
+            TF11_dir = fullfile(TF_path,'Tensor_Field_11ms');
+            TF11_files = dir(TF11_dir);
+            TF11_files(ismember({TF11_files.name},{'.','..'})) = [];
+            if(~isfolder(TF11_dir) || isempty(TF11_files))
+                url = properties.test_data.tensor_field11;
+                matlab.net.http.HTTPOptions.VerifyServerName = false;
+                options = weboptions('Timeout',Inf,'RequestMethod','auto');
+                downladed_file = websave(fullfile(TF_path,strcat('Tensor_Field_11ms.zip')),url,options);
+                pause(1);
+                %% Unzip lasted version
+                disp(strcat("-->> Unziping files......."));
+                exampleFiles = unzip(fullfile(TF_path,strcat('Tensor_Field_11ms.zip')),TF_path);
+                pause(1);
+                delete(fullfile(TF_path,strcat('Tensor_Field_11ms.zip')));
+            end
+        else
+            % Compute the Tensor Field
 
+        end
+        Cortex  = load(properties.anatomy_params.types{2}.cortex.file_name);
+        Leadfield = load(properties.anatomy_params.types{2}.leadfield.file_name);
+        Cdata = load(properties.anatomy_params.types{2}.channel.file_name);
+
+    case "individual"
+        SubID = Participant.SubID;
+        base_path = properties.anatomy_params.types{1}.base_path;
+        sub_path = fullfile(base_path,SubID);
+        if(~isfolder(sub_path))
+            sub_file = fullfile(base_path,strcat(SubID,'.zip'));
+            if(isfile(sub_file))
+                unzip(sub_file, sub_path);
+            else
+                status = false;
+                parameters = [];
+                Participant.Errors = "Anatomy not found";
+                Output = Participant;
+                return;
+            end            
+        end
+        Cortex = load(fullfile(sub_path,'anat',SubID,'tess_cortex_concat_8000V_fix.mat'));
+        Leadfield = load(fullfile(sub_path,'data',SubID,'@intra','headmodel_surf_openmeeg.mat'));
+        Cdata = load(fullfile(sub_path,'data',SubID,'@intra','channel_ASA_10-05_343.mat'));        
 end
 
 %% Reading Anatomical Data
 disp('-->> Reading Anatomical Data')
-Cortex  = load(properties.anatomy_params.cortex.file_name);
-Lenghts  = load(properties.anatomy_params.neuroTracLengths.file_name);
-Conn    = load(properties.anatomy_params.conn_anat.file_name);
-delayM   = load(properties.anatomy_params.cond_delay.file_name);
+
+Lenghts  = load(properties.anatomy_params.common_params.neuroTracLengths.file_name);
+Conn    = load(properties.anatomy_params.common_params.conn_anat.file_name);
+delayM   = load(properties.anatomy_params.common_params.cond_delay.file_name);
 Atlas   = Cortex.Atlas(Cortex.iAtlas);
 Atlas = complete_atlas(Cortex, Atlas, 'nearest');
 
@@ -191,14 +224,16 @@ delay_8K = nulldiag(sym_matrix(delay_8K));
 
 %% Correcting the Lead Field
 
-Leadfield = load(properties.anatomy_params.leadfield.file_name);
-Cdata = load(properties.anatomy_params.channel.file_name);
-labels = load('templates/labels_scalp.mat');
-labels = labels.labels;
+ref_channels = properties.general_params.data.ref_channel;
+labels = load(strcat('+templates/eeg_caps/ICBM152/',properties.anatomy_params.common_params.labels));
+labels = {labels.Channel.Name};
 disp ("-->> Removing Channels  by preprocessed EEG");
 [Cdata_r, Gain] = remove_channels_by_preproc_data(labels, Cdata, Leadfield.Gain);
 disp ("-->> Sorting Channels and LeadField by preprocessed EEG");
 [channel_layout, Gain] = sort_channels_by_preproc_data(labels, Cdata_r, Gain);
+ind_channel = find(ismember({Cdata_r.Channel.Name},ref_channels),1);
+Cdata_r.Channel(ind_channel) = [];
+Gain(12,:) = [];
 [Ne,~] = size(Gain);
 
 VertNormals= reshape(Cortex.VertNormals,[1,Nv,3]);
@@ -238,7 +273,13 @@ parameters.Dimensions.Nv = Nv;   % Number of Voxels
 parameters.Dimensions.Nw = properties.model_params.nFreqs; % Number of frequencies
 
 disp("-->> Saving Structural outputs");
-[XIALPHANET] = xan_save(properties,'structural',Cortex,Leadfield,parameters,XIALPHANET);
+if(isequal(properties.anatomy_params.type,'defauls'))
+    [XIALPHANET] = xan_save(properties,'structural',Cortex,Leadfield,parameters,XIALPHANET);
+    Output = XIALPHANET;
+else
+    [Participant] = xan_save(properties,'pstructural',Cortex,Leadfield,parameters,Participant);
+    Output = Participant;
+end
 
 end
 

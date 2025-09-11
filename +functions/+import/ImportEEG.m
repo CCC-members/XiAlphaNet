@@ -42,13 +42,18 @@ switch ext
         indx = ismember(dnames,{'T7','T8','P7','P8'});
         dnames(indx) = {'T3','T4','T5','T6'};
         data = EEG.data(1:length(dnames),:); 
-        srate                           = EEG.srate;        
+        srate                   = EEG.srate;        
     case '.set'
-         EEG                     = pop_loadset(file_name);
-         dnames                  = {EEG.chanlocs(1:19).labels};
-         indx = ismember(dnames,{'T7','T8','P7','P8'});
-         dnames(indx) = {'T3','T4','T5','T6'};
-         data = EEG.data(1:length(dnames),:);
+         EEG                    = pop_loadset(file_name);
+         if(isequal(properties.anatomy_params.type,"default"))
+             dnames             = {EEG.chanlocs(1:19).labels};
+             indx               = ismember(dnames,{'T7','T8','P7','P8'});
+             dnames(indx)       = {'T3','T4','T5','T6'};
+             data               = EEG.data(1:length(dnames),:);
+         else
+             dnames             = {EEG.chanlocs.labels};
+             data               = EEG.data;
+         end
          srate                       = EEG.srate;
     case '.vhdr'
             [base_path,hdrfile,extf] = fileparts(file_name);

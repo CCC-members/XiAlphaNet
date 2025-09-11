@@ -28,9 +28,10 @@ part_file                               = properties.general_params.dataset.part
 XAN_filename                            = 'XIALPHANET.json';
 XAN_path                                = fullfile(output_path);
 XAN_file                                = fullfile(XAN_path,XAN_filename);
-if(isfile(XAN_file))
+if(isfile(XAN_file) && isequal(properties.anatomy_params.type,"default"))
     XIALPHANET                          = jsondecode(fileread(XAN_file));
     parameters                          = load(fullfile(output_path,XIALPHANET.Structural.parameters));
+    parameters_tmp                      = parameters;
 else
     XIALPHANET.Name                     = properties.general_params.dataset.Name;
     TempUUID                            = java.util.UUID.randomUUID;
@@ -40,12 +41,14 @@ else
     XIALPHANET.Status                   = "Processing";
     XIALPHANET.Location                 = XAN_path;
     XIALPHANET.general_params           = properties.general_params;    
-    XIALPHANET.Participants     = [];
-
+    XIALPHANET.Participants             = [];
     %%
     %% Preprocessing
     %%
-    [XIALPHANET,parameters] = preprocessing(properties, XIALPHANET);
+    if(isequal(properties.anatomy_params.type,"default"))
+        [XIALPHANET,parameters]         = preprocessing(properties, XIALPHANET); 
+        parameters_tmp                  = parameters;
+    end
 end
 
 %% Loading Participamts Infomation
@@ -70,9 +73,9 @@ subjects([subjects.isdir]==0) = [];
 if(~isempty(properties.general_params.participants))
     subjects = subjects(ismember({subjects.name}, properties.general_params.participants));
 end
-parameters_tmp = parameters;
-lambda_space_cd                 = properties.model_params.delay.lambda_space_cd;
-lambda_space_cd(2,:)            = [10^(-10),1/max(abs(eig(parameters.Model.C)))];
+
+
+
 for s=1:length(subjects) 
     tic
     if(isfile(XAN_file))
@@ -138,6 +141,7 @@ for s=1:length(subjects)
         end
     end
     [data,status,Participant] = check_data_structure(properties,Participant,subject,pat);    
+    
     if(~status)
         XIALPHANET.Participants(iPart).SubID = Participant.SubID;
         XIALPHANET.Participants(iPart).Age = Participant.Age;
@@ -148,6 +152,21 @@ for s=1:length(subjects)
         disp('---------------------------------------------------------------------');
         continue;
     end
+
+    if(isequal(properties.anatomy_params.type,"individual"))
+        [Participant, parameters, status] = preprocessing(properties, Participant);
+        if(~status)
+            XIALPHANET.Participants(iPart).SubID = Participant.SubID;
+            XIALPHANET.Participants(iPart).Age = Participant.Age;
+            XIALPHANET.Participants(iPart).Status = Participant.Status;
+            XIALPHANET.Participants(iPart).Errors = Participant.Errors;
+            XIALPHANET.Participants(iPart).FileInfo = Participant.FileInfo;
+            saveJSON(XIALPHANET,XAN_file);
+            disp('---------------------------------------------------------------------');
+            continue;
+        end
+    end
+
 
     %%
     %% Initializing Model Parameters
@@ -188,7 +207,7 @@ for s=1:length(subjects)
     T                           = Teval(parameters);
     G                           = Geval(parameters);
     parameters.Model.T          = T;
-    x0                          = generateRandomSample_fit(Nr, Cross, G, freq, 10,parameters);
+    x0                          = generateRandomSample_fit(Nr, Cross, G, freq, 10);
 
     disp('-->> Estimating Lipschitz Constant...');
     k_min                       = floor(length(freq)*4/5);
@@ -197,6 +216,10 @@ for s=1:length(subjects)
     Lipschitz                   = estimateLipschitzConstant(freq, T, Cross, 1, 25, stoch1, 0.001, 100, x0);
 
     disp('-->> Estimating Connectivity & Delays Weights...');
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    lambda_space_cd             = properties.model_params.delay.lambda_space_cd;
+    lambda_space_cd(2,:)        = [10^(-10),1/max(abs(eig(parameters.Model.C)))];
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     [lambda_opt_dc]             = bayes_search_conn_delay(lambda_space_cd, Ne, Nr, Nw, freq, Cross, BayesIter_Reg1, K, D, C, 1, BayesIter_Delay, x0, Lipschitz);
     lambda1                     = lambda_opt_dc(1); % Estimated delay strenght
     lambda2                     = lambda_opt_dc(2); % Estimated connectivity delay
@@ -255,7 +278,9 @@ for s=1:length(subjects)
     %% Saving Participant file
     %%
     [Participant]               = xan_save(properties,'subject',SubID,x,T,G,parameters,data,Participant);
-    parameters                  = parameters_tmp;
+    if(isequal(properties.anatomy_params.type,"default"))
+        parameters                  = parameters_tmp;
+    end
     toc
 
     %% Save the computed x to the corresponding group folder in Model_Parameters
