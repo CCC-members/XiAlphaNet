@@ -33,7 +33,8 @@
         "reference":"LinkedEars",
         "state":"A",
         "lwin":2.56,
-        "keep_signal":true
+        "keep_signal":true,
+        "ref_channel":"Pz"
     },    
     "tmp":{
         "description":"",
