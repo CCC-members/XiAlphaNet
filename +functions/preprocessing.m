@@ -231,12 +231,9 @@ if(~isfile(labels_file))
     labels_file = strcat('+templates/eeg_caps/ICBM152/',labels_file);
 end
 [~,~,ext] = fileparts(labels_file);
-if(isequal(ext,'.mat'))
-    labels = load(labels_file);
-    labels = {labels.Channel.Name};
-else
-    labels = jsondecode(fileread(labels_file));
-    labels = labels.Name;
+labels = properties.channel_params.labels;
+if(~isequal(lower(properties.channel_params.ref_channel),'average'))
+    labels(find(ismember(labels,{properties.channel_params.ref_channel}),1)) = [];
 end
 disp ("-->> Removing Channels  by preprocessed EEG");
 [Cdata_r, Gain] = remove_channels_by_preproc_data(labels, Cdata, Leadfield.Gain);
