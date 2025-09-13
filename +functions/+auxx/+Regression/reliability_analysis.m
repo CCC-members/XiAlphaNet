@@ -1,31 +1,20 @@
 clc; clear; close all;
 
-%% CONFIG
-root_dir       = "/home/ronaldo/Documents/neuroepo/xialphanet_Solutions";
+% CONFIG
+root_dir       = "/Users/ronald/Downloads/xialphanet_Solutions";
 groups         = ["Pre","Post"];
-B              = 100;    % permutations
-n_boot         = 1000;     % bootstraps
+B              = 10;    % permutations
+n_boot         = 10;     % bootstraps
 rng(0);
 
-%% Helper: normalize subject folder names
-function key = normalize_subject_name(name)
-    key = lower(name);                     % lowercase
-    key = strrep(key,'_',' ');             % underscores ? spaces
-    key = regexprep(key,'[^a-z\s]','');    % remove non-letters
-    key = strtrim(key);                    % trim spaces
-    tokens = strsplit(key);
-    if numel(tokens) >= 2
-        key = strjoin(tokens(1:2),' ');    % keep first 2 words
-    end
-end
 
-%% Initialize maps
+% Initialize maps
 alpha_pre_map = containers.Map('KeyType','char','ValueType','any');
 alpha_post_map= containers.Map('KeyType','char','ValueType','any');
 xi_pre_map    = containers.Map('KeyType','char','ValueType','any');
 xi_post_map   = containers.Map('KeyType','char','ValueType','any');
 
-%% Load data
+% Load data
 for g = 1:numel(groups)
     group = groups(g);
     group_path = fullfile(root_dir, group);
@@ -64,35 +53,7 @@ for g = 1:numel(groups)
     end
 end
 
-%% Helper: align Pre/Post using UNION
-function [X_pre,X_post,subs] = build_aligned(pre_map,post_map,field)
-    pre_keys  = keys(pre_map);
-    post_keys = keys(post_map);
-    all_keys  = union(pre_keys,post_keys);
-    all_keys  = sort(all_keys);
-    nsub = numel(all_keys);
-
-    if ~isempty(pre_keys)
-        vlen = numel(pre_map(pre_keys{1}).(field));
-    else
-        vlen = numel(post_map(post_keys{1}).(field));
-    end
-
-    X_pre  = nan(vlen,nsub);
-    X_post = nan(vlen,nsub);
-
-    for i=1:nsub
-        if isKey(pre_map,all_keys{i})
-            X_pre(:,i)  = pre_map(all_keys{i}).(field)(:);
-        end
-        if isKey(post_map,all_keys{i})
-            X_post(:,i) = post_map(all_keys{i}).(field)(:);
-        end
-    end
-    subs = all_keys;
-end
-
-%% Build aligned matrices
+% Build aligned matrices
 Alpha=struct(); Xi=struct();
 alpha_fields={"Power","Width","Exponent","PAF"};
 xi_fields={"Power","Width","Exponent"};
@@ -120,19 +81,8 @@ for i=1:numel(fieldsX)
     fprintf("Xi_%s: %d vertices × %d subjects\n",fieldsX{i},sz(1),sz(2));
 end
 
-%% RV-coefficient function
-function rv = rv_coefficient(X,Y)
-    % drop subjects with NaNs in either session
-    mask = all(isfinite(X),2) & all(isfinite(Y),2);
-    X=X(mask,:); Y=Y(mask,:);
-    % center
-    X = X - mean(X,1);
-    Y = Y - mean(Y,1);
-    A = X*X'; B = Y*Y';
-    rv = trace(A*B) / sqrt(trace(A*A)*trace(B*B));
-end
 
-%% Analysis
+% Analysis
 rv_results=struct();
 processes={"Alpha","Xi"};
 
@@ -186,7 +136,8 @@ end
 disp("Analysis finished with RV.");
 
 
-%%
+
+%
 %% === Visualization of rv_results with group bars ===
 % Assume rv_results is already in workspace
 
@@ -288,3 +239,59 @@ text(mean([5 7]), y_bar-0.05, '\xi-Process', ...
     'HorizontalAlignment','center','FontSize',13,'FontWeight','bold');
 
 box on; grid on; hold off;
+
+
+
+%% Helper: normalize subject folder names
+function key = normalize_subject_name(name)
+    key = lower(name);                     % lowercase
+    key = strrep(key,'_',' ');             % underscores → spaces
+    key = regexprep(key,'[^a-z\s]','');    % remove non-letters
+    key = strtrim(key);                    % trim spaces
+    tokens = strsplit(key);
+    if numel(tokens) >= 2
+        key = strjoin(tokens(1:2),' ');    % keep first 2 words
+    end
+end
+
+% Helper: align Pre/Post using UNION
+function [X_pre,X_post,subs] = build_aligned(pre_map,post_map,field)
+    pre_keys  = keys(pre_map);
+    post_keys = keys(post_map);
+    all_keys  = union(pre_keys,post_keys);
+    all_keys  = sort(all_keys);
+    nsub = numel(all_keys);
+
+    if ~isempty(pre_keys)
+        vlen = numel(pre_map(pre_keys{1}).(field));
+    else
+        vlen = numel(post_map(post_keys{1}).(field));
+    end
+
+    X_pre  = nan(vlen,nsub);
+    X_post = nan(vlen,nsub);
+
+    for i=1:nsub
+        if isKey(pre_map,all_keys{i})
+            X_pre(:,i)  = pre_map(all_keys{i}).(field)(:);
+        end
+        if isKey(post_map,all_keys{i})
+            X_post(:,i) = post_map(all_keys{i}).(field)(:);
+        end
+    end
+    subs = all_keys;
+end
+
+
+% RV-coefficient function
+function rv = rv_coefficient(X,Y)
+    % drop subjects with NaNs in either session
+    mask = all(isfinite(X),2) & all(isfinite(Y),2);
+    X=X(mask,:); Y=Y(mask,:);
+    % center
+    X = X - mean(X,1);
+    Y = Y - mean(Y,1);
+    A = X*X'; B = Y*Y';
+    rv = trace(A*B) / sqrt(trace(A*A)*trace(B*B));
+end
+
