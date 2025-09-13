@@ -224,13 +224,7 @@ delay_8K = nulldiag(sym_matrix(delay_8K));
 
 %% Correcting the Lead Field
 
-ref_channel = properties.general_params.data.ref_channel;
-
-labels_file = properties.anatomy_params.common_params.labels;
-if(~isfile(labels_file))
-    labels_file = strcat('+templates/eeg_caps/ICBM152/',labels_file);
-end
-[~,~,ext] = fileparts(labels_file);
+ref_channel = properties.channel_params.ref_channel;
 labels = properties.channel_params.labels;
 if(~isequal(lower(properties.channel_params.ref_channel),'average'))
     labels(find(ismember(labels,{properties.channel_params.ref_channel}),1)) = [];
