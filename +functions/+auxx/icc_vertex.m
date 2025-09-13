@@ -5,7 +5,7 @@ root_dir       = "/Users/ronald/Downloads/xialphanet_Solutions";
 groups         = ["Pre","Post"];
 alpha_sig      = 0.05;   % nivel de significación
 rho0           = 0.6;    % hipótesis nula ICC <= 0.6
-B              = 10000;   % número de permutaciones
+B              = 100;   % número de permutaciones
 rng(0);
 
 disp("-->> Starting process");

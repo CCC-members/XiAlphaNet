@@ -207,7 +207,7 @@ for s=1:length(subjects)
     T                           = Teval(parameters);
     G                           = Geval(parameters);
     parameters.Model.T          = T;
-    x0                          = generateRandomSample_fit(Nr, Cross, G, freq, 10);
+    x0                          = generateRandomSample_fit(Nr, Cross, G, freq, 10,0);
 
     disp('-->> Estimating Lipschitz Constant...');
     k_min                       = floor(length(freq)*4/5);
@@ -243,7 +243,7 @@ for s=1:length(subjects)
     end
     
     disp('-->> Fixing Initial Parameters...');
-    x0                           = generateRandomSample_fit(Nv, Cross, G, freq, 4,parameters); 
+    x0                           = generateRandomSample_fit(Nv, Cross, G, freq, 4,conn_delay); 
 
     disp('-->> Estimating Lipschitz Constant...');
     k_min                       = floor(length(freq)*4/5);
