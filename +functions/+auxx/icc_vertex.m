@@ -3,12 +3,28 @@ clc; clear; close all;
 %% CONFIG
 root_dir       = "/Users/ronald/Downloads/xialphanet_Solutions";
 groups         = ["Pre","Post"];
-alpha_sig      = 0.05;   % nivel de significación
-rho0           = 0.6;    % hipótesis nula ICC <= 0.6
-B              = 100;   % número de permutaciones
+alpha_sig      = 0.04;   % significance level
+rho0           = 0.7;    % null hypothesis ICC <= rho0
+B              = 100;   % number of permutations
 rng(0);
 
 disp("-->> Starting process");
+
+%% Load template cortex and ROI projection matrix
+import templates.*
+import guide.functions.split_hemisphere
+import guide.functions.tess_smooth
+import guide.functions.tess_hemisplit
+
+Cortex   = load("templates/Cortex.mat");
+template = load("templates/axes.mat");
+colorMap = load("templates/mycolormap_brain_basic_conn.mat");
+currentAxes = template.axes;
+hemis = []; 
+[Cortex, iHideVert] = split_hemisphere(Cortex, hemis);
+
+% ROI projection matrix (Nv × 360)
+R =  functions.auxx.ModelVectorization.voxel_roi_map(Cortex)';
 
 %% Initialize subject maps
 alpha_pre_map = containers.Map('KeyType','char','ValueType','any');
@@ -16,7 +32,7 @@ alpha_post_map= containers.Map('KeyType','char','ValueType','any');
 xi_pre_map    = containers.Map('KeyType','char','ValueType','any');
 xi_post_map   = containers.Map('KeyType','char','ValueType','any');
 
-%% Load data (cortical average)
+%% Load data
 for g = 1:numel(groups)
     group = groups(g);
     group_path = fullfile(root_dir, group);
@@ -33,10 +49,10 @@ for g = 1:numel(groups)
         if exist(alpha_file,"file")
             A = load(alpha_file);
             alpha_struct = struct( ...
-                "Power",   mean(A.Power(:)), ...
-                "Width",   mean(A.Width(:)), ...
-                "Exponent",mean(A.Exponent(:)), ...
-                "PAF",     mean(A.PAF(:)));
+                "Power",   R' * A.Power(:), ...
+                "Width",   R' * A.Width(:), ...
+                "Exponent",R' * A.Exponent(:), ...
+                "PAF",     R' * A.PAF(:));
             if strcmpi(group,"Pre"), alpha_pre_map(key)=alpha_struct;
             else, alpha_post_map(key)=alpha_struct; end
         end
@@ -46,16 +62,16 @@ for g = 1:numel(groups)
         if exist(xi_file,"file")
             X = load(xi_file);
             xi_struct = struct( ...
-                "Power",   mean(X.Power(:)), ...
-                "Width",   mean(X.Width(:)), ...
-                "Exponent",mean(X.Exponent(:)));
+                "Power",   R' * X.Power(:), ...
+                "Width",   R' * X.Width(:), ...
+                "Exponent",R' * X.Exponent(:));
             if strcmpi(group,"Pre"), xi_pre_map(key)=xi_struct;
             else, xi_post_map(key)=xi_struct; end
         end
     end
 end
 
-%% Build aligned subject averages
+%% Build aligned ROI matrices
 Alpha=struct(); Xi=struct();
 alpha_fields={"Power","Width","Exponent","PAF"};
 xi_fields={"Power","Width","Exponent"};
@@ -71,14 +87,16 @@ for k=1:numel(xi_fields)
     if ~isempty(Xp), Xi.(f).Pre=Xp; Xi.(f).Post=Yp; Xi.(f).Subs=subs; end
 end
 
-disp("Summary of aligned subject averages:");
+disp("Summary of aligned ROI data:");
 fieldsA=fieldnames(Alpha);
 for i=1:numel(fieldsA)
-    fprintf("Alpha_%s: %d subjects\n",fieldsA{i},numel(Alpha.(fieldsA{i}).Pre));
+    sz=size(Alpha.(fieldsA{i}).Pre);
+    fprintf("Alpha_%s: %d ROIs × %d subjects\n",fieldsA{i},sz(1),sz(2));
 end
 fieldsX=fieldnames(Xi);
 for i=1:numel(fieldsX)
-    fprintf("Xi_%s: %d subjects\n",fieldsX{i},numel(Xi.(fieldsX{i}).Pre));
+    sz=size(Xi.(fieldsX{i}).Pre);
+    fprintf("Xi_%s: %d ROIs × %d subjects\n",fieldsX{i},sz(1),sz(2));
 end
 
 %% Analysis with ICC(3,1) + permutation test
@@ -92,51 +110,69 @@ for P=1:numel(processes)
     for pp=1:numel(params)
         param=params{pp};
         if strcmp(proc,"Alpha")
-            Xpre=Alpha.(param).Pre(:);   % subjects × 1
-            Xpost=Alpha.(param).Post(:); % subjects × 1
+            Xpre=Alpha.(param).Pre';   % subjects × ROIs
+            Xpost=Alpha.(param).Post'; % subjects × ROIs
         else
-            Xpre=Xi.(param).Pre(:);
-            Xpost=Xi.(param).Post(:);
+            Xpre=Xi.(param).Pre';
+            Xpost=Xi.(param).Post';
         end
 
-        % Data matrix (nsub × 2)
-        data = [Xpre, Xpost];
-        icc_obs = compute_icc3_1(data);
+        nsub = size(Xpre,1);
+        nrois= size(Xpre,2);
 
-        % Permutation distribution
-        perm_stats = nan(B,1);
-        for b = 1:B
-            perm_idx = randperm(size(data,1));
-            Yperm = [data(:,1), data(perm_idx,2)];
-            perm_stats(b) = compute_icc3_1(Yperm);
+        icc_vals = nan(1,nrois);
+        p_vals   = nan(1,nrois);
+
+        % Compute ICC + permutation p-value per ROI
+        for r = 1:nrois
+            data = [Xpre(:,r), Xpost(:,r)];
+            [icc_obs, p_val] = compute_icc3_1_perm(data, rho0, B);
+            if p_val <= alpha_sig
+                icc_vals(r) = icc_obs;
+            else
+                icc_vals(r) = 0; % mínimo si no significativo
+            end
+            p_vals(r) = p_val;
         end
 
-        % p-valor unilateral (H0: ICC <= rho0)
-        if icc_obs <= rho0
-            p_val = 1; % automáticamente no significativo
-        else
-            p_val = (1 + sum(perm_stats >= icc_obs | perm_stats >= rho0)) / (B+1);
-        end
-
-        % Guardar resultados
         key=sprintf("%s_%s",proc,param);
-        icc_results.(key).ICC  = icc_obs;
-        icc_results.(key).pval = p_val;
-        icc_results.(key).n    = size(data,1);
+        icc_results.(key).ROIICC=icc_vals;
+        icc_results.(key).pvals=p_vals;
+        icc_results.(key).n=nsub;
 
-        fprintf("%s_%s: ICC=%.3f, p=%.4f, n=%d\n", ...
-            proc,param,icc_obs,p_val,size(data,1));
+        fprintf("%s_%s: median ROI ICC=%.3f, sig=%d/%d, n=%d\n", ...
+            proc,param,nanmedian(icc_vals),sum(p_vals<=alpha_sig),nrois,nsub);
     end
 end
 
-disp("Cortical-average ICC analysis with permutation finished.");
+disp("ROI-level ICC analysis finished.");
 
-%% Helper: ICC(3,1)
-function icc = compute_icc3_1(Y)
+%% === Helper: ICC(3,1) permutation test ===
+function [icc_obs, pval] = compute_icc3_1_perm(Y, rho0, B)
 Y = Y(all(~isnan(Y),2),:);
 [n,k] = size(Y);
-if n < 2 || k < 2, icc=NaN; return; end
+if n < 2 || k < 2, icc_obs=NaN; pval=NaN; return; end
 
+% observed ICC
+icc_obs = compute_icc3_1(Y);
+T_obs   = icc_obs - rho0;
+
+% null distribution
+T_null = nan(B,1);
+for b = 1:B
+    Y_perm = Y;
+    flips = rand(n,1) > 0.5; % swap Pre/Post randomly
+    Y_perm(flips,:) = Y_perm(flips,[2 1]);
+    T_null(b) = compute_icc3_1(Y_perm) - rho0;
+end
+
+% one-sided p-value
+pval = mean(T_null >= T_obs);
+end
+
+%% === Helper: compute ICC(3,1) ===
+function icc = compute_icc3_1(Y)
+[n,k] = size(Y);
 mean_per_subject = mean(Y,2);
 mean_per_session = mean(Y,1);
 grand_mean = mean(Y(:));
@@ -149,15 +185,10 @@ SS_error    = SS_total - SS_between - SS_sessions;
 MS_between = SS_between / (n-1);
 MS_error   = SS_error   / ((n-1)*(k-1));
 
-den = MS_between + (k-1)*MS_error;
-if den <= 0
-    icc = NaN;
-else
-    icc = (MS_between - MS_error) / den;
-end
+icc = (MS_between - MS_error) / (MS_between + (k-1)*MS_error);
 end
 
-%% Helper: normalize subject names
+%% === Helper: normalize subject names ===
 function key = normalize_subject_name(name)
     key = lower(name);                     
     key = strrep(key,'_',' ');             
@@ -169,25 +200,26 @@ function key = normalize_subject_name(name)
     end
 end
 
-%% Helper: align Pre/Post subject averages
+%% === Helper: align Pre/Post using INTERSECTION ===
 function [X_pre,X_post,subs] = build_aligned(pre_map,post_map,field)
     pre_keys  = keys(pre_map);
     post_keys = keys(post_map);
-    all_keys  = intersect(pre_keys,post_keys); % solo sujetos en ambos
+    all_keys  = intersect(pre_keys,post_keys); % only subjects in both
     all_keys  = sort(all_keys);
     nsub = numel(all_keys);
 
     if nsub==0, X_pre=[]; X_post=[]; subs={}; return; end
+    vlen = numel(pre_map(all_keys{1}).(field));
 
-    X_pre  = nan(1,nsub);
-    X_post = nan(1,nsub);
+    X_pre  = nan(vlen,nsub);
+    X_post = nan(vlen,nsub);
 
     for i=1:nsub
         if isKey(pre_map,all_keys{i})
-            X_pre(i)  = pre_map(all_keys{i}).(field)(:);
+            X_pre(:,i)  = pre_map(all_keys{i}).(field)(:);
         end
         if isKey(post_map,all_keys{i})
-            X_post(i) = post_map(all_keys{i}).(field)(:);
+            X_post(:,i) = post_map(all_keys{i}).(field)(:);
         end
     end
     subs = all_keys;

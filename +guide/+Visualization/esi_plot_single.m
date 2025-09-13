@@ -21,7 +21,7 @@ Vertices = Cortex.Vertices;
 Vertices(iHideVert, :) = [];
 
 % Parameters
-h = 0.004;  % bandwidth (in mm), controls smoothing strength
+h = 0.004; %0.004  % bandwidth (in mm), controls smoothing strength
 
 % Compute Euclidean distance between vertices (NxN)
 D = pdist2(Vertices, Vertices);  % warning: dense! for <5000 vertices
@@ -32,17 +32,16 @@ W = W ./ sum(W, 2);  % Normalize rows
 
 % Smooth J
 J_smoothed = W * J;
+J_smoothed = J_smoothed * (norm(J(:)) / norm(J_smoothed(:)));
+
 
 % Assign result
 sources_iv = J_smoothed;
 
 % Surface smoothing of vertices (geometry only)
-smoothValue             = 0.3;
-SurfSmoothIterations    = 10;
+smoothValue             = 0.5;
+SurfSmoothIterations    = 20;
 Vertices                = tess_smooth(Cortex.Vertices, smoothValue, SurfSmoothIterations, Cortex.VertConn, 1);
-
-
-
 
 % Plotting
 fig = figure('Renderer','opengl');
