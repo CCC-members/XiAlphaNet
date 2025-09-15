@@ -1,4 +1,4 @@
-function R = voxel_roi_map(Cortex)
+function R = voxel_roi_map(Cortex, CortexiAtlas)
 % VOXEL_ROI_MAP  Build ROI?vertex operator with orthonormal rows (R*R' = I)
 %   R = voxel_roi_map(Cortex)
 % Inputs:
@@ -11,7 +11,7 @@ function R = voxel_roi_map(Cortex)
 %   R = D_A^{-1/2} * B * W^{1/2}
 %   B(i,j)=1 if vertex j belongs to ROI i; W=diag(vertex areas); a_i=(B*w)_i
 
-    Atlas = Cortex.Atlas(Cortex.iAtlas);
+    Atlas = Cortex.Atlas(CortexiAtlas);
     N = size(Cortex.Vertices, 1);
     m = numel(Atlas.Scouts);
 

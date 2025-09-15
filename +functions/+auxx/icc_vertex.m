@@ -3,9 +3,9 @@ clc; clear; close all;
 %% CONFIG
 root_dir       = "/Users/ronald/Downloads/xialphanet_Solutions";
 groups         = ["Pre","Post"];
-alpha_sig      = 0.04;   % significance level
-rho0           = 0.7;    % null hypothesis ICC <= rho0
-B              = 100;   % number of permutations
+alpha_sig      = 0.05;   % significance level
+rho0           = 0;    % null hypothesis ICC <= rho0
+B              = 10000;   % number of permutations
 rng(0);
 
 disp("-->> Starting process");
@@ -24,8 +24,7 @@ hemis = [];
 [Cortex, iHideVert] = split_hemisphere(Cortex, hemis);
 
 % ROI projection matrix (Nv × 360)
-R =  functions.auxx.ModelVectorization.voxel_roi_map(Cortex)';
-
+[R,R_inv]=functions.auxx.ModelVectorization.roi_average_operators(Cortex,13);
 %% Initialize subject maps
 alpha_pre_map = containers.Map('KeyType','char','ValueType','any');
 alpha_post_map= containers.Map('KeyType','char','ValueType','any');
@@ -49,10 +48,10 @@ for g = 1:numel(groups)
         if exist(alpha_file,"file")
             A = load(alpha_file);
             alpha_struct = struct( ...
-                "Power",   R' * A.Power(:), ...
-                "Width",   R' * A.Width(:), ...
-                "Exponent",R' * A.Exponent(:), ...
-                "PAF",     R' * A.PAF(:));
+                "Power",   R * A.Power(:)/mean(1), ...
+                "Width",   R * A.Width(:), ...
+                "Exponent",R * A.Exponent(:), ...
+                "PAF",     R * A.PAF(:));
             if strcmpi(group,"Pre"), alpha_pre_map(key)=alpha_struct;
             else, alpha_post_map(key)=alpha_struct; end
         end
@@ -62,9 +61,9 @@ for g = 1:numel(groups)
         if exist(xi_file,"file")
             X = load(xi_file);
             xi_struct = struct( ...
-                "Power",   R' * X.Power(:), ...
-                "Width",   R' * X.Width(:), ...
-                "Exponent",R' * X.Exponent(:));
+                "Power",   R * X.Power(:)/mean(1), ...
+                "Width",   R * X.Width(:), ...
+                "Exponent",R * X.Exponent(:));
             if strcmpi(group,"Pre"), xi_pre_map(key)=xi_struct;
             else, xi_post_map(key)=xi_struct; end
         end
@@ -126,11 +125,11 @@ for P=1:numel(processes)
         % Compute ICC + permutation p-value per ROI
         for r = 1:nrois
             data = [Xpre(:,r), Xpost(:,r)];
-            [icc_obs, p_val] = compute_icc3_1_perm(data, rho0, B);
+            [icc_obs, p_val] = compute_icc3_1_perm_multi(data, rho0, B);
             if p_val <= alpha_sig
                 icc_vals(r) = icc_obs;
             else
-                icc_vals(r) = 0; % mínimo si no significativo
+                %icc_vals(r) = 0; % mínimo si no significativo
             end
             p_vals(r) = p_val;
         end
@@ -147,27 +146,43 @@ end
 
 disp("ROI-level ICC analysis finished.");
 
+
 %% === Helper: ICC(3,1) permutation test ===
-function [icc_obs, pval] = compute_icc3_1_perm(Y, rho0, B)
-Y = Y(all(~isnan(Y),2),:);
-[n,k] = size(Y);
-if n < 2 || k < 2, icc_obs=NaN; pval=NaN; return; end
+% === new helper ===
+function [icc_obs, pvals_roi, pval_global] = compute_icc3_1_perm_multi(Y, rho0, B)
+    % Y: n × 2d (Pre,Post for all ROIs concatenated)
+    [n,~] = size(Y);
+    d = size(Y,2)/2;
 
-% observed ICC
-icc_obs = compute_icc3_1(Y);
-T_obs   = icc_obs - rho0;
+    % observed ICCs per ROI
+    icc_obs = nan(1,d);
+    for r = 1:d
+        icc_obs(r) = compute_icc3_1(Y(:,[r, d+r]));
+    end
+    T_obs = max(icc_obs - rho0);
 
-% null distribution
-T_null = nan(B,1);
-for b = 1:B
-    Y_perm = Y;
-    flips = rand(n,1) > 0.5; % swap Pre/Post randomly
-    Y_perm(flips,:) = Y_perm(flips,[2 1]);
-    T_null(b) = compute_icc3_1(Y_perm) - rho0;
-end
+    % permutation distribution
+    T_null = nan(B,1);
+    perm_icc = nan(B,d); % store per-ROI too
+    for b=1:B
+        flips = rand(n,1) > 0.5; % subject-wise flip
+        Y_perm = Y;
+        Y_perm(flips,:) = Y_perm(flips,[d+1:end, 1:d]); % swap Pre/Post
+        for r = 1:d
+            perm_icc(b,r) = compute_icc3_1(Y_perm(:,[r, d+r]));
+        end
+        T_null(b) = mean(perm_icc(b,:) - rho0);
+    end
 
-% one-sided p-value
-pval = mean(T_null >= T_obs);
+    % global p-value
+    pval_global = mean(T_null >= T_obs);
+
+    % ROI-wise adjusted p-values (maxT method)
+    pvals_roi = nan(1,d);
+    for r=1:d
+        T_obs_r = icc_obs(r) - rho0;
+        pvals_roi(r) = mean(max(perm_icc - rho0,[],2) >= T_obs_r);
+    end
 end
 
 %% === Helper: compute ICC(3,1) ===
@@ -224,3 +239,4 @@ function [X_pre,X_post,subs] = build_aligned(pre_map,post_map,field)
     end
     subs = all_keys;
 end
+
