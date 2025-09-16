@@ -32,7 +32,7 @@ J(iHideVert) = [];
 Vertices = Cortex.Vertices;
 Vertices(iHideVert,:) = [];
 
-h = 0.000001;
+h = 0.004;
 D = pdist2(Vertices, Vertices);
 W = exp(-(D.^2) / (2*h^2));
 W = W ./ sum(W, 2);
@@ -41,7 +41,7 @@ J_smoothed = J_smoothed * (norm(J(:)) / norm(J_smoothed(:)));
 sources_iv = J_smoothed;
 
 % Smooth surface geometry
-smoothValue          = 0.7;
+smoothValue          = 0.2;
 SurfSmoothIterations = 20;
 Vertices = tess_smooth(Cortex.Vertices, smoothValue, SurfSmoothIterations, Cortex.VertConn, 1);
 
