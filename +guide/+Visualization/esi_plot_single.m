@@ -32,7 +32,7 @@ J(iHideVert) = [];
 Vertices = Cortex.Vertices;
 Vertices(iHideVert,:) = [];
 
-h = 0.00001;
+h = 0.000001;
 D = pdist2(Vertices, Vertices);
 W = exp(-(D.^2) / (2*h^2));
 W = W ./ sum(W, 2);
@@ -83,30 +83,30 @@ border_edges = sort(border_edges,2);
 border_edges = unique(border_edges,'rows');
 
 %% === Plot borders on template axes (smoothed) ===
-hold(currentAxes,'on');
-
-nInterp = 10;  % number of points per curve (increase for smoother lines)
-
-for e = 1:size(border_edges,1)
-    v1 = border_edges(e,1);
-    v2 = border_edges(e,2);
-
-    % Get edge endpoints
-    pts = Vertices([v1 v2],:);
-
-    % Parametric distance
-    t = [0 1];
-
-    % Build spline interpolation across edge
-    tt = linspace(0,1,nInterp);
-
-    xs = spline(t, pts(:,1), tt);
-    ys = spline(t, pts(:,2), tt);
-    zs = spline(t, pts(:,3), tt);
-
-    % Plot interpolated smooth border
-    plot3(currentAxes, xs, ys, zs, ...
-        'Color', [0.7 0.7 0.7], 'LineWidth', 2.5);
-end
-
-hold(currentAxes,'off');
+% hold(currentAxes,'on');
+% 
+% nInterp = 10;  % number of points per curve (increase for smoother lines)
+% 
+% for e = 1:size(border_edges,1)
+%     v1 = border_edges(e,1);
+%     v2 = border_edges(e,2);
+% 
+%     % Get edge endpoints
+%     pts = Vertices([v1 v2],:);
+% 
+%     % Parametric distance
+%     t = [0 1];
+% 
+%     % Build spline interpolation across edge
+%     tt = linspace(0,1,nInterp);
+% 
+%     xs = spline(t, pts(:,1), tt);
+%     ys = spline(t, pts(:,2), tt);
+%     zs = spline(t, pts(:,3), tt);
+% 
+%     % Plot interpolated smooth border
+%     plot3(currentAxes, xs, ys, zs, ...
+%         'Color', [0.7 0.7 0.7], 'LineWidth', 2.5);
+% end
+% 
+% hold(currentAxes,'off');
