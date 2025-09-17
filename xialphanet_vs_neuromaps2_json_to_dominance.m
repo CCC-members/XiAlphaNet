@@ -46,7 +46,7 @@ targetSurface = '@default_subject/tess_cortex_pial_low.mat';              % low-
 mapDir        = fullfile(baseDir, 'data', 'neuromaps');
 
 % Spin test configuration
-nSpins        = 100;   % number of spin permutations for nonparametric p-values
+nSpins        = 10000;   % number of spin permutations for nonparametric p-values
 
 %% === STEP 1: Compute group averages from JSON ===
 % ------------------------------------------------------------------------
@@ -99,7 +99,7 @@ results_all = run_all_receptor_analysis( ...
 %     (1) Bar plot of Adjusted R² per spectral parameter
 %     (2) Heatmap of receptor contributions (dominance analysis)
 % - Marks parameters with significant fits (* if p_spin < 0.05)
-% - Receptor order follows Hansen et al. canonical ordering
+% - Receptor order follows Hansen et al. 2022 canonical ordering
 % ------------------------------------------------------------------------
 fprintf('--- Step 4: Generating dominance plot ---\n');
 make_receptor_dominance_plot(results_all);

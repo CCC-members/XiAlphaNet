@@ -41,7 +41,7 @@ J_smoothed = J_smoothed * (norm(J(:)) / norm(J_smoothed(:)));
 sources_iv = J_smoothed;
 
 % Smooth surface geometry
-smoothValue          = 0.2;
+smoothValue          = 0.8;
 SurfSmoothIterations = 20;
 Vertices = tess_smooth(Cortex.Vertices, smoothValue, SurfSmoothIterations, Cortex.VertConn, 1);
 
@@ -82,7 +82,7 @@ border_edges = edges(border_mask,:);
 border_edges = sort(border_edges,2);
 border_edges = unique(border_edges,'rows');
 
-%% === Plot borders on template axes (smoothed) ===
+ %% === Plot borders on template axes (smoothed) ===
 % hold(currentAxes,'on');
 % 
 % nInterp = 10;  % number of points per curve (increase for smoother lines)

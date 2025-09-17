@@ -2,10 +2,10 @@ clc; clear; close all;
 
 %% CONFIG
 root_dir       = "/Users/ronald/Downloads/xialphanet_Solutions";
-groups         = ["Pre","Post"];
+groups         = ["Pre","Mid","Post"];   % now 3 sessions
 alpha_sig      = 0.05;   % significance level
 rho0           = 0;      % null hypothesis ICC <= rho0
-B              = 100;   % number of permutations (use large for diagnostics)
+B              = 100;    % number of permutations (increase for real test)
 rng(0);
 
 disp("-->> Starting process");
@@ -25,12 +25,13 @@ hemis = [];
 
 % ROI projection matrix (Nv × 360)
 [R,R_inv]=functions.auxx.ModelVectorization.roi_average_operators(Cortex,10);
-%R = 1;
-%% Initialize subject maps
-alpha_pre_map = containers.Map('KeyType','char','ValueType','any');
-alpha_post_map= containers.Map('KeyType','char','ValueType','any');
-xi_pre_map    = containers.Map('KeyType','char','ValueType','any');
-xi_post_map   = containers.Map('KeyType','char','ValueType','any');
+
+%% Initialize subject maps for each session
+alpha_maps = struct(); xi_maps = struct();
+for g = 1:numel(groups)
+    alpha_maps.(groups(g)) = containers.Map('KeyType','char','ValueType','any');
+    xi_maps.(groups(g))    = containers.Map('KeyType','char','ValueType','any');
+end
 
 %% Load data
 for g = 1:numel(groups)
@@ -53,8 +54,7 @@ for g = 1:numel(groups)
                 "Width",   R * A.Width(:), ...
                 "Exponent",R * A.Exponent(:), ...
                 "PAF",     R * A.PAF(:));
-            if strcmpi(group,"Pre"), alpha_pre_map(key)=alpha_struct;
-            else, alpha_post_map(key)=alpha_struct; end
+            alpha_maps.(group)(key) = alpha_struct;
         end
 
         % Xi
@@ -65,8 +65,7 @@ for g = 1:numel(groups)
                 "Power",   R * X.Power(:)/mean(1), ...
                 "Width",   R * X.Width(:), ...
                 "Exponent",R * X.Exponent(:));
-            if strcmpi(group,"Pre"), xi_pre_map(key)=xi_struct;
-            else, xi_post_map(key)=xi_struct; end
+            xi_maps.(group)(key) = xi_struct;
         end
     end
 end
@@ -78,25 +77,25 @@ xi_fields={"Power","Width","Exponent"};
 
 for k=1:numel(alpha_fields)
     f=alpha_fields{k};
-    [Xp,Yp,subs]=build_aligned(alpha_pre_map,alpha_post_map,f);
-    if ~isempty(Xp), Alpha.(f).Pre=Xp; Alpha.(f).Post=Yp; Alpha.(f).Subs=subs; end
+    [Xcells,subs]=build_aligned_multi(alpha_maps,groups,f);
+    if ~isempty(Xcells), Alpha.(f).Data=Xcells; Alpha.(f).Subs=subs; end
 end
 for k=1:numel(xi_fields)
     f=xi_fields{k};
-    [Xp,Yp,subs]=build_aligned(xi_pre_map,xi_post_map,f);
-    if ~isempty(Xp), Xi.(f).Pre=Xp; Xi.(f).Post=Yp; Xi.(f).Subs=subs; end
+    [Xcells,subs]=build_aligned_multi(xi_maps,groups,f);
+    if ~isempty(Xcells), Xi.(f).Data=Xcells; Xi.(f).Subs=subs; end
 end
 
 disp("Summary of aligned ROI data:");
 fieldsA=fieldnames(Alpha);
 for i=1:numel(fieldsA)
-    sz=size(Alpha.(fieldsA{i}).Pre);
-    fprintf("Alpha_%s: %d ROIs × %d subjects\n",fieldsA{i},sz(1),sz(2));
+    sz=size(Alpha.(fieldsA{i}).Data{1});
+    fprintf("Alpha_%s: %d ROIs × %d subjects × %d sessions\n",fieldsA{i},sz(1),sz(2),numel(Alpha.(fieldsA{i}).Data));
 end
 fieldsX=fieldnames(Xi);
 for i=1:numel(fieldsX)
-    sz=size(Xi.(fieldsX{i}).Pre);
-    fprintf("Xi_%s: %d ROIs × %d subjects\n",fieldsX{i},sz(1),sz(2));
+    sz=size(Xi.(fieldsX{i}).Data{1});
+    fprintf("Xi_%s: %d ROIs × %d subjects × %d sessions\n",fieldsX{i},sz(1),sz(2),numel(Xi.(fieldsX{i}).Data));
 end
 
 %% Analysis with ICC(3,1) + permutation test
@@ -109,111 +108,92 @@ for P=1:numel(processes)
 
     for pp=1:numel(params)
         param=params{pp};
-        if strcmp(proc,"Alpha")
-            Xpre=Alpha.(param).Pre';   % subjects × ROIs
-            Xpost=Alpha.(param).Post'; % subjects × ROIs
-        else
-            Xpre=Xi.(param).Pre';
-            Xpost=Xi.(param).Post';
-        end
+        if strcmp(proc,"Alpha"), Xcells=Alpha.(param).Data;
+        else, Xcells=Xi.(param).Data; end
 
-        nsub = size(Xpre,1);
-        nrois= size(Xpre,2);
+        nsub = size(Xcells{1},2);
+        nrois= size(Xcells{1},1);
 
         icc_vals = nan(1,nrois);
         p_vals   = nan(1,nrois);
 
-        % Compute ICC + permutation p-value per ROI with diagnostics
         fprintf("\n=== Running %s_%s ===\n",proc,param);
-        data_all = [Xpre, Xpost];
-        [icc_obs, p_vals_roi, pval_global, T_null] = compute_icc3_1_perm_multi(data_all, rho0, B);
 
-        % Report null distribution diagnostics
-        fprintf("Null mean=%.4f, std=%.4f, min=%.4f, max=%.4f\n", ...
-            mean(T_null), std(T_null), min(T_null), max(T_null));
+        % Build data matrix: subjects × (sessions*d)
+        Y = [];
+        for g=1:numel(groups)
+            Y = [Y, Xcells{g}']; % subjects × ROIs per session
+        end
 
-        % Save results
+        [icc_obs, p_vals_roi, pval_global, T_null] = compute_icc3_1_perm_multi(Y, rho0, B);
+
+        fprintf("Null mean=%.4f, std=%.4f\n", mean(T_null), std(T_null));
+
         key=sprintf("%s_%s",proc,param);
         icc_results.(key).ROIICC=icc_obs.*(1-p_vals_roi);
         icc_results.(key).pvals=p_vals_roi;
         icc_results.(key).pval_global=pval_global;
         icc_results.(key).T_null=T_null;
         icc_results.(key).n=nsub;
-
-        fprintf("%s_%s: median ROI ICC=%.3f, global p=%.3f, sig=%d/%d, n=%d\n", ...
-            proc,param,nanmedian(icc_obs),pval_global,sum(p_vals_roi<=alpha_sig),nrois,nsub);
     end
 end
 
 disp("ROI-level ICC analysis finished.");
 
-
-
 %% === Visualization of ALL ROI ICC maps with fixed [0,1] scale ===
 fields = fieldnames(icc_results);
-
 for f = 1:numel(fields)
-    % Get ICC values for this parameter
     icc_vals = icc_results.(fields{f}).ROIICC;
-
-    % Clip & normalize to [0,1]
-    icc_vals = max(0, min(1, icc_vals(:)));
-
-    % Project ROI → vertices
+    icc_vals = max(0, min(1, icc_vals(:))); % Clip to [0,1]
     J = R_inv * icc_vals;
-
-    % New figure for each map
-    guide.Visualization.esi_plot_single;
+    figure('Name',fields{f},'Color','w');
+    guide.Visualization.esi_plot_single(J);
     title(fields{f}, 'Interpreter','none');
-
-    % Force colormap and fixed scale
-    %colormap(parula);   % or jet / your custom maps
-    caxis([0 1]);       % consistent scale 0–1
-
-    % Add colorbar
-    colorbar;
+    caxis([0 1]); colorbar;
 end
 
 
-
-
-%% === Helper: ICC(3,1) permutation test with cross-subject shuffling ===
+%% === Helper: ICC(3,1) permutation test with within-subject label shuffling ===
 function [icc_obs, pvals_roi, pval_global, T_null] = compute_icc3_1_perm_multi(Y, rho0, B)
-    % Y: n × 2d (Pre, Post) data matrix, n = subjects, d = ROIs
-    [n,~] = size(Y);
-    d = size(Y,2)/2;
+    % Y: n × (sessions*d)
+    [n,m] = size(Y);
+    d = m/3; % for 3 sessions
+    k = 3;
 
-    % --- Observed ICCs ---
+    % observed ICCs
     icc_obs = nan(1,d);
     for r = 1:d
-        icc_obs(r) = compute_icc3_1(Y(:,[r, d+r]));
+        icc_obs(r) = compute_icc3_1(Y(:,[r, d+r, 2*d+r]));
     end
     T_obs = max(icc_obs - rho0);
 
-    % --- Permutation distribution ---
+    % permutation distribution
     T_null   = nan(B,1);
     perm_icc = nan(B,d);
 
-    for b = 1:B
-        % Randomly shuffle the mapping between Pre and Post subjects
-        perm_idx = randperm(n);  
-        Y_perm   = [Y(:,1:d), Y(perm_idx,d+1:end)];
-
-        % Recompute ICC for each ROI
-        for r = 1:d
-            perm_icc(b,r) = compute_icc3_1(Y_perm(:,[r, d+r]));
+    for b=1:B
+        Y_perm = Y;
+        for i=1:n
+            perm_idx = randperm(k); % shuffle session labels for subject i
+            Y_perm(i,:) = reshape( Y(i, reshape(1:m, d, k)')',1,[] ); % restructure
+            % apply permutation
+            blocks = reshape(Y_perm(i,:), d,k);
+            blocks = blocks(:,perm_idx);
+            Y_perm(i,:) = blocks(:)';
         end
 
-        % Store global test statistic (average across ROIs)
+        for r=1:d
+            perm_icc(b,r) = compute_icc3_1(Y_perm(:,[r, d+r, 2*d+r]));
+        end
         T_null(b) = mean(perm_icc(b,:) - rho0);
     end
 
-    % --- Global p-value ---
+    % global p-value
     pval_global = mean(T_null >= T_obs);
 
-    % --- ROI-wise adjusted p-values (maxT method) ---
+    % ROI-wise adjusted p-values
     pvals_roi = nan(1,d);
-    for r = 1:d
+    for r=1:d
         T_obs_r = icc_obs(r) - rho0;
         pvals_roi(r) = mean(max(perm_icc - rho0,[],2) >= T_obs_r);
     end
@@ -249,27 +229,25 @@ function key = normalize_subject_name(name)
     end
 end
 
-%% === Helper: align Pre/Post using INTERSECTION ===
-function [X_pre,X_post,subs] = build_aligned(pre_map,post_map,field)
-    pre_keys  = keys(pre_map);
-    post_keys = keys(post_map);
-    all_keys  = intersect(pre_keys,post_keys); % only subjects in both
-    all_keys  = sort(all_keys);
+%% === Helper: align N sessions using INTERSECTION ===
+function [X_cells, subs] = build_aligned_multi(maps_struct, groups, field)
+    all_keys = keys(maps_struct.(groups(1)));
+    for g = 2:numel(groups)
+        all_keys = intersect(all_keys, keys(maps_struct.(groups(g))));
+    end
+    all_keys = sort(all_keys);
     nsub = numel(all_keys);
 
-    if nsub==0, X_pre=[]; X_post=[]; subs={}; return; end
-    vlen = numel(pre_map(all_keys{1}).(field));
+    if nsub==0, X_cells={}; subs={}; return; end
+    vlen = numel(maps_struct.(groups(1))(all_keys{1}).(field));
 
-    X_pre  = nan(vlen,nsub);
-    X_post = nan(vlen,nsub);
-
-    for i=1:nsub
-        if isKey(pre_map,all_keys{i})
-            X_pre(:,i)  = pre_map(all_keys{i}).(field)(:);
+    X_cells = cell(1,numel(groups));
+    for g=1:numel(groups)
+        Xg = nan(vlen,nsub);
+        for i=1:nsub
+            Xg(:,i) = maps_struct.(groups(g))(all_keys{i}).(field)(:);
         end
-        if isKey(post_map,all_keys{i})
-            X_post(:,i) = post_map(all_keys{i}).(field)(:);
-        end
+        X_cells{g} = Xg;
     end
     subs = all_keys;
 end

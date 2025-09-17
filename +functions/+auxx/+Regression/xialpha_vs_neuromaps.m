@@ -5,8 +5,8 @@ dataDir       = '/Users/ronald/Downloads/FSAve_HCP_MMP1_FSAve_Template_19/data/F
 mapDir        = '/Users/ronald/Downloads/FSAve_HCP_MMP1_FSAve_Template_19/data/neuromaps';
 targetSurface = '@default_subject/tess_cortex_pial_low.mat';
 
-mode      = 'average';   % options: 'group' or 'average'
-age_group = 1;           % used only when mode = 'group'
+mode      = 'group';   % options: 'group' or 'average'
+age_group = 5;           % used only when mode = 'group'
 nSpins    = 100;         % number of spins for spin test
 
 %% === LOCATE PARAMETER MAPS ===
