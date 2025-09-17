@@ -105,7 +105,7 @@ elseif round(real_freqres*100)/100 > round(desired_freqres*100)/100  %The epoch 
     interpolate = 1;
 end
 
-if nepochs > 1  %At least need 3 analysis windows to calculate the cross spectral matrices
+if nepochs > 0  %At least need 3 analysis windows to calculate the cross spectral matrices
 
     %check if the channels are in the desired order
     [ii, pos] = ismember('t7', lower(cnames)); if pos ~= 0, cnames{pos} = 'T3'; end
