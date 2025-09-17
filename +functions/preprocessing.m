@@ -244,15 +244,15 @@ Gain = reshape(Gain,Ne,3,Nv);
 Gain = permute(Gain,[1,3,2]);
 Gain = sum(Gain.*VertNormals,3);
 
-% After cleaning/sorting Gain so it's Ne x (3*Nv) or Ne x Nv:
-Ne = size(Gain,1);
-H  = eye(Ne) - ones(Ne)/Ne;   % same H as in your aveReference()
-
-% Apply AR to the lead field
-Gain = H * Gain;
+% % After cleaning/sorting Gain so it's Ne x (3*Nv) or Ne x Nv:
+% Ne = size(Gain,1);
+% H  = eye(Ne) - ones(Ne)/Ne;   % same H as in your aveReference()
+% 
+% % Apply AR to the lead field
+% Gain = H * Gain;
 
 %% Save Data
-R  = voxel_roi_map(Cortex);
+R  = voxel_roi_map(Cortex,Cortex.iAtlas);
 
 % Full Model of Spatio - Temporal Correlation on the Voxel Space
 parameters.Model.K = Gain;    % Lead Field
