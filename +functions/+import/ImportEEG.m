@@ -65,7 +65,6 @@ switch ext
         data = EEG.data;
         EEG.filepath = fullfile(base_path);
         srate        = EEG.srate;
-
         dnames             = {EEG.chanlocs.labels};
         data               = EEG.data;
 

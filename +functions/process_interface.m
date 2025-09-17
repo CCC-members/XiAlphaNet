@@ -190,10 +190,10 @@ for s=1:length(subjects)
     [NewCross,scale]            = global_scale_factor_correction(data.Cross);
     data.Cross                  = NewCross;
     clear NewCross;
-    % if data.age<15
-    %     parameters.Model.D      = 0.0110*parameters.Model.D/ mean(parameters.Model.D(:));
-    %     parameters.Compact_Model.D  = 0.0110*parameters.Compact_Model.D/ mean(parameters.Compact_Model.D(:));
-    % end
+    if data.age<15
+        parameters.Model.D      = 0.0110*parameters.Model.D/ mean(parameters.Model.D(:));
+        parameters.Compact_Model.D  = 0.0110*parameters.Compact_Model.D/ mean(parameters.Compact_Model.D(:));
+    end
     age                         = data.age;
 
     disp('-->> Fixing Initial Parameters...');
@@ -207,7 +207,7 @@ for s=1:length(subjects)
     T                           = Teval(parameters);
     G                           = Geval(parameters);
     parameters.Model.T          = T;
-    x0                          = generateRandomSample_fit(Nr, Cross, G, freq, 10,0);
+    x0                          = generateRandomSample_fit(Nr, Cross, G, freq, 1,conn_delay);
 
     disp('-->> Estimating Lipschitz Constant...');
     k_min                       = floor(length(freq)*4/5);
@@ -235,7 +235,7 @@ for s=1:length(subjects)
     disp('-->> Estimating Transfer Function...');
     parameters.Dimensions.Nv    = Nv;
     if(tf_default)
-        TF_path                 = fullfile(properties.general_params.tmp.path,'T&G_TensorField');
+        TF_path                 = fullfile(properties.general_params.tmp.path,'TensorField');
         [T,G,~]                     = read_tensor_field(lambda1,lambda2,25,TF_path);
     else
         [T]                     = Teval(parameters);

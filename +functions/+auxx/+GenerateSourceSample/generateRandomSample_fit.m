@@ -41,6 +41,8 @@ if doparallel == 1
             ma(j, :) = NaN;
         end
     end
+      s2 = 1;
+    x = v2x(me, ma, s2);
 else
     for j = 1:Nv
         %fprintf("Fitting ROI %d/%d...\n", j, Nv);

@@ -39,7 +39,7 @@ switch type
                 url = properties.test_data.tensor_field9;
                 matlab.net.http.HTTPOptions.VerifyServerName = false;
                 options = weboptions('Timeout',Inf,'RequestMethod','auto');
-                downladed_file = websave(fullfile(TF_path,strcat('Tensor_Field_9.5ms.zip')),url,options);
+                downladed_file = websave(fullfile(TF_path,strcat('T_Tensor_Field_9.5ms.zip')),url,options);
                 pause(1);
                 %% Unzip lasted version
                 disp(strcat("-->> Unziping files......."));
@@ -47,21 +47,21 @@ switch type
                 pause(1);
                 delete(fullfile(TF_path,strcat('Tensor_Field_9.5ms.zip')));
             end
-            TF11_dir = fullfile(TF_path,'Tensor_Field_11ms');
-            TF11_files = dir(TF11_dir);
-            TF11_files(ismember({TF11_files.name},{'.','..'})) = [];
-            if(~isfolder(TF11_dir) || isempty(TF11_files))
-                url = properties.test_data.tensor_field11;
-                matlab.net.http.HTTPOptions.VerifyServerName = false;
-                options = weboptions('Timeout',Inf,'RequestMethod','auto');
-                downladed_file = websave(fullfile(TF_path,strcat('Tensor_Field_11ms.zip')),url,options);
-                pause(1);
-                %% Unzip lasted version
-                disp(strcat("-->> Unziping files......."));
-                exampleFiles = unzip(fullfile(TF_path,strcat('Tensor_Field_11ms.zip')),TF_path);
-                pause(1);
-                delete(fullfile(TF_path,strcat('Tensor_Field_11ms.zip')));
-            end
+%             TF11_dir = fullfile(TF_path,'T_Tensor_Field_11ms');
+%             TF11_files = dir(TF11_dir);
+%             TF11_files(ismember({TF11_files.name},{'.','..'})) = [];
+%             if(~isfolder(TF11_dir) || isempty(TF11_files))
+%                 url = properties.test_data.tensor_field11;
+%                 matlab.net.http.HTTPOptions.VerifyServerName = false;
+%                 options = weboptions('Timeout',Inf,'RequestMethod','auto');
+%                 downladed_file = websave(fullfile(TF_path,strcat('Tensor_Field_11ms.zip')),url,options);
+%                 pause(1);
+%                 %% Unzip lasted version
+%                 disp(strcat("-->> Unziping files......."));
+%                 exampleFiles = unzip(fullfile(TF_path,strcat('Tensor_Field_11ms.zip')),TF_path);
+%                 pause(1);
+%                 delete(fullfile(TF_path,strcat('Tensor_Field_11ms.zip')));
+%             end
         else
             % Compute the Tensor Field
 
@@ -235,7 +235,7 @@ disp ("-->> Sorting Channels and LeadField by preprocessed EEG");
 [channel_layout, Gain] = sort_channels_by_preproc_data(labels, Cdata_r, Gain);
 ind_channel = find(ismember({Cdata_r.Channel.Name},ref_channel),1);
 Cdata_r.Channel(ind_channel) = [];
-Gain(12,:) = [];
+%Gain(12,:) = [];
 [Ne,~] = size(Gain);
 
 VertNormals= reshape(Cortex.VertNormals,[1,Nv,3]);
