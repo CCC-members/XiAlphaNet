@@ -141,7 +141,9 @@ for s=1:length(subjects)
         end
     end
     [data,status,Participant] = check_data_structure(properties,Participant,subject,pat);    
-    
+     if ~isempty(data)
+        labels_ch = data.dnames;
+     end
     if(~status)
         XIALPHANET.Participants(iPart).SubID = Participant.SubID;
         XIALPHANET.Participants(iPart).Age = Participant.Age;
@@ -154,7 +156,7 @@ for s=1:length(subjects)
     end
 
     if(isequal(properties.anatomy_params.type,"individual"))
-        [Participant, parameters, status] = preprocessing(properties, Participant);
+        [Participant, parameters, status] = preprocessing(properties, Participant,labels_ch);
         if(~status)
             XIALPHANET.Participants(iPart).SubID = Participant.SubID;
             XIALPHANET.Participants(iPart).Age = Participant.Age;

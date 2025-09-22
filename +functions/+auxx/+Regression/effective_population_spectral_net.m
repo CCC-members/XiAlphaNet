@@ -101,7 +101,7 @@ ages = ages_tmp(valid);
 
 %%
 
-% Set data directory for simulation
+% Set data dir
 dir_data = '/mnt/Store/Ronaldo/dev/Data/norms';
 subject_folders = dir(fullfile(dir_data, '*'));
 subject_folders = subject_folders([subject_folders.isdir] & ~startsWith({subject_folders.name}, '.'));
@@ -111,11 +111,6 @@ mat_file_path = fullfile(dir_data, subject_folder, [subject_folder, '.mat']);
 data_struct = load(mat_file_path);
 freq = data_struct.data_struct.freqrange(1:Nw);
 parameters.Data.freq = freq;
-
-
-% Set model parameters for Xi-AlphaNET estimation
-properties.model_params.nFreqs = Nw;
-properties.general_params.parallel.conn_delay = 1;
 
 %% === Setup ===
 R = parameters.Model.R;

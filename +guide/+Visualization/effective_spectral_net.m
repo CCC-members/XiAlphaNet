@@ -29,7 +29,7 @@ for k = 1:numel(src)
     % Elements of the precision matrix
     pii = real(P(i,i));
     pjj = real(P(j,j));
-    pij = real(P(i,j));
+    pij = abs(P(i,j));
 
     % Conditional spectral power of i given j is removed
     S_ii_cond = 1 / (pii - (pij^2 / pjj));

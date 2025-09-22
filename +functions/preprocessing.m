@@ -220,36 +220,137 @@ conn_8K = nulldiag(sym_matrix(conn_8K));
 tract_8K = nulldiag(sym_matrix(tract_8K));
 delay_8K = nulldiag(sym_matrix(delay_8K));
 
-%% Correcting the Lead Field
 
 %% Correcting the Lead Field
 
-ref_channel = properties.channel_params.ref_channel;
-labels = properties.channel_params.labels;
-if(~isequal(lower(properties.channel_params.ref_channel),'average'))
-    labels(find(ismember(labels,{properties.channel_params.ref_channel}),1)) = [];
+% === Channel alignment after preprocessing ===
+% === Channel alignment after preprocessing ===
+% Decide labels source: use labels_ch if provided, otherwise properties.channel_params.labels
+if exist('labels_ch','var') && ~isempty(labels_ch)
+    labels = labels_ch;
+    disp('-->> Using labels from labels_ch');
+else
+    if ~isfield(properties,'channel_params') || ~isfield(properties.channel_params,'labels')
+        error('labels_ch not provided and properties.channel_params.labels is missing.');
+    end
+    labels = properties.channel_params.labels;
+    disp('-->> Using labels from properties.channel_params.labels');
 end
-disp ("-->> Removing Channels  by preprocessed EEG");
-[Cdata_r, Gain] = remove_channels_by_preproc_data(labels, Cdata, Leadfield.Gain);
-disp ("-->> Sorting Channels and LeadField by preprocessed EEG");
-[channel_layout, Gain] = sort_channels_by_preproc_data(labels, Cdata_r, Gain);
-ind_channel = find(ismember({Cdata_r.Channel.Name},ref_channel),1);
-Cdata_r.Channel(ind_channel) = [];
-%Gain(12,:) = [];
-[Ne,~] = size(Gain);
 
-VertNormals= reshape(Cortex.VertNormals,[1,Nv,3]);
+% Normalize to column cell array of trimmed strings
+labels = cellstr(labels); labels = labels(:);
+labels = cellfun(@strtrim, labels, 'UniformOutput', false);
+
+% Always remove the reference listed in properties.channel_params.ref_channel (if not "average")
+if ~isfield(properties.channel_params,'ref_channel')
+    error('properties.channel_params.ref_channel is missing.');
+end
+ref_channel = properties.channel_params.ref_channel;
+if ~strcmpi(ref_channel,'average')
+    rm = find(strcmpi(labels, strtrim(ref_channel)), 1);
+    if ~isempty(rm)
+        labels(rm) = [];
+        disp(['-->> Removed reference channel "', ref_channel, '" from labels for leadfield alignment']);
+    else
+        disp(['WARNING: Reference channel "', ref_channel, '" not found in labels (already removed or name mismatch).']);
+    end
+end
+
+disp("-->> Removing Channels by preprocessed EEG");
+[Cdata_r, Gain] = remove_channels_by_preproc_data(labels, Cdata, Leadfield.Gain);
+
+disp("-->> Sorting Channels and LeadField by preprocessed EEG");
+[channel_layout, Gain] = sort_channels_by_preproc_data(labels, Cdata_r, Gain);
+
+% -------- CONSISTENCY CHECK: channel_layout vs requested labels (after ref removal) --------
+% Build expected list (labels_ch or properties) with same ref removal
+if exist('labels_ch','var') && ~isempty(labels_ch)
+    expected = labels_ch;
+else
+    expected = properties.channel_params.labels;
+end
+expected = expected(:);
+
+if ~strcmpi(properties.channel_params.ref_channel,'average')
+    rm = find(strcmpi(strtrim(expected), strtrim(properties.channel_params.ref_channel)), 1);
+    if ~isempty(rm), expected(rm) = []; end
+end
+
+% Collect layout names (could be mixed types)
+layout_names = {channel_layout.Channel.Name}.';  % column cell
+
+% --- Safe normalize both lists to lower/trimmed CHAR cells ---
+exp_norm = cell(size(expected));
+for i = 1:numel(expected)
+    v = expected{i};
+    if isstring(v), v = char(v); end
+    if iscell(v) && ~isempty(v), v = v{1}; end
+    if isnumeric(v), v = num2str(v); end
+    if ~ischar(v), v = ''; end
+    exp_norm{i} = lower(strtrim(v));
+end
+
+lay_norm = cell(size(layout_names));
+for i = 1:numel(layout_names)
+    v = layout_names{i};
+    if isstring(v), v = char(v); end
+    if iscell(v) && ~isempty(v), v = v{1}; end
+    if isnumeric(v), v = num2str(v); end
+    if ~ischar(v), v = ''; end
+    lay_norm{i} = lower(strtrim(v));
+end
+
+% Optional: report any non-convertible entries we blanked
+bad_exp = find(cellfun(@isempty, exp_norm));
+bad_lay = find(cellfun(@isempty, lay_norm));
+if ~isempty(bad_exp)
+    disp('WARNING: Some expected labels were not valid strings:');
+    for k = bad_exp(:).', disp(['  expected{',num2str(k),'} class=',class(expected{k})]); end
+end
+if ~isempty(bad_lay)
+    disp('WARNING: Some channel_layout names were not valid strings:');
+    for k = bad_lay(:).', disp(['  layout{',num2str(k),'} class=',class(layout_names{k})]); end
+end
+
+% --- Compare counts and order ---
+if numel(lay_norm) ~= numel(exp_norm)
+    disp('Error: Channel count mismatch after sorting.');
+    disp(['  Expected (labels minus ref): ', num2str(numel(exp_norm)), ...
+          ' | Got in channel_layout: ', num2str(numel(lay_norm))]);
+    miss  = setdiff(exp_norm, lay_norm);
+    extra = setdiff(lay_norm, exp_norm);
+    if ~isempty(miss)
+        disp('  Missing in channel_layout:'); disp(miss.');
+    end
+    if ~isempty(extra)
+        disp('  Extra in channel_layout:');   disp(extra.');
+    end
+elseif ~all(strcmp(lay_norm, exp_norm))
+    disp('Error: Channel order/name mismatch after sorting.');
+    bad = find(~strcmp(lay_norm, exp_norm));
+    for k = 1:numel(bad)
+        i = bad(k);
+        disp(['  Pos ', num2str(i), ': expected "', exp_norm{i}, ...
+              '" but got "', lay_norm{i}, '"']);
+    end
+else
+    disp('-->> Channel_layout matches expected labels (after ref removal).');
+end
+% -----------------------------------------------------------------------------------------
+
+% -----------------------------------------------------------------------------------------
+
+% Reformat Gain to align with cortical normals
+[Ne,~] = size(Gain);
+VertNormals = reshape(Cortex.VertNormals,[1,Nv,3]);
 VertNormals = repmat(VertNormals,[Ne,1,1]);
 Gain = reshape(Gain,Ne,3,Nv);
 Gain = permute(Gain,[1,3,2]);
 Gain = sum(Gain.*VertNormals,3);
 
-% % After cleaning/sorting Gain so it's Ne x (3*Nv) or Ne x Nv:
-% Ne = size(Gain,1);
-% H  = eye(Ne) - ones(Ne)/Ne;   % same H as in your aveReference()
-% 
-% % Apply AR to the lead field
-% Gain = H * Gain;
+% Apply average reference also to Gain (to keep consistency with CrossM already AR'ed)
+H = eye(Ne) - ones(Ne)/Ne;
+Gain = H * Gain;
 
 %% Save Data
 R  = voxel_roi_map(Cortex,Cortex.iAtlas);

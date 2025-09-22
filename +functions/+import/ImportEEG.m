@@ -125,9 +125,11 @@ elseif(isfield(pat,'Gender' ))
 else
     Age                         = '';
 end
-
-[data_struct, error_msg]    = data_gatherer_v2(data, srate, dnames, SubID, ref, Age, Sex,...
-    country, eeg_device, keep_signal);
+[data_struct, error_msg] = data_gatherer_flexible(data, srate, dnames, SubID, ref, Age, Sex,country, eeg_device, keep_signal, properties);
+ 
+% 
+%  [data_struct, error_msg]    = data_gatherer_v2(data, srate, dnames, SubID, ref, Age, Sex,...
+  %   country, eeg_device, keep_signal);
 if(isfield(pat,'BirthDate'))
     data_struct.BirthDate       = pat.BirthDate;
 end
