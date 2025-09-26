@@ -5,7 +5,7 @@ function R = voxel_roi_map(Cortex, CortexiAtlas)
 %   Cortex.Vertices [N x 3], Cortex.Faces [F x 3]
 %   Cortex.Atlas(Cortex.iAtlas).Scouts(i).Vertices : indices of vertices in ROI i
 % Output:
-%   R [m x N] sparse, with R*R'  I_m (area-weighted, orthonormal rows)
+%   R [m x N] sparse, with R*R' ˜ I_m (area-weighted, orthonormal rows)
 %
 % Method:
 %   R = D_A^{-1/2} * B * W^{1/2}
@@ -51,6 +51,6 @@ function R = voxel_roi_map(Cortex, CortexiAtlas)
     % R = D_A^{-1/2} * B * W^{1/2}
     R = spdiags(1 ./ sqrt(a), 0, m, m) * B * spdiags(sqrt(w), 0, N, N);
 
-    % (Optional) quick sanity check  comment out in production
+    % (Optional) quick sanity check — comment out in production
     % fprintf('||R*R'' - I||_F = %.2e\n', norm(full(R*R') - eye(m), 'fro'));
 end
