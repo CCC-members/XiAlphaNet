@@ -1,7 +1,7 @@
 function [Output,parameters,status] = preprocessing(properties, varargin)
- %% Preprocessing of the Data
-%     Author: Ronald Garcia, Ariosky Areaces Gonzales, Pedro A. Valdes Sosa 
-%     Create Time: 2024 
+%% Preprocessing of the Data
+%     Author: Ronald Garcia, Ariosky Areaces Gonzales, Pedro A. Valdes Sosa
+%     Create Time: 2024
 % Initialize workspace by clearing variables and closing figures
 
 %%
@@ -84,11 +84,11 @@ switch type
                 Participant.Errors = "Anatomy not found";
                 Output = Participant;
                 return;
-            end            
+            end
         end
         Cortex = load(fullfile(sub_path,'anat',SubID,'tess_cortex_concat_8000V_fix.mat'));
         Leadfield = load(fullfile(sub_path,'data',SubID,'@intra','headmodel_surf_openmeeg.mat'));
-        Cdata = load(fullfile(sub_path,'data',SubID,'@intra','channel_ASA_10-05_343.mat'));        
+        Cdata = load(fullfile(sub_path,'data',SubID,'@intra','channel_ASA_10-05_343.mat'));
 end
 
 %% Reading Anatomical Data
@@ -107,7 +107,7 @@ for j = 1:length(Atlas.Scouts)
     Labels_Atlas{j} = selectBeforeSecondUnderscore(Atlas.Scouts(j).Label);
 end
 
-Labels_Tracts = Lenghts.parcelIDs;  
+Labels_Tracts = Lenghts.parcelIDs;
 Nr = length(Labels_Atlas);
 
 %% Correcting the Length of the Tracts Matrix
@@ -141,15 +141,15 @@ Fpt = Fpt/norm(Fpt,'fro');
 
 %% Read and Correct Delay Matrix Between Neurotracts
 
-%Lemaréchal JD, Jedynak M, Trebaul L, Boyer A, Tadel F, Bhattacharjee M, 
+%Lemaréchal JD, Jedynak M, Trebaul L, Boyer A, Tadel F, Bhattacharjee M,
 % Deman P, Tuyisenge V, Ayoubian L, Hugues E, Chanteloup-Forêt B, Saubat C,
-% Zouglech R, Reyes Mejia GC, Tourbier S, Hagmann P, Adam C, Barba C, 
+% Zouglech R, Reyes Mejia GC, Tourbier S, Hagmann P, Adam C, Barba C,
 % Bartolomei F, Blauwblomme T, Curot J, Dubeau F, Francione S, Garcés M,
-% Hirsch E, Landré E, Liu S, Maillard L, Metsähonkala EL, Mindruta I, Nica 
-% A, Pail M, Petrescu AM, Rheims S, Rocamora R, Schulze-Bonhage A, Szurhaj 
-% W, Taussig D, Valentin A, Wang H, Kahane P, George N, David O; F-TRACT 
-% consortium. A brain atlas of axonal and synaptic delays based on modelling 
-% of cortico-cortical evoked potentials. Brain. 2022 Jun 3;145(5):1653-1667. 
+% Hirsch E, Landré E, Liu S, Maillard L, Metsähonkala EL, Mindruta I, Nica
+% A, Pail M, Petrescu AM, Rheims S, Rocamora R, Schulze-Bonhage A, Szurhaj
+% W, Taussig D, Valentin A, Wang H, Kahane P, George N, David O; F-TRACT
+% consortium. A brain atlas of axonal and synaptic delays based on modelling
+% of cortico-cortical evoked potentials. Brain. 2022 Jun 3;145(5):1653-1667.
 % doi: 10.1093/brain/awab362. PMID: 35416942; PMCID: PMC9166555.
 
 Labels_TractsDelay = delayM.parcelIDs;
@@ -168,7 +168,7 @@ for i = 1:Nr
 end
 corrected_delay= delay(new_order, new_order);
 
-% Fill the nan entries such that the distribution its preseved 
+% Fill the nan entries such that the distribution its preseved
 %load('Data/Average_Velocity_ROISpace/GPfit_Delay_Mean.mat');
 nonnan_corrected_delay=corrected_delay;
 nan_indices = isnan(corrected_delay);
@@ -215,7 +215,7 @@ tract_8K(tract_8K == 0) = meanValue_tract;
 meanValue_delay = mean(mean(delay_8K(delay_8K ~= 0)));
 delay_8K(delay_8K == 0) = meanValue_delay;
 
-%% Symmetrizing the matrices 
+%% Symmetrizing the matrices
 conn_8K = nulldiag(sym_matrix(conn_8K));
 tract_8K = nulldiag(sym_matrix(tract_8K));
 delay_8K = nulldiag(sym_matrix(delay_8K));
@@ -224,54 +224,63 @@ delay_8K = nulldiag(sym_matrix(delay_8K));
 
 %% Correcting the Lead Field
 
-% ref_channel = properties.channel_params.ref_channel;
-% labels = properties.channel_params.labels;
-% if(~isequal(lower(properties.channel_params.ref_channel),'average'))
-%     labels(find(ismember(labels,{properties.channel_params.ref_channel}),1)) = [];
-% end
-% disp ("-->> Removing Channels  by preprocessed EEG");
-% [Cdata_r, Gain] = remove_channels_by_preproc_data(labels, Cdata, Leadfield.Gain);
-% disp ("-->> Sorting Channels and LeadField by preprocessed EEG");
-% [channel_layout, Gain] = sort_channels_by_preproc_data(labels, Cdata_r, Gain);
-% ind_channel = find(ismember({Cdata_r.Channel.Name},ref_channel),1);
-% Cdata_r.Channel(ind_channel) = [];
-% %Gain(12,:) = [];
-% [Ne,~] = size(Gain);
+switch type
+    case "default"
+        %labels = load('templates/labels_scalp.mat');
+        labels = XIALPHANET.ExampleDataStruct.dnames;
+        disp ("-->> Removing Channels  by preprocessed EEG");
+        [Cdata_r, Gain] = remove_channels_by_preproc_data(labels, Cdata, Leadfield.Gain);
+        disp ("-->> Sorting Channels and LeadField by preprocessed EEG");
+        [channel_layout, Gain] = sort_channels_by_preproc_data(labels, Cdata_r, Gain);
+        [Ne,~] = size(Gain);
 
-% VertNormals= reshape(Cortex.VertNormals,[1,Nv,3]);
-% VertNormals = repmat(VertNormals,[Ne,1,1]);
-% Gain = reshape(Gain,Ne,3,Nv);
-% Gain = permute(Gain,[1,3,2]);
-% Gain = sum(Gain.*VertNormals,3);
-% 
-% % After cleaning/sorting Gain so it's Ne x (3*Nv) or Ne x Nv:
-% Ne = size(Gain,1);
-% H  = eye(Ne) - ones(Ne)/Ne;   % same H as in your aveReference()
-% 
-% % Apply AR to the lead field
-% Gain = H * Gain;
+        VertNormals= reshape(Cortex.VertNormals,[1,Nv,3]);
+        VertNormals = repmat(VertNormals,[Ne,1,1]);
+        Gain = reshape(Gain,Ne,3,Nv);
+        Gain = permute(Gain,[1,3,2]);
+        Gain = sum(Gain.*VertNormals,3);
 
+        % After cleaning/sorting Gain so it's Ne x (3*Nv) or Ne x Nv:
+        Ne = size(Gain,1);
+        H  = eye(Ne) - ones(Ne)/Ne;  
+        % Apply AR to the lead field
+        Gain = H * Gain;
+case "individual"
+    ref_channel = properties.channel_params.ref_channel;
+    labels      = Participant.ExampleDataStruct.dnames;
 
-labels = load('templates/labels_scalp.mat');
-labels = labels.labels;
-disp ("-->> Removing Channels  by preprocessed EEG");
-[Cdata_r, Gain] = remove_channels_by_preproc_data(labels, Cdata, Leadfield.Gain);
-disp ("-->> Sorting Channels and LeadField by preprocessed EEG");
-[channel_layout, Gain] = sort_channels_by_preproc_data(labels, Cdata_r, Gain);
-[Ne,~] = size(Gain);
+    % Remove explicit reference channel from labels (if not average reference)
+    if ~isequal(lower(ref_channel),'average')
+        labels(find(ismember(labels,{ref_channel}),1)) = [];
+    end
 
-VertNormals= reshape(Cortex.VertNormals,[1,Nv,3]);
-VertNormals = repmat(VertNormals,[Ne,1,1]);
-Gain = reshape(Gain,Ne,3,Nv);
-Gain = permute(Gain,[1,3,2]);
-Gain = sum(Gain.*VertNormals,3);
+    disp ("-->> Removing Channels by preprocessed EEG");
+    [Cdata_r, Gain] = remove_channels_by_preproc_data(labels, Cdata, Leadfield.Gain);
 
-% After cleaning/sorting Gain so it's Ne x (3*Nv) or Ne x Nv:
-Ne = size(Gain,1);
-H  = eye(Ne) - ones(Ne)/Ne;   % same H as in your aveReference()
+    disp ("-->> Sorting Channels and LeadField by preprocessed EEG");
+    [channel_layout, Gain] = sort_channels_by_preproc_data(labels, Cdata_r, Gain);
 
-% Apply AR to the lead field
-Gain = H * Gain;
+    % Remove reference channel from Cdata (if it exists there)
+    ind_channel = find(ismember({Cdata_r.Channel.Name},ref_channel),1);
+    if ~isempty(ind_channel)
+        Cdata_r.Channel(ind_channel) = [];
+    end
+
+    % Project Gain to cortical surface
+    [Ne,~] = size(Gain);
+    VertNormals = reshape(Cortex.VertNormals,[1,Nv,3]);
+    VertNormals = repmat(VertNormals,[Ne,1,1]);
+    Gain        = reshape(Gain,Ne,3,Nv);
+    Gain        = permute(Gain,[1,3,2]);
+    Gain        = sum(Gain.*VertNormals,3);
+
+    % Apply average reference to Gain
+    Ne = size(Gain,1);
+    H  = eye(Ne) - ones(Ne)/Ne;
+    Gain = H * Gain;
+
+end
+
 
 %% Save Data
 R  = voxel_roi_map(Cortex,Cortex.iAtlas);
@@ -280,18 +289,18 @@ R  = voxel_roi_map(Cortex,Cortex.iAtlas);
 parameters.Model.K = Gain;    % Lead Field
 parameters.Model.C =  conn_8K; % Anatomical Conenctivity
 parameters.Model.L = tract_8K; % Length of the tracts
-parameters.Model.D = delay_8K/1000; % delays in seconds 
+parameters.Model.D = delay_8K/1000; % delays in seconds
 parameters.Model.R = R;  % Projection matrix from Voxel to ROI space
 
 % Compress Model  of Spatio - Temporal Correlations on the ROI Space
 parameters.Compact_Model.K = Gain*R';    % Lead Field
 parameters.Compact_Model.C = corrected_conn;  %  Anatomical Connectivity
 parameters.Compact_Model.L = corrected_tractLengths; % Length of the Neurotracts
-parameters.Compact_Model.D =corrected_delay/1000; % delays in seconds 
-parameters.Compact_Model.R = R; 
+parameters.Compact_Model.D =corrected_delay/1000; % delays in seconds
+parameters.Compact_Model.R = R;
 
 % Model Dimensions
-parameters.Dimensions.Ne = Ne;  % Number of electrodes 
+parameters.Dimensions.Ne = Ne;  % Number of electrodes
 parameters.Dimensions.Nr = Nr;  % Number of ROI's
 parameters.Dimensions.Nv = Nv;   % Number of Voxels
 parameters.Dimensions.Nw = properties.model_params.nFreqs; % Number of frequencies

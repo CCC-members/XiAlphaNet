@@ -24,9 +24,9 @@ function Atlas = complete_atlas(Cortex, Atlas, mode)
     end
     uncovered_idx = find(~covered);
 
-    fprintf('Atlas covers %d/%d vertices (%.1f%%)\n', ...
-        sum(covered), Nv, 100*sum(covered)/Nv);
-    fprintf('Uncovered vertices: %d\n', numel(uncovered_idx));
+   % fprintf('Atlas covers %d/%d vertices (%.1f%%)\n', ...
+    %    sum(covered), Nv, 100*sum(covered)/Nv);
+  %  fprintf('Uncovered vertices: %d\n', numel(uncovered_idx));
 
     if isempty(uncovered_idx)
         disp('No missing vertices. Nothing to do.');
@@ -56,7 +56,7 @@ function Atlas = complete_atlas(Cortex, Atlas, mode)
                 Atlas.Scouts(nearest_roi).Vertices(end+1) = uncovered_idx(k);
                 roi_map(uncovered_idx(k)) = nearest_roi;
             end
-            fprintf('All uncovered vertices reassigned to nearest ROI.\n');
+           % fprintf('All uncovered vertices reassigned to nearest ROI.\n');
 
         case 'unknown'
             % Create a new ROI for uncovered vertices
@@ -64,7 +64,7 @@ function Atlas = complete_atlas(Cortex, Atlas, mode)
             Atlas.Scouts(end).Vertices  = uncovered_idx(:)';
             Atlas.Scouts(end).Seed      = mean(Cortex.Vertices(uncovered_idx,:),1);
             Atlas.Scouts(end).Color     = [0.5 0.5 0.5]; % grey
-            fprintf('Created new ROI "Unknown" with %d vertices.\n', numel(uncovered_idx));
+           % fprintf('Created new ROI "Unknown" with %d vertices.\n', numel(uncovered_idx));
 
         otherwise
             error('Mode must be ''nearest'' or ''unknown''.');

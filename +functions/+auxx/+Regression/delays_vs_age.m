@@ -1,7 +1,7 @@
 clear; clc;
 
 % Directory containing .mat files results
-json_path = '/mnt/Develop/Ronaldo/dev/test262025_delete/XIALPHANET.json';
+json_path = 'E:\xialphanet_last_analysis\xialphanet_newresults22\XIALPHANET.json';
 [dataset_dir, ~, ~] = fileparts(json_path);
 dataset = jsondecode(fileread(json_path));
 dataset.Location = dataset_dir;
@@ -170,7 +170,7 @@ age_min = 0;          % Minimum age for inclusion
 age_max = 100;        % Maximum age for inclusion
 
 % Automatically determine base directory from JSON file path
-json_path = '/mnt/Develop/Ronaldo/dev/Data/NewFolder/XIALPHANET.json';
+json_path = 'E:\xialphanet_last_analysis\xialphanet_newresults22\XIALPHANET.json';
 [dataset_dir, ~, ~] = fileparts(json_path);
 % Load and decode dataset JSON
 dataset = jsondecode(fileread(json_path));

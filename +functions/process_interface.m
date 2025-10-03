@@ -17,111 +17,101 @@ import functions.auxx.GenerateSourceSample.*
 import functions.auxx.RegSpace.*
 import functions.auxx.Simulations.*
 import tools.*
+input_path   = properties.general_params.input_path;
+output_path  = properties.general_params.output_path;
+part_file    = properties.general_params.dataset.participants_info.file;
 
-input_path                              = properties.general_params.input_path;
-output_path                             = properties.general_params.output_path;
-part_file                               = properties.general_params.dataset.participants_info.file;
+%% === Setup XIALPHANET JSON ===
+XAN_filename = 'XIALPHANET.json';
+XAN_path     = fullfile(output_path);
+XAN_file     = fullfile(XAN_path,XAN_filename);
 
-%%
-%%
-%%
-XAN_filename                            = 'XIALPHANET.json';
-XAN_path                                = fullfile(output_path);
-XAN_file                                = fullfile(XAN_path,XAN_filename);
-if(isfile(XAN_file) && isequal(properties.anatomy_params.type,"default"))
-    XIALPHANET                          = jsondecode(fileread(XAN_file));
-    parameters                          = load(fullfile(output_path,XIALPHANET.Structural.parameters));
-    parameters_tmp                      = parameters;
+if (isfile(XAN_file) && isequal(properties.anatomy_params.type,"default"))
+    XIALPHANET     = jsondecode(fileread(XAN_file));
+    parameters     = load(fullfile(output_path,XIALPHANET.Structural.parameters));
+    parameters_tmp = parameters;
 else
-    XIALPHANET.Name                     = properties.general_params.dataset.Name;
-    TempUUID                            = java.util.UUID.randomUUID;
-    XIALPHANET.UUID                     = char(TempUUID.toString);
-    XIALPHANET.Description              = properties.general_params.dataset.Description;
-    XIALPHANET.Task                     = properties.general_params.dataset.descriptors.task;
-    XIALPHANET.Status                   = "Processing";
-    XIALPHANET.Location                 = XAN_path;
-    XIALPHANET.general_params           = properties.general_params;    
-    XIALPHANET.Participants             = [];
-    %%
-    %% Preprocessing
-    %%
-    if(isequal(properties.anatomy_params.type,"default"))
-        [XIALPHANET,parameters]         = preprocessing(properties, XIALPHANET); 
-        parameters_tmp                  = parameters;
-    end
+    XIALPHANET.Name        = properties.general_params.dataset.Name;
+    TempUUID               = java.util.UUID.randomUUID;
+    XIALPHANET.UUID        = char(TempUUID.toString);
+    XIALPHANET.Description = properties.general_params.dataset.Description;
+    XIALPHANET.Task        = properties.general_params.dataset.descriptors.task;
+    XIALPHANET.Status      = "Processing";
+    XIALPHANET.Location    = XAN_path;
+    XIALPHANET.general_params = properties.general_params;    
+    XIALPHANET.Participants   = [];
 end
 
-%% Loading Participamts Infomation
+%% === Load Participants Info ===
 participants_file = '';
-isPartInfo = false;
-[~,~,part_ext] = fileparts(fullfile(input_path,part_file));
-if(isequal(part_ext,'.tsv') || isequal(part_ext,'.csv'))
+isPartInfo        = false;
+[~,~,part_ext]    = fileparts(fullfile(input_path,part_file));
+if (isequal(part_ext,'.tsv') || isequal(part_ext,'.csv'))
     isPartInfo = true;
     opts = detectImportOptions(fullfile(input_path,part_file), FileType="text");
     participants_file = table2struct(readtable(fullfile(input_path,part_file),opts));
 end
-if(isequal(part_ext,'.json'))
+if (isequal(part_ext,'.json'))
     isPartInfo = true;
     participants_file = jsondecode(fileread(fullfile(input_path,part_file)));
 end
 
-
-%% Loop through each .mat file in the subjects
+%% === Subjects list ===
 subjects = dir(input_path);
 subjects(ismember({subjects.name},{'..','.','structural'})) = [];
 subjects([subjects.isdir]==0) = [];
-if(~isempty(properties.general_params.participants))
+if (~isempty(properties.general_params.participants))
     subjects = subjects(ismember({subjects.name}, properties.general_params.participants));
 end
 
+%% === Default preprocessing flag ===
+preprocessing_done = false;
+good_candidates = {};
 
-
-for s=1:length(subjects) 
+%% === Loop through subjects ===
+for s = 1:length(subjects) 
     tic
-    if(isfile(XAN_file))
-        XIALPHANET              = jsondecode(fileread(XAN_file));
+    if (isfile(XAN_file))
+        XIALPHANET = jsondecode(fileread(XAN_file));
     end
-    subject                     = subjects(s);
-    SubID                       = subject.name;
-    Participant.SubID           = SubID;
+    subject           = subjects(s);
+    SubID             = subject.name;
+    Participant.SubID = SubID;
 
-    % Update progress, report current estimate
-    if(getGlobalGuimode())
-        if(properties.dlg.CancelRequested)
+    % --- GUI progress ---
+    if (getGlobalGuimode())
+        if (properties.dlg.CancelRequested)
             msg = "Are you sure to cancel the processing?";
             title = "Cancel processing";
             answer = uiconfirm(properties.UIFigure,msg,title, ...
                 "Options",["Stop","Continue"], ...
                 "Icon","+guide/images/question.png",...
                 "DefaultOption",1,"CancelOption",2);
-            % Handle response
-            switch answer
-                case 'Stop'
-                    break;                    
-                case 'Continue'
-                    properties.dlg.CancelRequested=false;
-                    drawnow;
+            if strcmp(answer,'Stop')
+                break;                    
+            else
+                properties.dlg.CancelRequested=false;
+                drawnow;
             end
         end
-        properties.dlg.Message = strcat("Processing subject: ",SubID, " (",num2str(s)," of ",num2str(length(subjects)),")");
+        properties.dlg.Message = strcat("Processing subject: ",SubID, ...
+            " (",num2str(s)," of ",num2str(length(subjects)),")");
         drawnow;
     end
       
-    %%
-    %% Check participant processed
-    %%
-    if(isempty(XIALPHANET.Participants))
+    % --- Skip if already completed ---
+    if (isempty(XIALPHANET.Participants))
         iPart = 1;
     else
         iPart = find(ismember({XIALPHANET.Participants.SubID},SubID),1);
-        if(~isempty(iPart) && isequal(XIALPHANET.Participants(iPart).Status,"Completed"))
+        if (~isempty(iPart) && isequal(XIALPHANET.Participants(iPart).Status,"Completed"))
             disp('---------------------------------------------------------------------');
             disp(strcat("-->> The analysis of subject: ", SubID, " has been completed."));
             disp(strcat("-->> Jumping to the next subject."));
             disp('---------------------------------------------------------------------');
             continue;
         end
-        if(isempty(iPart))
+        if (isempty(iPart))
             iPart = length(XIALPHANET.Participants) + 1;
         end
     end
@@ -129,37 +119,49 @@ for s=1:length(subjects)
     disp(strcat("-->> Processing subject: ", SubID));
     disp('---------------------------------------------------------------------');
 
-    %%
-    %% Check data structure
-    %%
-    if(isPartInfo)
-        if(isfield(participants_file,'participant_id'))
+    %% --- Get participant info ---
+    if (isPartInfo)
+        if (isfield(participants_file,'participant_id'))
             pat = participants_file(find(ismember({participants_file.participant_id},{SubID}),1));
         end
-        if(isfield(participants_file,'SubID'))
+        if (isfield(participants_file,'SubID'))
             pat = participants_file(find(ismember({participants_file.SubID},{SubID}),1));
         end
+    else
+        pat = [];
     end
+
+    %% --- Check Data Structure (always before preprocessing) ---
     [data,status,Participant] = check_data_structure(properties,Participant,subject,pat);    
-    
-    if(~status)
-        XIALPHANET.Participants(iPart).SubID = Participant.SubID;
-        XIALPHANET.Participants(iPart).Age = Participant.Age;
-        XIALPHANET.Participants(iPart).Status = Participant.Status;
-        XIALPHANET.Participants(iPart).Errors = Participant.Errors;
+
+    if (~status)
+        XIALPHANET.Participants(iPart).SubID    = Participant.SubID;
+        XIALPHANET.Participants(iPart).Age      = Participant.Age;
+        XIALPHANET.Participants(iPart).Status   = Participant.Status;
+        XIALPHANET.Participants(iPart).Errors   = Participant.Errors;
         XIALPHANET.Participants(iPart).FileInfo = Participant.FileInfo;
         saveJSON(XIALPHANET,XAN_file);
         disp('---------------------------------------------------------------------');
         continue;
     end
 
-    if(isequal(properties.anatomy_params.type,"individual"))
+    %% --- Preprocessing depending on anatomy type ---
+    if (isequal(properties.anatomy_params.type,"default") && ~preprocessing_done)
+        % Save one example subject from first run
+        XIALPHANET.ExampleDataStruct = data;
+
+        % Run global preprocessing ONCE for all subjects
+        [XIALPHANET,parameters] = preprocessing(properties, XIALPHANET); 
+        parameters_tmp          = parameters;
+        preprocessing_done      = true;
+    elseif (isequal(properties.anatomy_params.type,"individual"))
+        Participant.ExampleDataStruct = data;
         [Participant, parameters, status] = preprocessing(properties, Participant);
-        if(~status)
-            XIALPHANET.Participants(iPart).SubID = Participant.SubID;
-            XIALPHANET.Participants(iPart).Age = Participant.Age;
-            XIALPHANET.Participants(iPart).Status = Participant.Status;
-            XIALPHANET.Participants(iPart).Errors = Participant.Errors;
+        if (~status)
+            XIALPHANET.Participants(iPart).SubID    = Participant.SubID;
+            XIALPHANET.Participants(iPart).Age      = Participant.Age;
+            XIALPHANET.Participants(iPart).Status   = Participant.Status;
+            XIALPHANET.Participants(iPart).Errors   = Participant.Errors;
             XIALPHANET.Participants(iPart).FileInfo = Participant.FileInfo;
             saveJSON(XIALPHANET,XAN_file);
             disp('---------------------------------------------------------------------');
@@ -207,96 +209,129 @@ for s=1:length(subjects)
     T                           = Teval(parameters);
     G                           = Geval(parameters);
     parameters.Model.T          = T;
-    x0                          = generateRandomSample_fit(Nr, Cross, G, freq, 10,conn_delay);
+   
+
+%         SubID = data.name;    % subject ID, e.g. 'sub-CBM00023'
+% 
+%     % === Spectral data ===
+%     Spec  = data.Spec(1:18,:);   % scalp channels (exclude ref)
+%     freqs = data.freq;
+% 
+%     % Alpha range
+%     alphaIdx = find(freqs >= 8 & freqs <= 13);
+%     alphaPower = mean(Spec(:,alphaIdx),2);
+% 
+%     % Define channel groups
+%     occChans = {'O1','O2','Oz','POz','PO3','PO4'};
+%     froChans = {'Fp1','Fp2','F3','F4','Fz'};
+%     allLabels = data.dnames;
+% 
+%     % Indices for occipital and frontal channels
+%     idxOcc = find(ismember(allLabels, occChans));
+%     idxFro = find(ismember(allLabels, froChans));
+% 
+%     % Mean alpha power
+%     occAlpha = mean(alphaPower(idxOcc));
+%     froAlpha = mean(alphaPower(idxFro));
+% 
+%     % Occipital–frontal alpha index
+%     alphaIndex = occAlpha / froAlpha
+% 
+%     % === Select good candidates ===
+%     if alphaIndex > 2   % adjust threshold as needed
+%         good_candidates{end+1,1} = SubID;  
+%     end
+R = parameters.Model.R;
+    x0                          = generateRandomSample_fit(Nr, Cross, T, freq, 10,conn_delay,R);
  
-    disp('-->> Estimating Connectivity & Delays Weights...');
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    lambda_space_cd             = properties.model_params.delay.lambda_space_cd;
-    lambda_space_cd(2,:)        = [10^(-10),1/max(abs(eig(parameters.Model.C)))];
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    [lambda_opt_dc]             = bayes_search_conn_delay(lambda_space_cd, Ne, Nr, Nw, freq, Cross, K, D, C, 1, BayesIter_Delay, x0, 1);
-    lambda1                     = lambda_opt_dc(1); % Estimated delay strenght
-    lambda2                     = lambda_opt_dc(2); % Estimated connectivity delay
-
-    % Use the lambda values to updata connectivity and delays
-    parameters.Model.D          = lambda1 * parameters.Model.D;
-    parameters.Model.C          = lambda2 * parameters.Model.C;
-    parameters.Compact_Model.D  = lambda1 * parameters.Compact_Model.D;
-    parameters.Compact_Model.C  = lambda2 * parameters.Compact_Model.C;
-    
-    disp('-->> Estimating Lipschitz Constant...');
-    k_min                       = floor(length(freq)*4/5);
-    index_parall_bayes          = conn_delay;
-    Nsfreq                      = k_min;
-    Lipschitz                   = estimateLipschitzConstant(freq, T, Cross, 1, 25, stoch1, 0.001, 100, x0);
-
-      disp('-->> Cross Validating Regularization Space...');
-     [lambda_space, ~, ~]        = find_best_lambda(freq, T, Cross, 1, 1, 20, x0, Ne, Nr, Nr, 10, index_parall_bayes, Nrand1, Nrand2, Lipschitz, conn_delay);
-     
-     % Initializing Bayesian Optimization On Regularization
-     disp('-->> Bayesian Optimization On Regularization Parameters...');
-     [lambda_opt] = bayesianOptSearch(lambda_space, Ne, Nr, T, freq, stoch1, 0, index_parall_bayes, Nsfreq, Cross, Nrand1, Lipschitz, BayesIter_Reg2, x0);
-       
-    % Estimate transfer function
-    disp('-->> Estimating Transfer Function...');
-    parameters.Parallel.T       = 1*conn_delay;
-    parameters.Dimensions.Nv    = Nv;
-    if(tf_default)
-        TF_path                 = fullfile(properties.general_params.tmp.path,'TensorField');
-        [T,G,~]                 = read_tensor_field(lambda1,lambda2,25,TF_path);
-    else       
-        [T,G]                     = Teval(parameters);
-    end
-    
-    disp('-->> Fixing Initial Parameters...');
-    x0                           = generateRandomSample_fit(Nv, Cross, G, freq, 4,conn_delay); 
-
-    
-    % Initializing Bayesian Optimization On Regularization
-    % disp('-->> Bayesian Optimization On Regularization Parameters...');
-    % [lambda_space] = lambda_regspace2(freq, T, Cross, stoch1, Nsfreq, x0);
-    % [lambda_opt] = bayesianOptSearch(lambda_space, Ne, Nv, T, freq, stoch1, 0, index_parall_bayes, Nsfreq, Cross, Nrand1, Lipschitz, BayesIter_Reg2, x0);
-    % % Initializing Stochastic FISTA global optimizer
-    disp('-->> Running Stochastic FISTA Global Optimization...');
-    [x_opt, ~]                  = stoch_fista_global(lambda_opt, Ne, Nv, T, freq, 0, conn_delay, Nsfreq, Cross, Nrand2, Lipschitz, x0);
-    [e,a,s2]                    = x2v(x_opt.Solution);
-    e(:,1)                      = e(:,1)/scale;
-    a(:,1)                      = a(:,1)/scale;
-    s2                          = s2/scale;
-    data.Cross                  = data.Cross/scale;
-    x_opt.Solution              = v2x(e,a,s2);
-    x.Solution                  = x_opt.Solution;
-    x.Lambda_DC                 = lambda_opt_dc;
-    x.Lambda_reg                = lambda_opt;
-    x.Age                       = data.age;
-    x.kmin                      = k_min;
-    x.Reg_Space                 = lambda_space;
-    
-    %%
-    %% Saving Participant file
-    %%
-    [Participant]               = xan_save(properties,'subject',SubID,x,T,G,parameters,data,Participant);
-    if(isequal(properties.anatomy_params.type,"default"))
-        parameters                  = parameters_tmp;
-    end
-    toc
-
-    %% Save the computed x to the corresponding group folder in Model_Parameters
-
-    disp('-->> Saving XiAlphaNet Information file.');
-    XIALPHANET.Participants(iPart).SubID        = Participant.SubID;
-    XIALPHANET.Participants(iPart).Age          = Participant.Age;
-    XIALPHANET.Participants(iPart).Status       = "Completed";
-    XIALPHANET.Participants(iPart).Errors       = Participant.Errors;
-    XIALPHANET.Participants(iPart).FileInfo     = strcat(SubID,".json");
-    saveJSON(XIALPHANET,XAN_file);
-    disp('---------------------------------------------------------------------');
-    disp(strcat("-->> The analysis of subject: ", SubID, " has been completed."));
-    disp('---------------------------------------------------------------------');
-    if(getGlobalGuimode())
-        properties.dlg.Value = s/length(subjects);
-        drawnow;
-    end
+%     disp('-->> Estimating Connectivity & Delays Weights...');
+%     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%     lambda_space_cd             = properties.model_params.delay.lambda_space_cd;
+%     lambda_space_cd(2,:)        = [10^(-10),1/max(abs(eig(parameters.Model.C)))];
+%     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%     [lambda_opt_dc]             = bayes_search_conn_delay(lambda_space_cd, Ne, Nr, Nw, freq, Cross, K, D, C, 1, BayesIter_Delay, x0, 1);
+%     lambda1                     = lambda_opt_dc(1); % Estimated delay strenght
+%     lambda2                     = lambda_opt_dc(2); % Estimated connectivity delay
+% 
+%     % Use the lambda values to updata connectivity and delays
+%     parameters.Model.D          = lambda1 * parameters.Model.D;
+%     parameters.Model.C          = lambda2 * parameters.Model.C;
+%     parameters.Compact_Model.D  = lambda1 * parameters.Compact_Model.D;
+%     parameters.Compact_Model.C  = lambda2 * parameters.Compact_Model.C;
+%     
+%     disp('-->> Estimating Lipschitz Constant...');
+%     k_min                       = floor(length(freq)*4/5);
+%     index_parall_bayes          = conn_delay;
+%     Nsfreq                      = k_min;
+%     Lipschitz                   = estimateLipschitzConstant(freq, T, Cross, 1, 25, stoch1, 0.001, 100, x0);
+% 
+%       disp('-->> Cross Validating Regularization Space...');
+%      [lambda_space, ~, ~]        = find_best_lambda(freq, T, Cross, 1, 1, 20, x0, Ne, Nr, Nr, 10, index_parall_bayes, Nrand1, Nrand2, Lipschitz, conn_delay);
+%      
+%      % Initializing Bayesian Optimization On Regularization
+%      disp('-->> Bayesian Optimization On Regularization Parameters...');
+%      [lambda_opt] = bayesianOptSearch(lambda_space, Ne, Nr, T, freq, stoch1, 0, index_parall_bayes, Nsfreq, Cross, Nrand1, Lipschitz, BayesIter_Reg2, x0);
+%        
+%     % Estimate transfer function
+%     disp('-->> Estimating Transfer Function...');
+%     parameters.Parallel.T       = 1*conn_delay;
+%     parameters.Dimensions.Nv    = Nv;
+%     if(tf_default)
+%         TF_path                 = fullfile(properties.general_params.tmp.path,'TensorField');
+%         [T,G,~]                 = read_tensor_field(lambda1,lambda2,25,TF_path);
+%     else       
+%         [T,G]                     = Teval(parameters);
+%     end
+%     
+%     disp('-->> Fixing Initial Parameters...');
+%     x0                           = generateRandomSample_fit(Nv, Cross, G, freq, 4,conn_delay); 
+% 
+%     
+%     % Initializing Bayesian Optimization On Regularization
+%     % disp('-->> Bayesian Optimization On Regularization Parameters...');
+%     % [lambda_space] = lambda_regspace2(freq, T, Cross, stoch1, Nsfreq, x0);
+%     % [lambda_opt] = bayesianOptSearch(lambda_space, Ne, Nv, T, freq, stoch1, 0, index_parall_bayes, Nsfreq, Cross, Nrand1, Lipschitz, BayesIter_Reg2, x0);
+%     % % Initializing Stochastic FISTA global optimizer
+%     disp('-->> Running Stochastic FISTA Global Optimization...');
+%     [x_opt, ~]                  = stoch_fista_global(lambda_opt, Ne, Nv, T, freq, 0, conn_delay, Nsfreq, Cross, Nrand2, Lipschitz, x0);
+%     [e,a,s2]                    = x2v(x_opt.Solution);
+%     e(:,1)                      = e(:,1)/scale;
+%     a(:,1)                      = a(:,1)/scale;
+%     s2                          = s2/scale;
+%     data.Cross                  = data.Cross/scale;
+%     x_opt.Solution              = v2x(e,a,s2);
+%     x.Solution                  = x_opt.Solution;
+%     x.Lambda_DC                 = lambda_opt_dc;
+%     x.Lambda_reg                = lambda_opt;
+%     x.Age                       = data.age;
+%     x.kmin                      = k_min;
+%     x.Reg_Space                 = lambda_space;
+%     
+%     %%
+%     %% Saving Participant file
+%     %%
+%     [Participant]               = xan_save(properties,'subject',SubID,x,T,G,parameters,data,Participant);
+%     if(isequal(properties.anatomy_params.type,"default"))
+%         parameters                  = parameters_tmp;
+%     end
+%     toc
+% 
+%     %% Save the computed x to the corresponding group folder in Model_Parameters
+% 
+%     disp('-->> Saving XiAlphaNet Information file.');
+%     XIALPHANET.Participants(iPart).SubID        = Participant.SubID;
+%     XIALPHANET.Participants(iPart).Age          = Participant.Age;
+%     XIALPHANET.Participants(iPart).Status       = "Completed";
+%     XIALPHANET.Participants(iPart).Errors       = Participant.Errors;
+%     XIALPHANET.Participants(iPart).FileInfo     = strcat(SubID,".json");
+%     saveJSON(XIALPHANET,XAN_file);
+%     disp('---------------------------------------------------------------------');
+%     disp(strcat("-->> The analysis of subject: ", SubID, " has been completed."));
+%     disp('---------------------------------------------------------------------');
+%     if(getGlobalGuimode())
+%         properties.dlg.Value = s/length(subjects);
+%         drawnow;
+%     end
 end
 %%
 %% Group analysis

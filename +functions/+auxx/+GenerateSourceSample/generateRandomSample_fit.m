@@ -1,4 +1,4 @@
-function x = generateRandomSample_fit(Nv, Svv, K, freq, var,doparallel)
+function x = generateRandomSample_fit(Nv, Svv, K, freq, var,doparallel,R)
 import functions.*
 import functions.auxx.*
 import functions.auxx.GenerateSourceSample.*
@@ -7,7 +7,7 @@ import functions.auxx.Simulations.*
 
 
 % Compute cross-spectrum
-[Sjj] = mn_cross(Svv, K,1);
+[Sjj] = eloreta_cross(Svv, K);%mn_cross(Svv, K,1);
 
 % Preallocate
 ma = zeros(Nv, 4);  % Alpha parameters
