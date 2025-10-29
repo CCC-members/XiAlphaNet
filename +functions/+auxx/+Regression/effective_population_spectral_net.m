@@ -1,3 +1,4 @@
+%% Population spectral net
 clc;
 clear all;
 
@@ -16,8 +17,10 @@ mode = 1;             % 0 = amplitude plots, 1 = zero-inflation probability plot
 age_min = 0;          % Minimum age for inclusion
 age_max = 100;        % Maximum age for inclusion
 Nw = 47;
-% Path to the JSON file with model result metadata
-json_path = '/mnt/Store/Ronaldo/dev/Data/NewFolder/XIALPHANET.json';
+% Path to the JSON file with model result metadata. Modify this directions
+% manually acording to the location of the downloaded data 
+json_path = '/mnt/Develop/Ronaldo/program_working/xialphanet_newresults22/XIALPHANET.json';
+dir_data = '/mnt/Develop/Ronaldo/dev/Data/norms';
 
 % Automatically determine base directory from JSON file path
 [dataset_dir, ~, ~] = fileparts(json_path);
@@ -102,7 +105,6 @@ ages = ages_tmp(valid);
 %%
 
 % Set data dir
-dir_data = '/mnt/Store/Ronaldo/dev/Data/norms';
 subject_folders = dir(fullfile(dir_data, '*'));
 subject_folders = subject_folders([subject_folders.isdir] & ~startsWith({subject_folders.name}, '.'));
 selected_folders = subject_folders(randperm(length(subject_folders), 1));
@@ -113,135 +115,154 @@ freq = data_struct.data_struct.freqrange(1:Nw);
 parameters.Data.freq = freq;
 
 %% === Setup ===
-R = parameters.Model.R;
+R  = parameters.Model.R;
 C0 = parameters.Model.C;
 D0 = parameters.Model.D;
-Nr = size(R, 1);
-N = length(ages);  % Total number of participants
+Nv = size(C0,1);
+Nr = size(R,1);
+N  = length(ages);
+
+omega_xi    = freq(1);
+omega_alpha = freq(25);
 
 batchSize = 20;
-nBatches = ceil(N / batchSize);
+nBatches  = ceil(N / batchSize);
 
-% --- Initialize overall sums ---
-c_xi = zeros(Nr);
-c_alpha = zeros(Nr);
-
-% --- Define 5 age groups: 020, 2040, 4060, 6080, 80100 ---
+% --- Define 5 age groups: 0–20, 20–40, 40–60, 60–80, 80–100 ---
 ageEdges = [0, 20, 40, 60, 80, 101];
-nGroups = length(ageEdges) - 1;
-ageGroupLabels = {'020', '2040', '4060', '6080', '80100'};
+nGroups  = numel(ageEdges) - 1;
+ageGroupLabels = {'0–20','20–40','40–60','60–80','80–100'};
 
-c_xi_group = cell(1, nGroups);
-c_alpha_group = cell(1, nGroups);
-count_group = zeros(1, nGroups);
+% --- Initialize accumulators ---
+sqrt_xi_sum_group    = cell(1,nGroups);
+sqrt_alpha_sum_group = cell(1,nGroups);
+wD_sum_group = zeros(1,nGroups);
+wC_sum_group = zeros(1,nGroups);
+count_group  = zeros(1,nGroups);
 
 for gg = 1:nGroups
-    c_xi_group{gg} = zeros(Nr);
-    c_alpha_group{gg} = zeros(Nr);
+    sqrt_xi_sum_group{gg}    = zeros(Nv,1);
+    sqrt_alpha_sum_group{gg} = zeros(Nv,1);
 end
 
-% === Main Batch Loop ===
+% === Stage 1: Accumulate spectral & structural parameters by age group ===
+fprintf('--- Stage 1: Averaging sqrt_xi, sqrt_alpha, Mod_Weights by age group ---\n');
 for b = 1:nBatches
-    b
-    batchStart = (b - 1) * batchSize + 1;
-    batchEnd = min(b * batchSize, N);
-    idx = batchStart:batchEnd;
-    nThisBatch = length(idx);
+    fprintf('Batch %d/%d...\n',b,nBatches);
+    idx_start = (b-1)*batchSize + 1;
+    idx_end   = min(b*batchSize, N);
+    idx_batch = idx_start:idx_end;
 
-    result(nThisBatch) = struct('cxi', zeros(Nr), 'calpha', zeros(Nr), 'group', 0);
+    for k = 1:numel(idx_batch)
+        s = idx_batch(k);
+        [e,a,s2] = x2v(All_Data{1,s});
+         age_s = ages(s);
 
-    parfor jj = 1:nThisBatch
-        j = idx(jj)
-        x = All_Data{1, j};
-        [e, a, s2] = x2v(x);
+        % --- Determine group index ---
+        g = find((age_s >= ageEdges(1:end-1)) & (age_s < ageEdges(2:end)), 1);
+        if isempty(g), continue; end
 
-        omega_xi = freq(1);
-        omega_alpha = freq(25);
+        % --- Spectral components (√power envelopes) ---
+        sqrt_xi    = sqrt(e(:,1) ./ (1 + e(:,2).*omega_xi.^2).^e(:,3));
+        sqrt_alpha = sqrt(0.5*( a(:,1)./(1 + a(:,2).*(omega_alpha - a(:,4)).^2).^a(:,3) + ...
+                                 a(:,1)./(1 + a(:,2).*(omega_alpha + a(:,4)).^2).^a(:,3) ));
 
-        C = Mod_Matrix{j}.Mod_Weights(2) * C0;
-        D = Mod_Matrix{j}.Mod_Weights(1) * D0;
-        I = zeros(size(C));
+        % --- Accumulate ---
+        sqrt_xi_sum_group{g}    = sqrt_xi_sum_group{g}    + sqrt_xi;
+        sqrt_alpha_sum_group{g} = sqrt_alpha_sum_group{g} + sqrt_alpha;
+        wD_sum_group(g) = wD_sum_group(g) + Mod_Matrix{s}.Mod_Weights(1);
+        wC_sum_group(g) = wC_sum_group(g) + Mod_Matrix{s}.Mod_Weights(2);
+        count_group(g)  = count_group(g)  + 1;
+    end
+end
 
-        Z_xi    = I + C .* exp(-2 * pi * 1i * omega_xi * D);
-        Z_alpha = I + C .* exp(-2 * pi * 1i * omega_alpha * D);
+% === Stage 2: Compute mean transfer functions per group ===
+fprintf('--- Stage 2: Computing averaged transfer functions per group ---\n');
+Gxi_groups    = cell(1,nGroups);
+Galpha_groups = cell(1,nGroups);
 
-        Tj_cross_xi    = R * Z_xi;
-        Tj_cross_alpha = R * Z_alpha;
-
-        xi_omega = e(:,1) ./ (1 + e(:,2) .* omega_xi.^2).^e(:,3);
-        alpha_omega = 0.5 * (a(:,1) ./ (1 + a(:,2) .* (omega_alpha - a(:,4)).^2).^a(:,3) + ...
-                             a(:,1) ./ (1 + a(:,2) .* (omega_alpha + a(:,4)).^2).^a(:,3));
-
-        % Compute connectivity and log-transform
-        result(jj).cxi = logm(computeTDT(Tj_cross_xi, xi_omega) + 1e-6 * eye(Nr));
-        result(jj).calpha = logm(computeTDT(Tj_cross_alpha, alpha_omega) + 1e-6 * eye(Nr));
-
-        % Assign age group
-        age_j = ages(j);
-        group_j = find((age_j >= ageEdges(1:end-1)) & (age_j < ageEdges(2:end)), 1);
-        result(jj).group = group_j;
+for g = 1:nGroups
+    if count_group(g)==0
+        Gxi_groups{g} = nan(Nr);
+        Galpha_groups{g} = nan(Nr);
+        continue;
     end
 
-    % Accumulate overall and group-wise results
-    for jj = 1:nThisBatch
-        gg = result(jj).group;
-        if ~isempty(gg)
-            c_xi = c_xi + result(jj).cxi;
-            c_alpha = c_alpha + result(jj).calpha;
+    fprintf('  Group %d (%s): %d participants\n', g, ageGroupLabels{g}, count_group(g));
 
-            c_xi_group{gg} = c_xi_group{gg} + result(jj).cxi;
-            c_alpha_group{gg} = c_alpha_group{gg} + result(jj).calpha;
-            count_group(gg) = count_group(gg) + 1;
+    % --- Group means ---
+    sqrt_xi_mean    = sqrt_xi_sum_group{g}    / count_group(g);
+    sqrt_alpha_mean = sqrt_alpha_sum_group{g} / count_group(g);
+    mean_wD = wD_sum_group(g) / count_group(g);
+    mean_wC = wC_sum_group(g) / count_group(g);
+
+    % --- Structural matrices ---
+    C_mean = mean_wC * C0;
+    D_mean = mean_wD * D0;
+    I = eye(Nv);
+
+    % --- Inverse network operators (transfer matrices) ---
+    inv_xi    = inv(I - C_mean .* exp(-2*pi*1i*omega_xi*D_mean));
+    inv_alpha = inv(I - C_mean .* exp(-2*pi*1i*omega_alpha*D_mean));
+
+    % --- ROI-level transfer functions ---
+    Hxi    = R * inv_xi    * diag(sqrt_xi_mean) * R';
+    Halpha = R * inv_alpha * diag(sqrt_alpha_mean) * R';
+
+    % === Stage 3: Geweke GC per group ===
+    Gxi    = zeros(Nr);
+    Galpha = zeros(Nr);
+
+    for i = 1:Nr
+        Sii_xi    = sum(abs(Hxi(i,:)).^2);
+        Sii_alpha = sum(abs(Halpha(i,:)).^2);
+
+        for j = 1:Nr
+            if i==j, continue; end
+
+            Hij_xi    = Hxi(i,j);
+            Hij_alpha = Halpha(i,j);
+
+            denom_xi    = Sii_xi    - abs(Hij_xi)^2;
+            denom_alpha = Sii_alpha - abs(Hij_alpha)^2;
+
+            if denom_xi > 0
+                Gxi(i,j) = log(Sii_xi / denom_xi);
+            end
+            if denom_alpha > 0
+                Galpha(i,j) = log(Sii_alpha / denom_alpha);
+            end
         end
     end
+
+    Gxi_groups{g}    = Gxi;
+    Galpha_groups{g} = Galpha;
 end
 
-% === Finalize Averages ===
-c_xi = expm(c_xi / N);
-C_alpha = expm(c_alpha / N);
-
-C_xi_groups = cell(1, nGroups);
-C_alpha_groups = cell(1, nGroups);
-for gg = 1:nGroups
-    if count_group(gg) > 0
-        C_xi_groups{gg} = expm(c_xi_group{gg} / count_group(gg));
-        C_alpha_groups{gg} = expm(c_alpha_group{gg} / count_group(gg));
-    else
-        C_xi_groups{gg} = nan(Nr);
-        C_alpha_groups{gg} = nan(Nr);
-    end
+% === Stage 4: Optional summary ===
+fprintf('--- Done. Computed group-wise Geweke GC matrices ---\n');
+for g = 1:nGroups
+    fprintf('Group %s: %d subjects\n', ageGroupLabels{g}, count_group(g));
 end
 
 %% === Visualization ===
-% Overall Xi Process
-A = c_xi;
-guide.Visualization.effective_spectral_net;
-title('Overall Effective Connectivity: Xi Process');
-
-% Overall Alpha Process
-A = C_alpha;
-guide.Visualization.effective_spectral_net;
-title('Overall Effective Connectivity: Alpha Process');
 
 % Age Group Visualizations
 for gg = 1:nGroups
     gg
     ageLabel = ['Age Group ' ageGroupLabels{gg}];
 
-    if ~all(isnan(C_xi_groups{gg}(:)))
-        A = C_xi_groups{gg};
+    if ~all(isnan(Gxi_groups{gg}(:)))
+        A = Gxi_groups{gg};
         guide.Visualization.effective_spectral_net;
        % title(['Xi Process - ' ageLabel]);
     end
 
-    if ~all(isnan(C_alpha_groups{gg}(:)))
-        A = C_alpha_groups{gg};
+    if ~all(isnan(Galpha_groups{gg}(:)))
+        A = Galpha_groups{gg};
         guide.Visualization.effective_spectral_net;
         %title(['Alpha Process - ' ageLabel]);
     end
 end
 
-guide.Visualization.effective_spectral_net
-
 %%
-

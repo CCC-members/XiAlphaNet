@@ -10,13 +10,13 @@ import functions.auxx.Refine_Solution.*
 % Define parameters for analysis
 prc = 90;             % Percentile threshold (e.g., for visualizing distributions)
 cross_index = 0;      % Cross-validation index (0 = not using CV)
-num_groups = 1;       % Number of age groups (for age stratification)
+num_groups = 100;       % Number of age groups (for age stratification). use num_groups  = 1 for population average
 mode = 1;             % 0 = amplitude plots, 1 = zero-inflation probability plots
 age_min = 0;          % Minimum age for inclusion
 age_max = 100;        % Maximum age for inclusion
 
 % Path to the JSON file with model result metadata
-json_path = '/mnt/Develop/Ronaldo/dev/Data/NewFolder/XIALPHANET.json';
+json_path = '/mnt/Develop/Ronaldo/program_working/xialphanet_newresults22/XIALPHANET.json';
 
 % Automatically determine base directory from JSON file path
 [dataset_dir, ~, ~] = fileparts(json_path);

@@ -1,0 +1,84 @@
+disp("-->> Starting hemispheric plotting process (Brainstorm-style)");
+ 
+%% === Imports and template loading ===
+import templates.*
+import guide.functions.tess_smooth
+import guide.functions.tess_hemisplit
+ 
+% --- Load template cortex and colormap ---
+Cortex   = load("templates/Cortex.mat");
+colorMap = load("templates/mycolormap_brain_basic_conn.mat");
+ 
+% Choose atlas
+CortexiAtlas = 13;
+Atlas = Cortex.Atlas(CortexiAtlas);
+ 
+%% === Split hemispheres ===
+[rH, lH, isConnected, iStruct, iRightScout, iLeftScout] = tess_hemisplit(Cortex);
+ 
+Nv = size(Cortex.Vertices,1);
+iHideVertL = setdiff(1:Nv, lH);
+iHideVertR = setdiff(1:Nv, rH);
+ 
+fprintf('Left: %d verts | Right: %d verts\n', numel(lH), numel(rH));
+ 
+%% === Example data J (replace with yours) ===
+J(isnan(J)) = 0;
+J_L = J; J_R = J;
+J_L(iHideVertL) = NaN;    % hide right side for left hemisphere
+J_R(iHideVertR) = NaN;    % hide left side for right hemisphere
+ 
+%% === Smooth cortical geometry ===
+smoothValue = 0.4;
+SurfSmoothIterations = 20;
+isKeepSize = 1;
+ 
+[Vertices_sm, ~] = tess_smooth(Cortex.Vertices, smoothValue, SurfSmoothIterations, Cortex.VertConn, isKeepSize, Cortex.Faces);
+ 
+%% === Build hemisphere surface structures ===
+LeftCortex  = struct('Vertices', Vertices_sm, 'Faces', Cortex.Faces, 'VertConn', Cortex.VertConn);
+RightCortex = struct('Vertices', Vertices_sm, 'Faces', Cortex.Faces, 'VertConn', Cortex.VertConn);
+ 
+%% === Create figure and subplots ===
+fig = figure('Renderer','opengl','Color','w','Position',[100 100 1200 600]);
+axL = subplot(1,2,1);
+axR = subplot(1,2,2);
+set([axL axR],'Visible','off');
+%% === Plot LEFT hemisphere ===
+patch(axL, ...
+    'Faces',LeftCortex.Faces, ...
+    'Vertices',LeftCortex.Vertices, ...
+    'FaceVertexCData',J_L, ...
+    'FaceColor','interp','EdgeColor','none', ...
+    'BackfaceLighting','lit', ...
+    'AmbientStrength',0.5,'DiffuseStrength',0.5, ...
+    'SpecularStrength',0.2,'SpecularExponent',1, ...
+    'SpecularColorReflectance',0.5,'FaceLighting','gouraud', ...
+    'FaceAlpha',0.99);
+axis(axL,'equal','off');
+view(axL,[-90 0]);
+title(axL,'Left Hemisphere','FontSize',14);
+colormap(axL,colorMap.cmap_a);
+clim(axL, scale)
+%% === Plot RIGHT hemisphere ===
+patch(axR, ...
+    'Faces',RightCortex.Faces, ...
+    'Vertices',RightCortex.Vertices, ...
+    'FaceVertexCData',J_R, ...
+    'FaceColor','interp','EdgeColor','none', ...
+    'BackfaceLighting','lit', ...
+    'AmbientStrength',0.5,'DiffuseStrength',0.5, ...
+    'SpecularStrength',0.2,'SpecularExponent',1, ...
+    'SpecularColorReflectance',0.5,'FaceLighting','gouraud', ...
+    'FaceAlpha',0.99);
+axis(axR,'equal','off');
+view(axR,[90 0]);
+title(axR,'Right Hemisphere','FontSize',14);
+colormap(axR,colorMap.cmap_a);
+clim(axR,scale)
+
+%% === Link and rotate ===
+linkprop([axL axR], {'CameraPosition','CameraUpVector','CameraTarget','CameraViewAngle'});
+rotate3d(fig,'on');
+ 
+disp("-->> Hemispheric cortical maps plotted successfully.");

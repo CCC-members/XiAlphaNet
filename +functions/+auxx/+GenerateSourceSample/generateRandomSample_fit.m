@@ -1,4 +1,4 @@
-function x = generateRandomSample_fit(Nv, Svv, K, freq, var,doparallel)
+function x = generateRandomSample_fit(Nv, Svv, K,G, freq, var,doparallel,R)
 import functions.*
 import functions.auxx.*
 import functions.auxx.GenerateSourceSample.*
@@ -6,8 +6,11 @@ import functions.auxx.ModelVectorization.*
 import functions.auxx.Simulations.*
 
 
+
+
 % Compute cross-spectrum
 [Sjj] = mn_cross(Svv, K,1);
+%[Sjj] = xialphanet_latent_spec(Svv, K, true);
 
 % Preallocate
 ma = zeros(Nv, 4);  % Alpha parameters
@@ -61,7 +64,6 @@ else
     x = v2x(me, ma, s2);
 end
 end
-
 
 
 

@@ -33,46 +33,22 @@ elseif round(real_freqres*100)/100 > round(desired_freqres*100)/100
     interpolate = 1;
 end
 
-%% === Step 1: Channel alignment ===
-disp('-->> Aligning channels');
+%% --- Step 1: Do NOT subset channels yet. Keep full density ---
+disp('-->> Using full channel density for spectra computation');
 
-if ~isfield(properties,'channel_params') || ~isfield(properties.channel_params,'labels')
-    error_msg = 'properties.channel_params.labels missing';
-    data_struct = [];
-    return;
-end
+% Normalize input channel names
+cnames = cellstr(cnames);  
+cnames = cnames(:);
 
-% Normalize inputs to column cell arrays of char
-cnames = cellstr(cnames);  cnames = cnames(:);
-labels = cellstr(properties.channel_params.labels);
-labels = labels(:);
+% Save full channel list before selecting subset later
+full_cnames = cnames;
 
-% Align input data to requested labels (case- & space-insensitive)
-labels_s = lower(strtrim(string(labels)));
-cnames_s = lower(strtrim(string(cnames)));
-[found, od] = ismember(labels_s, cnames_s);
-
-if any(~found)
-    missing_labels = labels(~found);
-    disp('WARNING: Some requested labels not found in input data:');
-    disp(missing_labels(:)');
-end
-
-% Keep only the labels we can find (order = labels order)
-keep_idx = od(found);
-data     = data(keep_idx,:,:);
-cnames   = labels(found);
-
-disp(['-->> Final number of channels: ', num2str(numel(cnames))]);
-disp('-->> Final channel order:');
-disp(cnames.');
-
-%% === Step 2: Build output structure ===
+%% --- Step 2: Build output structure ---
 if nepochs >= 4
     data_struct.name   = data_code;
     data_struct.srate  = SAMPLING_FREQ;
-    data_struct.nchan  = numel(cnames);
-    data_struct.dnames = cnames;
+    data_struct.nchan_full  = numel(full_cnames);  % full density channels
+    data_struct.dnames_full = full_cnames;         % store full channel names
     data_struct.ref    = reference;       % just pass through input reference
     data_struct.nt     = epoch_size;
     data_struct.age    = age;
@@ -81,32 +57,72 @@ if nepochs >= 4
     data_struct.EEGMachine = eeg_device;
     data_struct.nepochs = nepochs;
     if keep_signal
-        data_struct.data = data;
+        data_struct.data_full = data;     % keep full signal
     else
-        data_struct.data = [];
+        data_struct.data_full = [];
     end
 
-    %% === Step 3: Compute spectra & cross-spectra ===
-    [Spec, data_struct.fmin, data_struct.freqres, data_struct.fmax, ...
-        data_struct.CrossM, data_struct.ffteeg] = eeg_to_sp(data, sp);
+    %% === Step 3: Compute spectra & cross-spectra at full density ===
+    [Spec_full, data_struct.fmin, data_struct.freqres, data_struct.fmax, ...
+        CrossM_full, ffteeg_full] = eeg_to_sp(data, sp);
     data_struct.freqrange = data_struct.fmin:data_struct.freqres:data_struct.fmax;
+    data_struct.Spec_full    = Spec_full;
+    data_struct.CrossM_full  = CrossM_full;
+    data_struct.ffteeg_full  = ffteeg_full;
 
-    %% === Step 4: Interpolation if needed ===
+    %% === Step 4: Now select target electrodes system ===
+    if isfield(properties,'channel_params') && isfield(properties.channel_params,'labels')
+        target_labels = cellstr(properties.channel_params.labels);
+        target_labels = target_labels(:);
+
+        % case-insensitive matching
+        full_lower   = lower(strtrim(string(full_cnames)));
+        target_lower = lower(strtrim(string(target_labels)));
+        [found, idx] = ismember(target_lower, full_lower);
+
+        if any(~found)
+            missing_labels = target_labels(~found);
+            disp('WARNING: Some requested labels not found in full channel list:');
+            disp(missing_labels(:)');
+        end
+
+        idx = idx(found);
+        target_labels = target_labels(found);
+
+        % move reference channel last if present
+        ref_channel = lower(strtrim(properties.channel_params.ref_channel));
+        ref_idx = find(strcmp(lower(strtrim(string(target_labels))), ref_channel), 1);
+        if ~isempty(ref_idx)
+            order = [setdiff(1:numel(target_labels), ref_idx, 'stable'), ref_idx];
+            idx = idx(order);
+            target_labels = target_labels(order);
+        end
+
+        % subset the full Spec and CrossM
+        Spec_sub   = Spec_full(idx,:);
+        CrossM_sub = CrossM_full(idx,idx,:);
+
+        data_struct.nchan  = numel(target_labels);
+        data_struct.dnames = target_labels;
+        data_struct.Spec   = Spec_sub;
+        data_struct.CrossM = CrossM_sub;
+    else
+        % no target channel system specified
+        data_struct.nchan  = size(Spec_full,1);
+        data_struct.dnames = full_cnames;
+        data_struct.Spec   = Spec_full;
+        data_struct.CrossM = CrossM_full;
+    end
+
+    %% === Step 5: Interpolation if needed (apply to the subset) ===
     if interpolate
-        orig_frange = data_struct.fmin : data_struct.freqres : data_struct.freqres*size(Spec,2);
+        orig_frange = data_struct.fmin : data_struct.freqres : data_struct.freqres*size(Spec_sub,2);
         target_frange = desired_freqres : desired_freqres : min(data_struct.fmax, 49*desired_freqres);
         Ntgt = numel(target_frange);
 
-        Spec_i = zeros(size(Spec,1), Ntgt);
-        for ch = 1:size(Spec,1)
-            Spec_i(ch,:) = pchip(orig_frange, Spec(ch,:), target_frange);
-        end
-
-        if any(Spec_i(:) < 0)
-            data_struct = [];
-            error_msg = 'Interpolation produced negative spectra';
-            disp(['SKIPPING subject ', data_code]);
-            return;
+        Spec_i = zeros(size(data_struct.Spec,1), Ntgt);
+        for ch = 1:size(data_struct.Spec,1)
+            Spec_i(ch,:) = pchip(orig_frange, data_struct.Spec(ch,:), target_frange);
         end
 
         nd = size(data_struct.CrossM,1);
@@ -127,7 +143,6 @@ if nepochs >= 4
         data_struct.fmin            = target_frange(1);
         data_struct.fmax            = target_frange(end);
     else
-        data_struct.Spec            = Spec;
         data_struct.Spec_freqrange  = data_struct.freqrange;
     end
 

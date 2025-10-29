@@ -17,7 +17,7 @@ currentAxes = copyobj(template.axes, fig);   % <-- copy axes into new figure
 set(currentAxes,'Position',[0.05 0.05 0.9 0.9]); % adjust size
 
 % Choose atlas
-CortexiAtlas = 10;  % atlas to display borders
+CortexiAtlas = 13;  % atlas to display borders
 Atlas = Cortex.Atlas(CortexiAtlas);
 
 % Split hemispheres
@@ -56,7 +56,7 @@ labels(iHideVert) = 0;
 patch(currentAxes, ...
     'Faces',Cortex.Faces, ...
     'Vertices',Vertices, ...
-    'FaceVertexCData',sources_iv, ...
+    'FaceVertexCData',log(1+sources_iv), ...
     'FaceColor','interp', ...
     'EdgeColor','none', ...
     'BackfaceLighting','lit', ...
@@ -73,40 +73,3 @@ view(currentAxes,[90 0]);   % default view
 colormap(currentAxes,colorMap.cmap_a);
 %colormap(pink)
 rotate3d(fig,'on');
-
-%% === Extract and plot borders ===
-edges = [Cortex.Faces(:,[1 2]); Cortex.Faces(:,[2 3]); Cortex.Faces(:,[3 1])];
-edge_labels = [labels(edges(:,1)) labels(edges(:,2))];
-border_mask = edge_labels(:,1) ~= edge_labels(:,2);
-border_edges = edges(border_mask,:);
-border_edges = sort(border_edges,2);
-border_edges = unique(border_edges,'rows');
-
- %% === Plot borders on template axes (smoothed) ===
-% hold(currentAxes,'on');
-% 
-% nInterp = 10;  % number of points per curve (increase for smoother lines)
-% 
-% for e = 1:size(border_edges,1)
-%     v1 = border_edges(e,1);
-%     v2 = border_edges(e,2);
-% 
-%     % Get edge endpoints
-%     pts = Vertices([v1 v2],:);
-% 
-%     % Parametric distance
-%     t = [0 1];
-% 
-%     % Build spline interpolation across edge
-%     tt = linspace(0,1,nInterp);
-% 
-%     xs = spline(t, pts(:,1), tt);
-%     ys = spline(t, pts(:,2), tt);
-%     zs = spline(t, pts(:,3), tt);
-% 
-%     % Plot interpolated smooth border
-%     plot3(currentAxes, xs, ys, zs, ...
-%         'Color', [0.7 0.7 0.7], 'LineWidth', 2.5);
-% end
-% 
-% hold(currentAxes,'off');

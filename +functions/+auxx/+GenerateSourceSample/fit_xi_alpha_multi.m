@@ -42,16 +42,15 @@ function [best_params, best_fit, all_fits] = fit_xi_alpha_multi(S, omega, N_init
 
     % === Fix e1 from the lowest-frequency value ===
     e1_fixed = S(1);
-
     % === Run multiple initializations ===
     for k = 1:N_init
         % Generate random initial parameters
         e2_0 = rand() * 1.0;
         e3_0 = 1 + rand() * 1.5;
-        a1_0 = max(S) * (0.5 + rand());
+        a1_0 = max(S(25)) * (0.5 + rand());
         a2_0 = rand() * 0.5;
         a3_0 = 2 + rand() * 3;
-        a4_0 = 10 + rand() * 2;
+        a4_0 = 10 + rand() * 0.5;
 
         init_params = [e1_fixed, e2_0, e3_0, a1_0, a2_0, a3_0, a4_0];
 

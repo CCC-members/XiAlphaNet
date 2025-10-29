@@ -1,4 +1,4 @@
-function [cross_spectrum_avg,scalp_cross_spectrum_avg] = neural_mass_simulation(plot_index)
+function [cross_spectrum_avg,scalp_cross_spectrum_avg] = neural_mass_simulation(plot_index,json_path)
 
 
 
@@ -11,7 +11,6 @@ Cortex = load("templates/Cortex.mat");
 
 tic
 % Path to the JSON file with model result metadata
-json_path = '/mnt/Store/Ronaldo/dev/Data/NewFolder/XIALPHANET.json';
 [dataset_dir, ~, ~] = fileparts(json_path);
 dataset = jsondecode(fileread(json_path));
 dataset.Location = dataset_dir;
@@ -43,7 +42,7 @@ K = parameters.Compact_Model.K;  % Lead field matrix
 M = 20;
 
 % Region labels
-region_labels = {Cortex.Atlas(8).Scouts.Region};
+region_labels = {Cortex.Atlas(14).Scouts.Region};
 
 % Create masks
 mask1 = 0.1*ones(N, 1);  % global activation

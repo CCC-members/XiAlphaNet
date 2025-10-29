@@ -1,4 +1,4 @@
-function result = fitZIG_two_step(Y_roi, age)
+function result = fitZIG_random(Y_roi, age)
 % FITZIG_TWO_STEP - Two-step estimation of Zero-Inflated Gaussian (ZIG) model
 %
 % INPUTS:

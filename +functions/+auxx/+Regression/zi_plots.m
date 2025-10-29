@@ -15,8 +15,11 @@ mode = 0;             % 0 = amplitude plots, 1 = zero-inflation probability plot
 age_min = 0;          % Minimum age for inclusion
 age_max = 100;        % Maximum age for inclusion
 
-% Path to the JSON file with model result metadata
-json_path = '/Users/ronald/Desktop/new_last_data_new/NewFolder/XIALPHANET.json';
+% Path to the JSON file with model result metadata. Modify this directions
+% manually acording to the location of the downloaded data 
+json_path = '/mnt/Develop/Ronaldo/program_working/xialphanet_newresults22/XIALPHANET.json';
+dir_data = '/mnt/Develop/Ronaldo/dev/Data/norms';
+
 % Automatically determine base directory from JSON file path
 [dataset_dir, ~, ~] = fileparts(json_path);
 % Load and decode dataset JSON
@@ -240,8 +243,8 @@ for comp_idx = 1:3
             J(v) = 1 - result_all{v}.p_gamma(2);
         end
     end
-    guide.Visualization.esi_plot_single;
-    colormap(cmap_pos); caxis([0 1]); title([components{comp_idx}, ' ? > 0']);
+    guide.Visualization.esi_plot_single2;
+    colormap(cmap_pos); caxis([0 1]); title([components{comp_idx}, ' \gamma > 0']);
 
     % === GAMMA < 0 ===
     J = zeros(N_voxel, 1);
@@ -250,8 +253,8 @@ for comp_idx = 1:3
             J(v) = 1 - result_all{v}.p_gamma(2);
         end
     end
-    guide.Visualization.esi_plot_single;
-    colormap(cmap_neg); caxis([0 1]); title([components{comp_idx}, ' ? < 0']);
+    guide.Visualization.esi_plot_single2;
+    colormap(cmap_neg); caxis([0 1]); title([components{comp_idx}, ' \gamma < 0']);
 
     % === BETA > 0 ===
     J = zeros(N_voxel, 1);
@@ -260,8 +263,8 @@ for comp_idx = 1:3
             J(v) = 1 - result_all{v}.p_beta(3);
         end
     end
-    guide.Visualization.esi_plot_single;
-    colormap(cmap_pos); caxis([0 1]); title([components{comp_idx}, ' ß > 0']);
+    guide.Visualization.esi_plot_single2;
+    colormap(cmap_pos); caxis([0 1]); title([components{comp_idx}, ' \beta > 0']);
 
     % === BETA < 0 ===
     J = zeros(N_voxel, 1);
@@ -270,15 +273,15 @@ for comp_idx = 1:3
             J(v) = 1 - result_all{v}.p_beta(3);
         end
     end
-    guide.Visualization.esi_plot_single;
-    colormap(cmap_neg); caxis([0 1]); title([components{comp_idx}, ' ß < 0']);
+    guide.Visualization.esi_plot_single2;
+    colormap(cmap_neg); caxis([0 1]); title([components{comp_idx}, ' \beta < 0']);
 end
 
 %%
 ages = ages(:);
 N_age = length(ages);
 
-% Compute means across voxels (positive values only)
+% === Compute means across voxels (positive values only) ===
 AlphaAmp_mean = nan(N_age,1);
 XiAmp_mean    = nan(N_age,1);
 PAF_mean      = nan(N_age,1);
@@ -293,7 +296,7 @@ for t = 1:N_age
     PAF_mean(t)      = mean(p);
 end
 
-% Variable configs: [data, label, color]
+% === Variable configs: [data, label, color] ===
 variables = {
     AlphaAmp_mean, 'Alpha Amplitude (dB)', orange_negative(end,:);
     XiAmp_mean,    'Xi Amplitude (dB)',    green_negative(end,:);
@@ -308,14 +311,14 @@ for i = 1:3
     y_label = variables{i,2};
     c = variables{i,3};
 
-    % --- Remove IQR outliers
+    % --- Remove IQR outliers ---
     Q1 = quantile(y, 0.25); Q3 = quantile(y, 0.75);
     IQR_val = Q3 - Q1;
     idx = (y >= Q1 - 1.5*IQR_val) & (y <= Q3 + 1.5*IQR_val);
     x = ages(idx); 
     y = y(idx);
 
-    % --- Regression
+    % --- Regression ---
     [x_sorted, idxSort] = sort(x);
     y_sorted = y(idxSort);
     X_quad = [x_sorted, x_sorted.^2];
@@ -323,54 +326,84 @@ for i = 1:3
     y_fit = b(1) + b(2)*x_sorted + b(3)*x_sorted.^2;
     pval_b3 = stats.p(3);
 
-    % --- Confidence bands
+    % --- Classical R² and f² ---
+    y_mean = mean(y_sorted);
+    SSR = sum((y_sorted - y_fit).^2);
+    SST = sum((y_sorted - y_mean).^2);
+    R2 = 1 - SSR/SST;
+    f2 = R2 / (1 - R2);
+
+    % --- Confidence and SE bands ---
     X_design = [ones(size(x_sorted)), x_sorted, x_sorted.^2];
     var_fit = sum((X_design * stats.covb) .* X_design, 2);
     se_fit = sqrt(var_fit);
-    upper = y_fit + 2*se_fit;
-    lower = y_fit - 2*se_fit;
+    upper_CI = y_fit + 2*se_fit;
+    lower_CI = y_fit - 2*se_fit;
+    upper_SE = y_fit + se_fit;
+    lower_SE = y_fit - se_fit;
 
-    % === Axes layout setup
-    figure('Color','w', 'Units','normalized', 'Position', [0.3 0.3 0.6 0.6]);
+    % === FIGURE ===
+    fig = figure('Color','w', 'Units','normalized', 'Position', [0.3 0.3 0.6 0.6]);
 
-    ax_main = axes('Position', [0.15 0.15 0.65 0.65]); % main plot
+    % --- Main plot ---
+    ax_main = axes('Parent', fig, 'Position', [0.15 0.15 0.65 0.65]);
     hold(ax_main, 'on');
-    fill([x_sorted; flipud(x_sorted)], [upper; flipud(lower)], ...
+
+    % 95% CI (lighter)
+    fill([x_sorted; flipud(x_sorted)], [upper_CI; flipud(lower_CI)], ...
+        c, 'FaceAlpha', 0.15, 'EdgeColor','none', 'Parent', ax_main);
+    % ±1 SE (darker)
+    fill([x_sorted; flipud(x_sorted)], [upper_SE; flipud(lower_SE)], ...
         c, 'FaceAlpha', 0.25, 'EdgeColor','none', 'Parent', ax_main);
+
     plot(ax_main, x_sorted, y_fit, '-', 'Color', c, 'LineWidth', lineWidth);
 
-    xlabel(ax_main, 'Age (Years)', 'FontSize', fontSize, 'FontWeight', 'bold');
+    % === Format p-value string ===
+    if pval_b3 < 0.001
+        p_str = 'p < 0.001';
+    else
+        p_str = sprintf('p = %.3f', pval_b3);
+    end
+
+    % === Labels ===
+    xlabel(ax_main, sprintf('Age (Years, R² = %.3f, f² = %.3f, %s)', R2, f2, p_str), ...
+        'FontSize', fontSize, 'FontWeight', 'bold');
     ylabel(ax_main, y_label, 'FontSize', fontSize, 'FontWeight', 'bold');
-    title(ax_main, sprintf('%s vs Age   (p = %.3g)', y_label, pval_b3), ...
-        'FontSize', fontSize+2, 'FontWeight', 'bold', 'Units','normalized', 'Position',[0.5,1.05,0]);
-
     set(ax_main, 'FontSize', fontSize, 'FontWeight', 'bold');
-    xlim(ax_main, [5 95]); grid on;
+    xlim(ax_main, [5 95]); grid(ax_main, 'on');
 
-    % === TOP KDE of age (pointing upward)
-    ax_top = axes('Position', [0.15 0.81 0.65 0.12]);
+    % === Top KDE ===
+    ax_top = axes('Parent', fig, 'Position', [0.15 0.81 0.65 0.12]);
     [fx, xgrid] = ksdensity(x_sorted);
     pd_x = fitdist(x_sorted, 'Normal');
     fx_gauss = normpdf(xgrid, pd_x.mu, pd_x.sigma);
 
     fill(ax_top, xgrid, fx, [0.5 0.5 0.5], ...
-        'FaceAlpha', 0.25, 'EdgeColor', [0.5 0.5 0.5], 'LineWidth', 1.5); hold on;
+        'FaceAlpha', 0.25, 'EdgeColor', [0.5 0.5 0.5], 'LineWidth', 1.5);
+    hold on;
     plot(ax_top, xgrid, fx_gauss, '--', 'Color', [0.3 0.3 0.3], 'LineWidth', 1.5);
     axis(ax_top, 'tight'); set(ax_top, 'XTick', [], 'YTick', []); box off;
     xlim(ax_top, [5 95]);
     ax_top.XColor = 'none'; ax_top.YColor = 'none';
 
-    % === RIGHT KDE of y (pointing right)
-    ax_right = axes('Position', [0.82 0.15 0.12 0.65]);
+    % === Right KDE ===
+    ax_right = axes('Parent', fig, 'Position', [0.82 0.15 0.12 0.65]);
     [fy, ygrid] = ksdensity(y);
     pd_y = fitdist(y, 'Normal');
     fy_gauss = normpdf(ygrid, pd_y.mu, pd_y.sigma);
 
     fill(ax_right, fy, ygrid, c, ...
-        'FaceAlpha', 0.25, 'EdgeColor', c, 'LineWidth', 1.5); hold on;
+        'FaceAlpha', 0.25, 'EdgeColor', c, 'LineWidth', 1.5);
+    hold on;
     plot(ax_right, fy_gauss, ygrid, '--', 'Color', [0.3 0.3 0.3], 'LineWidth', 1.5);
     axis(ax_right, 'tight'); set(ax_right, 'XTick', [], 'YTick', []); box off;
     ax_right.XColor = 'none'; ax_right.YColor = 'none';
+
+    % === Top title via annotation (always visible and centered) ===
+    annotation(fig, 'textbox', [0.15, 0.92, 0.65, 0.05], ...
+        'String', sprintf('%s vs Age', y_label), ...
+        'HorizontalAlignment', 'center', 'VerticalAlignment', 'bottom', ...
+        'FontSize', fontSize+2, 'FontWeight', 'bold', 'EdgeColor', 'none');
 end
 
 %%

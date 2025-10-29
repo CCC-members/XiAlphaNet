@@ -12,8 +12,11 @@ import functions.auxx.Refine_Solution.*;
 import functions.auxx.OptimizedOperations.*;
 Cortex = load("templates/Cortex.mat");
 
-% Path to the JSON file with model result metadata
-json_path = '/mnt/Store/Ronaldo/dev/Data/NewFolder/XIALPHANET.json';
+% Path to the JSON file with model result metadata. Modify this directions
+% manually acording to the location of the downloaded data 
+json_path = '/mnt/Develop/Ronaldo/program_working/xialphanet_newresults22/XIALPHANET.json';
+dir_data = '/mnt/Develop/Ronaldo/dev/Data/norms';
+
 [dataset_dir, ~, ~] = fileparts(json_path);
 dataset = jsondecode(fileread(json_path));
 dataset.Location = dataset_dir;
@@ -44,7 +47,7 @@ Ne = parameters.Dimensions.Ne;  % Number of electrodes
 Nr = parameters.Dimensions.Nr;  % Number of ROIs
 Nv = parameters.Dimensions.Nr;  % Voxel dimension = ROI dimension
 Nw = parameters.Dimensions.Nw;  % Number of frequency bins
-Nsub = 100;                      % Number of simulations
+Nsub = 5;                      % Number of simulations
 N_wishart = 1;
 conn_spec = norm(parameters.Model.C, 'fro');
 
@@ -70,7 +73,6 @@ K = parameters.Model.K;
 R = parameters.Compact_Model.R;
 
 % Select subjects for simulation
-dir_data = '/mnt/Store/Ronaldo/dev/Data/norms';
 subject_folders = dir(fullfile(dir_data, '*'));
 subject_folders = subject_folders([subject_folders.isdir] & ~startsWith({subject_folders.name}, '.'));
 selected_folders = subject_folders(randperm(length(subject_folders), Nsub));
@@ -139,7 +141,7 @@ for j = 1:Nsub
     % Source cross-spectrum simulation
     %%
     disp('->> Estimating Source Cross Using a Neural Mass Simulation');
-    [Sjj, ~] = functions.auxx.Simulations.neural_mass_simulation(1);
+    [Sjj, ~] = functions.auxx.Simulations.neural_mass_simulation(0,json_path);
 
     % Generate scalp-level cross-spectrum with noise
 
@@ -150,7 +152,7 @@ for j = 1:Nsub
         Svv_cross(:, :, i) = L * Sjj_cross(:, :, i) * L';  % Apply transformation
     end
     [Log_Spec,freq]= log_spectrum(Svv_cross,freq);
-    plot(freq,Log_Spec')
+    %plot(freq,Log_Spec')
 
     %%
     toc;

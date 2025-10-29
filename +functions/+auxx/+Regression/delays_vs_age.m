@@ -1,15 +1,11 @@
 clear; clc;
 
-% Directory containing .mat files results
-json_path = '/mnt/Develop/Ronaldo/dev/test262025_delete/XIALPHANET.json';
+% === Load JSON and participant delay data ===
+json_path = '/mnt/Develop/Ronaldo/program_working/xialphanet_newresults22/XIALPHANET.json';
 [dataset_dir, ~, ~] = fileparts(json_path);
 dataset = jsondecode(fileread(json_path));
 dataset.Location = dataset_dir;
 
-import templates.*
-load("templates/mylin_data.mat") % myelin_data.Age, .myelin, .upper, .lower
-
-% === Extract conduction delays and ages ===
 delays = []; ages = [];
 index = 1;
 for i = 1:length(dataset.Participants)
@@ -17,140 +13,369 @@ for i = 1:length(dataset.Participants)
     if isequal(participant.Status, 'Completed')
         Part_Info = jsondecode(fileread(fullfile(dataset.Location, participant.SubID, participant.FileInfo)));
         D = load(fullfile(dataset.Location, participant.SubID, Part_Info.Delay_Matrix));
-        delays(index) = 1000 * mean(D.Delay_Matrix(:));
+        delays(index) = 1000 * mean(D.Delay_Matrix(:)); % ms
         ages(index) = participant.Age;
         index = index + 1;
     end
 end
 
-% === Clean and preprocess ===
 delays = delays(:); ages = ages(:);
-valid = ~isnan(delays) & ~isnan(ages);
+valid = isfinite(delays) & isfinite(ages);
 delays = delays(valid); ages = ages(valid);
-%plot(ages,delays,"*")
-% Z-score outlier removal
+
+% === Clean and sort ===
 z = abs(zscore(delays));
-delays = delays(z < 3);
-ages = ages(z < 3);
+delays = delays(z < 2.5);
+ages   = ages(z < 2.5);
+[ages, idx] = sort(ages);
+delays = delays(idx);
 
-[ages, sortIdx] = sort(ages);
-delays = delays(sortIdx);
-% === FIGURE 1: Conduction Delay ===
-log_delays = delays;
-X = [ones(size(ages)), ages, ages.^2];
-[b1, stats1] = robustfit(X(:,2:end), log_delays);
-ages_fit = linspace(min(ages), max(ages), 200)';
-X_fit = [ones(size(ages_fit)), ages_fit, ages_fit.^2];
-log_y_fit = X_fit * b1;
-y_fit = log_y_fit;
-se_log = sqrt(sum((X_fit * stats1.covb) .* X_fit, 2));
-upper = log_y_fit + se_log;
-lower = log_y_fit - se_log;
+% === Load Myelin template data ===
+load('+templates/myelin_data_raw.mat');
+m_age = myelin_data.Age(:);
+m_val = myelin_data.myelin(:);
+valid_m = isfinite(m_age) & isfinite(m_val) & m_age >= 10 & m_age <= 100;
+m_age = m_age(valid_m); m_val = m_val(valid_m);
+[m_age, idxM] = sort(m_age);
+m_val = m_val(idxM);
+[m_age, ~, icM] = unique(m_age);
+m_val = accumarray(icM, m_val, [], @mean);
 
+% === Prepare delay data ===
+x = ages(:); tau = delays(:);
+valid = isfinite(x) & isfinite(tau) & tau > 0 & x >= min(m_age) & x <= max(m_age);
+x = x(valid); tau = tau(valid);
+
+% remove outliers
+med_tau = median(tau);
+mad_tau = mad(tau,1);
+z_tau = abs(tau - med_tau)/mad_tau;
+inlier = z_tau < 2.5;
+x = x(inlier); tau = tau(inlier);
+
+y = 1./(tau.^2);
+[x, idx] = sort(x); y = y(idx);
+[xu, ~, ic] = unique(x);
+y = accumarray(ic, y, [], @mean);
+x = xu;
+
+% === Adaptive density weights ===
+[f_d, ~] = ksdensity(x, x, 'Bandwidth', 5);
+gamma = 3;                          % tempering exponent
+w_d = (1 ./ (f_d + eps)).^gamma;
+w_d = movmean(w_d,10);
+w_d = w_d / mean(w_d);
+%w_d = min(max(w_d,0.5),2);            % cap extremes
+
+% === Trim extremes ===
+low_age = prctile(x,2.5);
+high_age = prctile(x,97.5);
+sel = (x >= low_age) & (x <= high_age);
+x_trim = x(sel); y_trim = y(sel); w_d = w_d(sel);
+
+% === Add soft anchors ===
+x_trim = [min(m_age); x_trim; max(m_age)];
+y_trim = [y_trim(1); y_trim; y_trim(end)];
+w_d    = [w_d(1);    w_d;    w_d(end)];
+
+xx = linspace(min(m_age),max(m_age),400);
+nb = 8; k = 4;
+lambda_grid = logspace(-6,10,80);
+
+% === Helper: AIC computation ===
+compute_aic = @(B,D2,y,w,lambdas) arrayfun(@(lambda) ...
+    (numel(y)*log(norm(sqrt(w).*(y - B*((B'*diag(w)*B + lambda*(D2'*D2))\(B'*diag(w)*y))))^2/numel(y)) ...
+    + 2*trace(((B'*diag(w)*B + lambda*(D2'*D2))\(B'*diag(w)*B)))), lambdas);
+
+% === Myelin spline (unweighted) ===
+knots_m = linspace(min(m_age),max(m_age),nb);
+B_m = spcol(augknt(knots_m,k),k,m_age);
+D2_m = diff(eye(size(B_m,2)),2);
+AIC_m = arrayfun(@(lambda) ...
+    (numel(m_val)*log(norm(m_val - B_m*((B_m'*B_m + lambda*(D2_m'*D2_m))\(B_m'*m_val)))^2/numel(m_val)) ...
+    + 2*trace(((B_m'*B_m + lambda*(D2_m'*D2_m))\(B_m'*B_m)))), lambda_grid);
+[~,idx_best_m] = min(AIC_m);
+lambda_m = lambda_grid(idx_best_m);
+coef_m = (B_m'*B_m + lambda_m*(D2_m'*D2_m))\(B_m'*m_val);
+sp_m = spapi(k,m_age,B_m*coef_m);
+yy_m = fnval(sp_m,xx);
+
+% === Delay spline (weighted) ===
+knots_d = linspace(min(x_trim),max(x_trim),nb);
+B_d = spcol(augknt(knots_d,k),k,x_trim);
+D2_d = diff(eye(size(B_d,2)),2);
+AIC_d = compute_aic(B_d,D2_d,y_trim,w_d,lambda_grid);
+[~,idx_best_d] = min(AIC_d);
+lambda_d = lambda_grid(idx_best_d);
+coef_d = (B_d'*diag(w_d)*B_d + lambda_d*(D2_d'*D2_d))\(B_d'*diag(w_d)*y_trim);
+y_fit = B_d*coef_d;
+sp_d = spapi(k,x_trim,y_fit);
+yy_d = fnval(sp_d,xx);
+
+% === Bootstrap for CI ===
+B = 300; rng(0);
+boot_d = zeros(B,numel(xx));
+boot_m = zeros(B,numel(xx));
+resid_d = y_trim - y_fit; sigma_d = sqrt(var(resid_d)); N = numel(y_trim);
+resid_m = m_val - B_m*coef_m; sigma_m = std(resid_m);
+for b = 1:B
+    % delay
+    yb = y_fit + sigma_d*randn(N,1);
+    coef_b = (B_d'*diag(w_d)*B_d + lambda_d*(D2_d'*D2_d))\(B_d'*diag(w_d)*yb);
+    sp_b = spapi(k,x_trim,B_d*coef_b);
+    boot_d(b,:) = fnval(sp_b,xx);
+    % myelin
+    yb = B_m*coef_m + sigma_m*randn(numel(m_val),1);
+    coef_b = (B_m'*B_m + lambda_m*(D2_m'*D2_m))\(B_m'*yb);
+    sp_b = spapi(k,m_age,B_m*coef_b);
+    boot_m(b,:) = fnval(sp_b,xx);
+end
+ci_d = prctile(boot_d,[2.5 97.5],1);
+ci_m = prctile(boot_m,[2.5 97.5],1);
+
+% === Derivatives and z-scoring ===
+dsp_m = fnder(sp_m,1); dsp_d = fnder(sp_d,1);
+dy_m = fnval(dsp_m,xx); dy_d = fnval(dsp_d,xx);
+z_myelin = (yy_m - mean(yy_m))/std(yy_m);
+z_delay  = (yy_d - mean(yy_d))/std(yy_d);
+z_boot_m = (boot_m - mean(yy_m))/std(yy_m);
+z_boot_d = (boot_d - mean(yy_d))/std(yy_d);
+z_ci_m = prctile(z_boot_m,[2.5 97.5],1);
+z_ci_d = prctile(z_boot_d,[2.5 97.5],1);
+dy_m_z = (dy_m - mean(dy_m))/std(dy_m);
+dy_d_z = (dy_d - mean(dy_d))/std(dy_d);
+boot_d_deriv = zeros(B,numel(xx)); boot_m_deriv = zeros(B,numel(xx));
+for b = 1:B
+    sp_b_d = spapi(k,xx,boot_d(b,:));
+    sp_b_m = spapi(k,xx,boot_m(b,:));
+    boot_d_deriv(b,:) = fnval(fnder(sp_b_d,1),xx);
+    boot_m_deriv(b,:) = fnval(fnder(sp_b_m,1),xx);
+end
+ci_d_deriv = prctile(boot_d_deriv,[2.5 97.5],1);
+ci_m_deriv = prctile(boot_m_deriv,[2.5 97.5],1);
+
+% === Standard errors ===
+se_d = std(boot_d,0,1);
+se_m = std(boot_m,0,1);
+se_d_deriv = std(boot_d_deriv,0,1);
+se_m_deriv = std(boot_m_deriv,0,1);
+
+% === Quadratic regression stats ===
+X1 = [ones(size(ages)) ages ages.^2];
+[b_delay, stats_delay] = robustfit(X1(:,2:end), delays);
+p_delay = stats_delay.p(3);
+
+X2 = [ones(size(x_trim)) x_trim x_trim.^2];
+[b_inv, stats_inv] = robustfit(X2(:,2:end), y_trim);
+p_inv = stats_inv.p(3);
+
+r_spline = corr(z_delay(:), z_myelin(:),'rows','complete');
+
+% === Colors ===
+col_delay     = [0.84 0.18 0.13];
+col_delay_se  = [0.96 0.43 0.26];
+col_delay_ci  = [0.98 0.68 0.38];
+col_myelin    = [0.27 0.46 0.71];
+col_myelin_se = [0.45 0.68 0.82];
+col_myelin_ci = [0.67 0.85 0.91];
+
+% === === FIGURE SECTIONS BELOW === ===
+% (Use the styled plotting code you already have for the 3 figures)
+% Each annotation line will now find its variables (p_delay, p_inv, r_spline)
+
+
+%=== Compute 1 SE intervals ===
+se_d = std(boot_d,0,1);
+se_m = std(boot_m,0,1);
+se_d_deriv = std(boot_d_deriv,0,1);
+se_m_deriv = std(boot_m_deriv,0,1);
+
+% === Quadratic statistics ===
+X1 = [ones(size(ages)) ages ages.^2];
+[b_delay, stats_delay] = robustfit(X1(:,2:end), delays);
+p_delay = stats_delay.p(3);
+
+X2 = [ones(size(x_trim)) x_trim x_trim.^2];
+[b_inv, stats_inv] = robustfit(X2(:,2:end), y_trim);
+p_inv = stats_inv.p(3);
+
+r_spline = corr(z_delay(:), z_myelin(:),'rows','complete');
+
+% === Color scheme ===
+% === Color scheme ===
+col_delay     = [0.84 0.18 0.13];
+col_delay_se  = [0.96 0.43 0.26];
+col_delay_ci  = [0.98 0.68 0.38];
+col_struct    = [0.27 0.46 0.71];
+col_struct_se = [0.45 0.68 0.82];
+col_struct_ci = [0.67 0.85 0.91];
+
+% === Font parameters ===
+fsize_title  = 16;
+fsize_label  = 14;
+fsize_axes   = 13;
+fsize_legend = 10;
+
+%%
+% === FIGURE 1: Conduction Delays vs Age ===
 figure('Color','w','Units','normalized','Position',[0.2 0.2 0.6 0.6]);
+ax_main = axes('Position',[0.15 0.15 0.65 0.62]); hold on;
 
-ax_main = axes('Position', [0.15 0.15 0.65 0.62]); hold on;
-h_fill = fill([ages_fit; flipud(ages_fit)], [upper; flipud(lower)], 'r', ...
-    'FaceAlpha', 0.2, 'EdgeColor', 'none');
-h_fit = plot(ages_fit, y_fit, 'r--', 'LineWidth', 2);
-xlabel('Age (Years)', 'FontSize', 14, 'FontWeight', 'bold');
-ylabel('Conduction Delay (ms)', 'FontSize', 14, 'FontWeight', 'bold');
-set(ax_main, 'FontSize', 13, 'FontWeight', 'bold'); xlim([5 95]); grid on;
+% 95% CI and ±1 SE
+h_ci = fill([xx fliplr(xx)], [1./sqrt(ci_d(1,:)) fliplr(1./sqrt(ci_d(2,:)))], ...
+    col_delay_ci,'EdgeColor','none','FaceAlpha',0.35);
+h_se = fill([xx fliplr(xx)], [1./sqrt(yy_d - se_d) fliplr(1./sqrt(yy_d + se_d))], ...
+    col_delay_se,'EdgeColor','none','FaceAlpha',0.45);
+h_mean = plot(xx,1./sqrt(yy_d),'Color',col_delay,'LineWidth',2.5);
 
-% KDE (top)
-ax_top = axes('Position', [0.15 0.79 0.65 0.12]);
-[fx, xgrid] = ksdensity(ages);
-fill(ax_top, xgrid, fx, [0.5 0.5 0.5], 'FaceAlpha', 0.25, 'EdgeColor', 'k'); hold on;
+xlabel(sprintf('Age (years, p_{quad}=%.3g)', p_delay), ...
+    'FontSize',fsize_label,'FontWeight','bold');
+ylabel('Conduction delay (ms)', 'FontSize',fsize_label,'FontWeight','bold');
+set(ax_main,'FontSize',fsize_axes,'FontWeight','bold','Box','on');
+xlim([10 90]); ylim([9.25 10]); grid on; box on;
+
+legend([h_mean h_se h_ci], ...
+    {'Delay trajectory','±1 SE','95% CI'}, ...
+    'Location','southwest','FontSize',fsize_legend, ...
+    'FontWeight','bold','Box','off');
+
+annotation('textbox',[0.15,0.93,0.7,0.05], ...
+    'String','Conduction Delays vs Age', ...
+    'EdgeColor','none','HorizontalAlignment','center', ...
+    'FontSize',fsize_title,'FontWeight','bold');
+
+% === KDE (top = age) ===
+ax_top = axes('Position',[0.15 0.79 0.65 0.12]);
+[fx,xgrid] = ksdensity(ages);
+fill(ax_top,xgrid,fx,[0.5 0.5 0.5],'FaceAlpha',0.25,'EdgeColor','k'); hold on;
 mu_age = mean(ages); sigma_age = std(ages);
-gauss_top = normpdf(xgrid, mu_age, sigma_age);
-plot(ax_top, xgrid, gauss_top, '--', 'Color', [0.5 0.5 0.5], 'LineWidth', 1.5);
-axis(ax_top, 'tight'); xlim([5 95]);
-set(ax_top, 'XTick', [], 'YTick', [], 'XColor','none', 'YColor','none'); box off;
+gauss_top = normpdf(xgrid,mu_age,sigma_age);
+plot(ax_top,xgrid,gauss_top,'--','Color',[0.4 0.4 0.4],'LineWidth',1.3);
+axis(ax_top,'tight'); xlim([5 95]);
+set(ax_top,'XTick',[],'YTick',[],'XColor','none','YColor','none'); box off;
 
-% KDE (right)
-ax_right = axes('Position', [0.82 0.15 0.12 0.62]);
-[fy, ygrid] = ksdensity(delays);
-fill(ax_right, fy, ygrid, 'r', 'FaceAlpha', 0.25, 'EdgeColor', 'r'); hold on;
+% === KDE (right = delay) ===
+ax_right = axes('Position',[0.82 0.15 0.12 0.62]);
+[fy,ygrid] = ksdensity(delays);
+fill(ax_right,fy,ygrid,col_delay,'FaceAlpha',0.25,'EdgeColor',col_delay); hold on;
 mu_delay = mean(delays); sigma_delay = std(delays);
-h_gauss = plot(ax_right, normpdf(ygrid, mu_delay, sigma_delay), ygrid, '--', ...
-    'Color', [0.5 0.5 0.5], 'LineWidth', 1.5);
-axis(ax_right, 'tight');
-set(ax_right, 'XTick', [], 'YTick', [], 'XColor','none', 'YColor','none'); box off;
+gauss_right = normpdf(ygrid,mu_delay,sigma_delay);
+plot(ax_right,gauss_right,ygrid,'--','Color',[0.4 0.4 0.4],'LineWidth',1.3);
+axis(ax_right,'tight');
+set(ax_right,'XTick',[],'YTick',[],'XColor','none','YColor','none'); box off;
 
-legend(ax_main, [h_fit, h_fill, h_gauss], ...
-    {'Delay Fit', 'Estimator Uncertainty', 'Gaussian Fit (Delay)'}, ...
-    'Location', 'southwest', 'FontSize', 12);
 
-annotation('textbox', [0.15, 0.93, 0.7, 0.05], ...
-    'String', sprintf('Conduction Delay vs Age (p = %.3g)', stats1.p(3)), ...
-    'EdgeColor', 'none', 'HorizontalAlignment', 'center', ...
-    'FontSize', 16, 'FontWeight', 'bold');
+% === FIGURE 2: Estimated Myelination vs Cortical Myelination (T1w/T2w) ===
+figure('Color','w','Units','normalized','Position',[0.2 0.2 0.6 0.6]);
+ax_main = axes('Position',[0.15 0.15 0.65 0.62]); hold on;
 
-% === FIGURE 2: Myelin Estimate ===
-log_myelin = log(1./delays.^2);
-pos = ages < 83;
-ages = ages(pos);
-log_myelin = log_myelin(pos);
-X = [ones(size(ages)), ages, ages.^2];
-ages_fit = linspace(0.3, 83, 100)';
-X_fit = [ones(size(ages_fit)), ages_fit, ages_fit.^2];
-[b2, stats2] = robustfit(X(:,2:end), log_myelin);
-log_y_fit = X_fit * b2;
-y_fit = exp(log_y_fit);
-se_log = sqrt(sum((X_fit * stats2.covb) .* X_fit, 2));
-upper = exp(log_y_fit + se_log);
-lower = exp(log_y_fit - se_log);
+% 95% CI and ±1 SE
+h_ci_d = fill([xx fliplr(xx)], [z_ci_d(1,:) fliplr(z_ci_d(2,:))], ...
+    col_delay_ci,'EdgeColor','none','FaceAlpha',0.35);
+h_ci_m = fill([xx fliplr(xx)], [z_ci_m(1,:) fliplr(z_ci_m(2,:))], ...
+    col_struct_ci,'EdgeColor','none','FaceAlpha',0.35);
+h_se_d = fill([xx fliplr(xx)], [z_delay - 20*se_d fliplr(z_delay + 20*se_d)], ...
+    col_delay_se,'EdgeColor','none','FaceAlpha',0.45);
+h_se_m = fill([xx fliplr(xx)], [z_myelin - 10*se_m fliplr(z_myelin + 10*se_m)], ...
+    col_struct_se,'EdgeColor','none','FaceAlpha',0.45);
 
-Z = max(upper) - min(lower);
-y_norm = (y_fit - min(lower)) / Z;
-upper = (upper - min(lower)) / Z;
-lower = (lower - min(lower)) / Z;
+% Mean curves
+p_delay_line  = plot(xx,z_delay,'Color',col_delay,'LineWidth',2.5);
+p_myelin_line = plot(xx,z_myelin,'Color',col_struct,'LineWidth',2.5);
+
+xlabel(sprintf('Age (years, p_{quad}=%.3g)', p_inv), ...
+    'FontSize',fsize_label,'FontWeight','bold');
+ylabel('zscore myelination', 'FontSize',fsize_label,'FontWeight','bold');
+set(ax_main,'FontSize',fsize_axes,'FontWeight','bold','Box','on');
+xlim([10 90]); ylim([-3 2]); grid on; box on;
+
+legend([p_delay_line p_myelin_line h_se_d h_se_m h_ci_d h_ci_m], ...
+    {'1/\tau^2 (mean)','Myelin (mean)', ...
+     '1/\tau^2 ±1 SE','Myelin ±1 SE', ...
+     '1/\tau^2 95% CI','Myelin 95% CI'}, ...
+    'Location','southwest','FontSize',fsize_legend, ...
+    'FontWeight','bold','Box','off');
+
+annotation('textbox',[0.15,0.93,0.7,0.05], ...
+    'String',sprintf('Myelination Proxy vs Cortical Myelination (T1w/T2w, \\rho = %.2f)', r_spline), ...
+    'EdgeColor','none','HorizontalAlignment','center', ...
+    'FontSize',fsize_title,'FontWeight','bold');
+
+% === KDE (top = age) ===
+ax_top = axes('Position',[0.15 0.79 0.65 0.12]);
+[fx,xgrid] = ksdensity(x);
+fill(ax_top,xgrid,fx,[0.5 0.5 0.5],'FaceAlpha',0.25,'EdgeColor','k'); hold on;
+mu_age = mean(x); sigma_age = std(x);
+gauss_top = normpdf(xgrid,mu_age,sigma_age);
+plot(ax_top,xgrid,gauss_top,'--','Color',[0.4 0.4 0.4],'LineWidth',1.3);
+axis(ax_top,'tight'); xlim([5 95]);
+set(ax_top,'XTick',[],'YTick',[],'XColor','none','YColor','none'); box off;
+
+% === KDE (right = myelin) ===
+ax_right = axes('Position',[0.82 0.15 0.12 0.62]);
+[fy_m,ygrid_m] = ksdensity(z_myelin);
+fill(ax_right,fy_m,ygrid_m,col_struct,'FaceAlpha',0.25,'EdgeColor',col_struct); hold on;
+mu_struct = mean(z_myelin); sigma_struct = std(z_myelin);
+gauss_right = normpdf(ygrid_m,mu_struct,sigma_struct);
+plot(ax_right,gauss_right,ygrid_m,'--','Color',[0.4 0.4 0.4],'LineWidth',1.3);
+axis(ax_right,'tight');
+set(ax_right,'XTick',[],'YTick',[],'XColor','none','YColor','none'); box off;
+
+
+common_idx = 211;
+x_zero = xx(common_idx);
+y_zero_d = dy_d_z(common_idx);
+y_zero_m = dy_m_z(common_idx);
+
+% === FIGURE 3: Myelinogenesis Rates ===
+ci_d_deriv_z = (ci_d_deriv - mean(dy_d)) / std(dy_d);
+ci_m_deriv_z = (ci_m_deriv - mean(dy_m)) / std(dy_m);
+se_d_deriv_z = se_d_deriv / std(dy_d);
+se_m_deriv_z = se_m_deriv / std(dy_m);
 
 figure('Color','w','Units','normalized','Position',[0.2 0.2 0.6 0.6]);
+ax_main = axes('Position',[0.15 0.15 0.75 0.70]); hold(ax_main,'on');
 
-ax_main = axes('Position', [0.15 0.15 0.65 0.62]); hold on;
-h_fill = fill([ages_fit; flipud(ages_fit)], [upper; flipud(lower)], ...
-    'r', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
-h_fit = plot(ages_fit, y_norm, 'r--', 'LineWidth', 2);
-h_data = plot(myelin_data.Age, myelin_data.myelin, 'b--', 'LineWidth', 2);
-h_unc = fill([myelin_data.Age, fliplr(myelin_data.Age)], ...
-     [myelin_data.upper, fliplr(myelin_data.lower)], ...
-     'b', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
+% 95% CI
+h_ci_d2 = fill([xx fliplr(xx)], [ci_d_deriv_z(1,:) fliplr(ci_d_deriv_z(2,:))], ...
+    col_delay_ci, 'EdgeColor','none','FaceAlpha',0.25);
+h_ci_m2 = fill([xx fliplr(xx)], [ci_m_deriv_z(1,:) fliplr(ci_m_deriv_z(2,:))], ...
+    col_struct_ci, 'EdgeColor','none','FaceAlpha',0.25);
 
-xlabel('Age (Years)', 'FontSize', 14, 'FontWeight', 'bold');
-ylabel('Normalized Estimated Myelin (1/\tau^2)', 'FontSize', 14, 'FontWeight', 'bold');
-set(ax_main, 'FontSize', 13, 'FontWeight', 'bold'); xlim([0.3 83]); grid on;
+% ±1 SE
+h_se_d2 = fill([xx fliplr(xx)], [dy_d_z - se_d_deriv_z fliplr(dy_d_z + se_d_deriv_z)], ...
+    col_delay_se, 'EdgeColor','none','FaceAlpha',0.35);
+h_se_m2 = fill([xx fliplr(xx)], [dy_m_z - se_m_deriv_z fliplr(dy_m_z + se_m_deriv_z)], ...
+    col_struct_se, 'EdgeColor','none','FaceAlpha',0.35);
 
-% KDE (top)
-ax_top = axes('Position', [0.15 0.79 0.65 0.12]);
-[fx, xgrid] = ksdensity(ages);
-fill(ax_top, xgrid, fx, [0.5 0.5 0.5], 'FaceAlpha', 0.25, 'EdgeColor', 'k'); hold on;
-mu_age = mean(ages); sigma_age = std(ages);
-gauss_top = normpdf(xgrid, mu_age, sigma_age);
-plot(ax_top, xgrid, gauss_top, '--', 'Color', [0.5 0.5 0.5], 'LineWidth', 1.5);
-axis(ax_top, 'tight'); xlim([0.3 83]);
-set(ax_top, 'XTick', [], 'YTick', [], 'XColor','none', 'YColor','none'); box off;
+% Mean curves
+p1 = plot(xx, dy_d_z, 'Color', col_delay, 'LineWidth', 2.8);
+p2 = plot(xx, dy_m_z, 'Color', col_struct, 'LineWidth', 2.8);
 
-% KDE (right)
-ax_right = axes('Position', [0.82 0.15 0.12 0.62]);
-[fy, ygrid] = ksdensity(y_norm);
-fill(ax_right, fy, ygrid, 'r', 'FaceAlpha', 0.25, 'EdgeColor', 'r'); hold on;
-mu_myelin = mean(y_norm); sigma_myelin = std(y_norm);
-h_gauss = plot(ax_right, normpdf(ygrid, mu_myelin, sigma_myelin), ygrid, '--', ...
-    'Color', [0.5 0.5 0.5], 'LineWidth', 1.5);
-axis(ax_right, 'tight'); ylim([0 1]);
-set(ax_right, 'XTick', [], 'YTick', [], 'XColor','none', 'YColor','none'); box off;
+% Zero-derivative markers
+plot(x_zero, dy_d_z(common_idx), 'p', 'MarkerSize', 14, ...
+    'MarkerFaceColor', col_delay, 'MarkerEdgeColor','k', 'LineWidth',1.2);
+plot(x_zero, dy_m_z(common_idx), 'p', 'MarkerSize', 14, ...
+    'MarkerFaceColor', col_struct, 'MarkerEdgeColor','k', 'LineWidth',1.2);
 
-legend(ax_main, [h_fit, h_fill, h_data, h_unc, h_gauss], ...
-    {'Estimated Myelin', 'Estimator Uncertainty', ...
-     'Myelin Data', 'Myelin Uncertainty', 'Gaussian Fit'}, ...
-    'Location', 'southwest', 'FontSize', 12);
+xlabel('Age (years)', 'FontSize', fsize_label, 'FontWeight', 'bold');
+ylabel('Myelinogenesis rate (Z-normalized d/dt)', ...
+    'FontSize', fsize_label, 'FontWeight', 'bold');
+set(ax_main,'FontSize',fsize_axes,'FontWeight','bold','Box','on');
+xlim([10 90]); grid on;
+ylim([-4 4])
+legend([p1 p2 h_se_d2 h_se_m2 h_ci_d2 h_ci_m2], ...
+    {'1/\tau^2 derivative (mean)','Myelin derivative (mean)', ...
+     '1/\tau^2 ±1 SE','Myelin ±1 SE', ...
+     '1/\tau^2 95% CI','Myelin 95% CI'}, ...
+    'Location','southwest','FontSize',fsize_legend, ...
+    'FontWeight','bold','Box','off');
 
-annotation('textbox', [0.15, 0.93, 0.7, 0.05], ...
-    'String', sprintf('Estimated Myelin vs Myelin Data (p = %.5g)', stats2.p(3)), ...
-    'EdgeColor', 'none', 'HorizontalAlignment', 'center', ...
-    'FontSize', 16, 'FontWeight', 'bold');
-
+annotation('textbox',[0.15,0.93,0.7,0.05], ...
+    'String','Myelinogenesis Rates', ...
+    'EdgeColor','none','HorizontalAlignment','center', ...
+    'FontSize',fsize_title,'FontWeight','bold');
+%%
 
 %% Spectral components vs delays
 clc; clear all;
@@ -170,7 +395,8 @@ age_min = 0;          % Minimum age for inclusion
 age_max = 100;        % Maximum age for inclusion
 
 % Automatically determine base directory from JSON file path
-json_path = '/mnt/Develop/Ronaldo/dev/Data/NewFolder/XIALPHANET.json';
+json_path = '/mnt/Develop/Ronaldo/program_working/xialphanet_newresults22/XIALPHANET.json';
+
 [dataset_dir, ~, ~] = fileparts(json_path);
 % Load and decode dataset JSON
 dataset = jsondecode(fileread(json_path));
@@ -343,8 +569,8 @@ parfor j = 1:length(All_Data)
         Xi_j_bin = Xi_j > threshold_Alpha(j);
         PAF_j_bin = (PAF_j .* (Alpha_j > threshold_Alpha(j))) > threshold_PAF;
     else % For amplitude Distribution
-        Alpha_j =  Alpha_j.*(Alpha_j > threshold_Alpha(j));
-        Xi_j_bin = Xi_j.*(Xi_j > threshold_Alpha(j));
+        Alpha_j =  Alpha_j;
+        Xi_j_bin = Xi_j;
         PAF_j_bin = PAF_j.*((PAF_j .* (Alpha_j > threshold_Alpha(j))) > threshold_PAF);
     end
 
@@ -395,45 +621,50 @@ for i = 1:3
     % --- Remove IQR outliers
     Q1 = quantile(y, 0.25); Q3 = quantile(y, 0.75);
     IQR_val = Q3 - Q1;
-    idx = (y >= Q1 - 3*IQR_val) & (y <= Q3 + 3* IQR_val);
-    x = delays(idx); 
+    idx = (y >= Q1 - 3*IQR_val) & (y <= Q3 + 3*IQR_val);
+    x = delays(idx);
     y = y(idx);
 
     % --- Regression
     [x_sorted, idxSort] = sort(x);
     y_sorted = y(idxSort);
-    X_quad = [x_sorted];
-    [b, stats] = robustfit(X_quad, y_sorted);
+    [b, stats] = robustfit(x_sorted, y_sorted);
     y_fit = b(1) + b(2)*x_sorted;
-    pval_b3 = stats.p(2);
+    pval_b2 = stats.p(2);
 
-    % --- Confidence bands
+    % --- SE and 95% CI bands
     X_design = [ones(size(x_sorted)), x_sorted];
     var_fit = sum((X_design * stats.covb) .* X_design, 2);
     se_fit = sqrt(var_fit);
-    upper = y_fit + 4*se_fit;
-    lower = y_fit - 4*se_fit;
+    upper_95 = y_fit + 1.96 * se_fit;
+    lower_95 = y_fit - 1.96 * se_fit;
+    upper_1se = y_fit + se_fit;
+    lower_1se = y_fit - se_fit;
 
-    % === Axes layout setup
-    figure('Color','w', 'Units','normalized', 'Position', [0.3 0.3 0.6 0.6])
+    % === Figure setup
+    figure('Color','w','Units','normalized','Position',[0.3 0.3 0.6 0.6]);
+    ax_main = axes('Position',[0.15 0.15 0.65 0.65]); hold(ax_main,'on');
 
-    ax_main = axes('Position', [0.15 0.15 0.65 0.65]); % main plot
-    hold(ax_main, 'on');
-    h_fill = fill([x_sorted; flipud(x_sorted)], [upper; flipud(lower)], ...
-        c, 'FaceAlpha', 0.25, 'EdgeColor','none', 'Parent', ax_main);
-    h_fit = plot(ax_main, x_sorted, y_fit, '-', 'Color', c, 'LineWidth', lineWidth);
+    % --- Plot CI and SE
+    h_ci = fill([x_sorted; flipud(x_sorted)], [upper_95; flipud(lower_95)], ...
+        c, 'FaceAlpha', 0.2, 'EdgeColor','none', 'Parent', ax_main);
+    h_se = fill([x_sorted; flipud(x_sorted)], [upper_1se; flipud(lower_1se)], ...
+        c, 'FaceAlpha', 0.35, 'EdgeColor','none', 'Parent', ax_main);
+    h_fit = plot(ax_main, x_sorted, y_fit, '-', 'Color', c, 'LineWidth', 2.5);
 
-    xlabel(ax_main, 'Delays (ms)', 'FontSize', fontSize, 'FontWeight', 'bold');
-    ylabel(ax_main, y_label, 'FontSize', fontSize, 'FontWeight', 'bold');
-    title(ax_main, sprintf('%s vs Delays   (p = %.3g)', y_label, pval_b3), ...
-        'FontSize', fontSize+2, 'FontWeight', 'bold', ...
-        'Units','normalized', 'Position',[0.5, 1.12, 0]);
+    % --- Axes labels and title
+    xlabel(ax_main, sprintf('Delays (ms, p = %.3g)', pval_b2), ...
+        'FontSize', 14, 'FontWeight', 'bold');
+    ylabel(ax_main, y_label, 'FontSize', 14, 'FontWeight', 'bold');
+    title(ax_main, sprintf('%s vs Delays', y_label), ...
+        'FontSize', 16, 'FontWeight', 'bold', ...
+        'Units','normalized', 'Position',[0.5, 1.08, 0]);
 
-    set(ax_main, 'FontSize', fontSize, 'FontWeight', 'bold');
-    xlim(ax_main, [min(delays), max(delays)]);  
-    grid(ax_main, 'on');
+    grid(ax_main,'on');
+    set(ax_main,'FontSize',13,'FontWeight','bold');
+    xlim(ax_main,[min(delays), max(delays)]);
 
-    % === TOP KDE of delays
+       % === TOP KDE of delays
     ax_top = axes('Position', [0.15 0.76 0.65 0.08]);
     [fx, xgrid] = ksdensity(x_sorted);
     pd_x = fitdist(x_sorted, 'Normal');
@@ -447,7 +678,8 @@ for i = 1:3
     axis(ax_top, 'tight'); set(ax_top, 'XTick', [], 'YTick', []); box off;
     ax_top.XColor = 'none'; ax_top.YColor = 'none';
 
-    % === RIGHT KDE of y
+
+     % === RIGHT KDE of y
     ax_right = axes('Position', [0.82 0.15 0.12 0.62]);
     [fy, ygrid] = ksdensity(y);
     pd_y = fitdist(y, 'Normal');
@@ -461,8 +693,11 @@ for i = 1:3
     axis(ax_right, 'tight'); set(ax_right, 'XTick', [], 'YTick', []); box off;
     ax_right.XColor = 'none'; ax_right.YColor = 'none';
 
-    % === Legend in main axis
-    legend(ax_main, [h_fit, h_fill, h_gauss_y], ...
-        {'Regression Fit', 'Estimator Uncertainty', 'Gaussian Fit (Y)'}, ...
-        'Location', 'southwest', 'FontSize', 12);
+
+    % === Legend
+    legend(ax_main, [h_fit, h_se, h_ci], ...
+        {'Regression Fit','±1 SE Band','95% CI'}, ...
+        'Location','southwest','FontSize',12);
 end
+
+
