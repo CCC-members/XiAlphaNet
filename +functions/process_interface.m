@@ -1,7 +1,7 @@
 function  process_interface(properties)
 
 %%
-%%  Importing Packages
+%%  Importing Packages 
 %%
 import app.*
 import app.functions.*
@@ -17,101 +17,108 @@ import functions.auxx.GenerateSourceSample.*
 import functions.auxx.RegSpace.*
 import functions.auxx.Simulations.*
 import tools.*
-input_path   = properties.general_params.input_path;
-output_path  = properties.general_params.output_path;
-part_file    = properties.general_params.dataset.participants_info.file;
 
-%% === Setup XIALPHANET JSON ===
-XAN_filename = 'XIALPHANET.json';
-XAN_path     = fullfile(output_path);
-XAN_file     = fullfile(XAN_path,XAN_filename);
+input_path                              = properties.general_params.input_path;
+output_path                             = properties.general_params.output_path;
+part_file                               = properties.general_params.dataset.participants_info.file;
 
-if (isfile(XAN_file) && isequal(properties.anatomy_params.type,"default"))
-    XIALPHANET     = jsondecode(fileread(XAN_file));
-    parameters     = load(fullfile(output_path,XIALPHANET.Structural.parameters));
-    parameters_tmp = parameters;
+%%
+%%
+%%
+XAN_filename                            = 'XIALPHANET.json';
+XAN_path                                = fullfile(output_path);
+XAN_file                                = fullfile(XAN_path,XAN_filename);
+if(isfile(XAN_file))
+    XIALPHANET                          = jsondecode(fileread(XAN_file));
+    parameters                          = load(fullfile(output_path,XIALPHANET.Structural.parameters));
 else
-    XIALPHANET.Name        = properties.general_params.dataset.Name;
-    TempUUID               = java.util.UUID.randomUUID;
-    XIALPHANET.UUID        = char(TempUUID.toString);
-    XIALPHANET.Description = properties.general_params.dataset.Description;
-    XIALPHANET.Task        = properties.general_params.dataset.descriptors.task;
-    XIALPHANET.Status      = "Processing";
-    XIALPHANET.Location    = XAN_path;
-    XIALPHANET.general_params = properties.general_params;
-    XIALPHANET.Participants   = [];
+    XIALPHANET.Name                     = properties.general_params.dataset.Name;
+    TempUUID                            = java.util.UUID.randomUUID;
+    XIALPHANET.UUID                     = char(TempUUID.toString);
+    XIALPHANET.Description              = properties.general_params.dataset.Description;
+    XIALPHANET.Task                     = properties.general_params.dataset.descriptors.task;
+    XIALPHANET.Status                   = "Processing";
+    XIALPHANET.Location                 = XAN_path;
+    XIALPHANET.general_params           = properties.general_params;    
+    XIALPHANET.Participants     = [];
+
+    %%
+    %% Preprocessing
+    %%
+    [XIALPHANET,parameters] = preprocessing(properties, XIALPHANET);
 end
 
-%% === Load Participants Info ===
+%% Loading Participamts Infomation
 participants_file = '';
-isPartInfo        = false;
-[~,~,part_ext]    = fileparts(fullfile(input_path,part_file));
-if (isequal(part_ext,'.tsv') || isequal(part_ext,'.csv'))
+isPartInfo = false;
+[~,~,part_ext] = fileparts(fullfile(input_path,part_file));
+if(isequal(part_ext,'.tsv') || isequal(part_ext,'.csv'))
     isPartInfo = true;
     opts = detectImportOptions(fullfile(input_path,part_file), FileType="text");
     participants_file = table2struct(readtable(fullfile(input_path,part_file),opts));
 end
-if (isequal(part_ext,'.json'))
+if(isequal(part_ext,'.json'))
     isPartInfo = true;
     participants_file = jsondecode(fileread(fullfile(input_path,part_file)));
 end
 
-%% === Subjects list ===
+
+%% Loop through each .mat file in the subjects
 subjects = dir(input_path);
 subjects(ismember({subjects.name},{'..','.','structural'})) = [];
 subjects([subjects.isdir]==0) = [];
-if (~isempty(properties.general_params.participants))
+if(~isempty(properties.general_params.participants))
     subjects = subjects(ismember({subjects.name}, properties.general_params.participants));
 end
-
-%% === Default preprocessing flag ===
-preprocessing_done = false;
-good_candidates = {};
-
-%% === Loop through subjects ===
-for s = 1:length(subjects)
+parameters_tmp = parameters;
+lambda_space_cd                 = properties.model_params.delay.lambda_space_cd;
+lambda_space_cd(2,:)            = [10^(-10),1/max(abs(eig(parameters.Model.C)))];
+for s=1:length(subjects) 
     tic
-    if (isfile(XAN_file))
-        XIALPHANET = jsondecode(fileread(XAN_file));
+    if(isfile(XAN_file))
+        XIALPHANET              = jsondecode(fileread(XAN_file));
     end
-    subject           = subjects(s);
-    SubID             = subject.name;
-    Participant.SubID = SubID;
+    subject                     = subjects(s);
+    SubID                       = subject.name;
+    Participant.SubID           = SubID;
 
-    % --- GUI progress ---
-    if (getGlobalGuimode())
-        if (properties.dlg.CancelRequested)
+    % Update progress, report current estimate
+    if(getGlobalGuimode())
+        if(properties.dlg.CancelRequested)
             msg = "Are you sure to cancel the processing?";
             title = "Cancel processing";
             answer = uiconfirm(properties.UIFigure,msg,title, ...
                 "Options",["Stop","Continue"], ...
                 "Icon","+guide/images/question.png",...
                 "DefaultOption",1,"CancelOption",2);
-            if strcmp(answer,'Stop')
-                break;
-            else
-                properties.dlg.CancelRequested=false;
-                drawnow;
+            % Handle response
+            switch answer
+                case 'Stop'
+                    break;                    
+                case 'Continue'
+                    properties.dlg.CancelRequested=false;
+                    drawnow;
             end
         end
-        properties.dlg.Message = strcat("Processing subject: ",SubID, ...
-            " (",num2str(s)," of ",num2str(length(subjects)),")");
+        properties.dlg.Message = strcat("Processing subject: ",SubID, " (",num2str(s)," of ",num2str(length(subjects)),")");
         drawnow;
     end
-
-    % --- Skip if already completed ---
-    if (isempty(XIALPHANET.Participants))
+      
+    %%
+    %% Check participant processed
+    %%
+    if(isempty(XIALPHANET.Participants))
         iPart = 1;
     else
         iPart = find(ismember({XIALPHANET.Participants.SubID},SubID),1);
-        if (~isempty(iPart) && isequal(XIALPHANET.Participants(iPart).Status,"Completed"))
+        if(~isempty(iPart) && isequal(XIALPHANET.Participants(iPart).Status,"Completed"))
             disp('---------------------------------------------------------------------');
             disp(strcat("-->> The analysis of subject: ", SubID, " has been completed."));
             disp(strcat("-->> Jumping to the next subject."));
             disp('---------------------------------------------------------------------');
             continue;
         end
-        if (isempty(iPart))
+        if(isempty(iPart))
             iPart = length(XIALPHANET.Participants) + 1;
         end
     end
@@ -119,58 +126,30 @@ for s = 1:length(subjects)
     disp(strcat("-->> Processing subject: ", SubID));
     disp('---------------------------------------------------------------------');
 
-    %% --- Get participant info ---
-    if (isPartInfo)
-        if (isfield(participants_file,'participant_id'))
+    %%
+    %% Check data structure
+    %%
+    if(isPartInfo)
+        if(isfield(participants_file,'participant_id'))
             pat = participants_file(find(ismember({participants_file.participant_id},{SubID}),1));
         end
-        if (isfield(participants_file,'SubID'))
+        if(isfield(participants_file,'SubID'))
             pat = participants_file(find(ismember({participants_file.SubID},{SubID}),1));
         end
-    else
-        pat = [];
     end
-
-    %% --- Check Data Structure (always before preprocessing) ---
-    [data,status,Participant] = check_data_structure(properties,Participant,subject,pat);
-
-    if (~status)
-        XIALPHANET.Participants(iPart).SubID    = Participant.SubID;
-        XIALPHANET.Participants(iPart).Age      = Participant.Age;
-        XIALPHANET.Participants(iPart).Status   = Participant.Status;
-        XIALPHANET.Participants(iPart).Errors   = Participant.Errors;
+    [data,status,Participant] = check_data_structure(properties,Participant,subject,pat);    
+    if(~status)
+        XIALPHANET.Participants(iPart).SubID = Participant.SubID;
+        XIALPHANET.Participants(iPart).Age = Participant.Age;
+        XIALPHANET.Participants(iPart).Status = Participant.Status;
+        XIALPHANET.Participants(iPart).Errors = Participant.Errors;
         XIALPHANET.Participants(iPart).FileInfo = Participant.FileInfo;
         saveJSON(XIALPHANET,XAN_file);
         disp('---------------------------------------------------------------------');
         continue;
     end
 
-    %% --- Preprocessing depending on anatomy type ---
-    if (isequal(properties.anatomy_params.type,"default") && ~preprocessing_done)
-        % Save one example subject from first run
-        XIALPHANET.ExampleDataStruct = data;
-
-        % Run global preprocessing ONCE for all subjects
-        [XIALPHANET,parameters] = preprocessing(properties, XIALPHANET);
-        parameters_tmp          = parameters;
-        preprocessing_done      = true;
-    elseif (isequal(properties.anatomy_params.type,"individual"))
-        Participant.ExampleDataStruct = data;
-        [Participant, parameters, status] = preprocessing(properties, Participant);
-        if (~status)
-            XIALPHANET.Participants(iPart).SubID    = Participant.SubID;
-            XIALPHANET.Participants(iPart).Age      = Participant.Age;
-            XIALPHANET.Participants(iPart).Status   = Participant.Status;
-            XIALPHANET.Participants(iPart).Errors   = Participant.Errors;
-            XIALPHANET.Participants(iPart).FileInfo = Participant.FileInfo;
-            saveJSON(XIALPHANET,XAN_file);
-            disp('---------------------------------------------------------------------');
-            continue;
-        end
-    end
-
-
-    %%
+     %%
     %% Initializing Model Parameters
     %
     tic
@@ -254,7 +233,7 @@ for s = 1:length(subjects)
 
     disp('-->> Fixing Initial Parameters...');
 
-    x0                           = generateRandomSample_fit(Nv, Cross, G,G, freq, 4,conn_delay,R);
+    x0                           = generateRandomSample_fit(Nv, Cross, G,G, freq, 10,conn_delay,R);
 
     %% Initializing Stochastic FISTA global optimizer
     disp('-->> Running Stochastic FISTA Global Optimization...');
@@ -276,9 +255,7 @@ for s = 1:length(subjects)
     %% Saving Participant file
     %%
     [Participant]               = xan_save(properties,'subject',SubID,x,T,G,parameters,data,Participant);
-    if(isequal(properties.anatomy_params.type,"default"))
-        parameters                  = parameters_tmp;
-    end
+    parameters                  = parameters_tmp;
     toc
 
     %% Save the computed x to the corresponding group folder in Model_Parameters
@@ -289,7 +266,6 @@ for s = 1:length(subjects)
     XIALPHANET.Participants(iPart).Status       = "Completed";
     XIALPHANET.Participants(iPart).Errors       = Participant.Errors;
     XIALPHANET.Participants(iPart).FileInfo     = strcat(SubID,".json");
-    XIALPHANET.ExampleDataStruct                = [];
     saveJSON(XIALPHANET,XAN_file);
     disp('---------------------------------------------------------------------');
     disp(strcat("-->> The analysis of subject: ", SubID, " has been completed."));
@@ -320,7 +296,7 @@ h.close
 %%
 if(isfile(XAN_file))
     % Loading existed Datasets
-
+    
     Datasets_file = xan_get('datasets_file');
     if(isfile(Datasets_file))
         TempDatasets = jsondecode(fileread(Datasets_file));

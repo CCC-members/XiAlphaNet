@@ -1,0 +1,120 @@
+function [Sjj] = eloreta_cross(Svv, K, useParallel,R)
+% XIALPHANET_SPECTRA Compute Xi-AlphaNET source spectra (diagonal only)
+% using frequency-dependent forward operators and eLORETA-like inversion
+%
+% Inputs:
+%   Svv        : (Ne × Ne × Nw) sensor cross-spectra
+%   K          : (Ne × Nv × Nw) frequency-dependent forward operator
+%   useParallel: logical flag, true = use parfor, false = normal for
+%
+% Output:
+%   Sjj : (Nv × Nw) source power spectra
+
+[Ne, ~, Nw] = size(Svv);
+[~, Nv, Nk] = size(K);
+
+if Nk ~= Nw
+    error('K must be frequency-dependent: size(K,3) = Nw.');
+end
+
+% --- Allocate directly ---
+Sjj = zeros(Nv, Nw);
+
+if useParallel
+    midN = ceil(Nw/2);
+    batches = {1:midN, midN+1:Nw};
+
+    for b = 1:2
+        idx = batches{b};
+        nb  = numel(idx);
+        fprintf('\n--- Processing batch %d/%d (%d frequencies) ---\n', b, numel(batches), nb);
+
+        % allocate temporary cell container for this batch
+        Sbatch = cell(1, nb);
+
+        parfor iw = 1:nb
+            widx = idx(iw);
+            Sbatch{iw} = gcv_xialphanet(Svv(:,:,widx), K(:,:,widx), R);
+        end
+
+        % gather results back into the correct columns
+        for iw = 1:nb
+            widx = idx(iw);
+            Sjj(:, widx) = Sbatch{iw};
+        end
+    end
+
+else
+    for iw = 1:Nw
+        Sjj(:, iw) = gcv_xialphanet(Svv(:,:,iw), K(:,:,iw), R);
+    end
+end
+
+
+%% ===== Helper: Xi-AlphaNET GCV =====
+function Sdiag = gcv_xialphanet(Svv, Fop, R)
+gamma = 0.05;
+Tjv   = mkfilt_xialphanet(Fop, gamma, [], R);
+Sdiag = real(diag(Tjv * Svv * Tjv'));
+end
+
+
+%% ===== Xi-AlphaNET Filter (adapted eLORETA) =====
+function A = mkfilt_xialphanet(Fop, regu, W,R)
+if nargin < 2, regu = 0.05; end
+[Ne, Nv] = size(Fop);
+
+if nargin < 3
+    W = eye(Nv);
+end
+
+u0 = eye(Ne);
+Wout = eye(Nv);
+kont = false; kk = 0;
+
+while ~kont
+    kk = kk + 1;
+     
+    % === Accelerated inversion in ROI space using R (ROI × voxel) ===
+    if exist('R','var') && ~isempty(R)
+        % Project W to ROI space (Nr × Nr)
+        W_R = R * Wout * R';
+        % Small regularization for stability
+        W_R = W_R + trace(W_R)/(size(W_R,1)*1e6);
+        % Invert in ROI space
+        W_Rinv = W_R \ eye(size(W_R));
+        % Project back to voxel space
+        Winv = R' * W_Rinv * R;
+    else
+        % Standard inversion in voxel space
+        Wtmp = (Wout + trace(Wout)/(Nv*1e6));
+        Winv = (Wtmp \ eye(Nv));
+    end
+
+
+    % --- Build system matrix (sensor space, smaller) ---
+    kwinvkt = Fop * Winv * Fop';
+    alpha   = real(regu * trace(kwinvkt) / Ne);
+
+    % === Mixed precision inversion in sensor space ===
+    Mtmp = single(kwinvkt + alpha*u0);
+    M    = double(Mtmp \ eye(Ne,'single'));
+
+    % --- Update voxel weights ---
+    Wold = Wout;
+    for i = 1:Nv
+        li = Fop(:,i);
+        Mb = li' * M * li;
+        Wout(i,i) = sqrt(real(Mb) + trace(Mb)/1e10);
+    end
+
+    % --- Convergence check ---
+    reldef = norm(Wout(:)-Wold(:)) / norm(Wold(:));
+    if kk > 20 || reldef < 1e-2
+        kont = true;
+    end
+end
+
+% --- Final spatial filter ---
+A = Wout \ (Fop' * M);   % (Nv × Ne)
+end

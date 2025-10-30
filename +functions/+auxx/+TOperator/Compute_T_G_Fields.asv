@@ -1,0 +1,46 @@
+
+clear all; close all; 
+
+import app.*
+import app.functions.*
+import functions.*
+import functions.StochasticFISTA.*
+import functions.auxx.*
+import functions.auxx.BayesOptimization.*
+import functions.auxx.CrossSpectrum.*
+import functions.auxx.ModelVectorization.*
+import functions.auxx.Regularization.*
+import functions.auxx.TOperator.*
+import functions.auxx.GenerateSourceSample.*
+import functions.auxx.RegSpace.*
+import functions.auxx.Simulations.*
+import tools.*
+
+parameters = load('/mnt/Develop/Ronaldo/dev/Data/NewFolder/structural/parameters.mat');
+output_dir_T = '/mnt/Develop/Ronaldo/dev/Temp/T_TensorField';
+Nsim = 1;
+Nw = 47;
+% Set data directory for simulation
+dir_data = '/mnt/Develop/Ronaldo/dev/Data/norms';
+subject_folders = dir(fullfile(dir_data, '*'));
+subject_folders = subject_folders([subject_folders.isdir] & ~startsWith({subject_folders.name}, '.'));
+selected_folders = subject_folders(randperm(length(subject_folders), Nsim));
+% Select subject folder and load data
+subject_folder = selected_folders(1).name;
+mat_file_path = fullfile(dir_data, subject_folder, [subject_folder, '.mat']);
+data_struct = load(mat_file_path);
+% Set frequency range and parameters for the current simulation
+freq = data_struct.data_struct.freqrange(1:Nw);
+parameters.Data.freq = freq;
+
+output_dir_T_95 = '/mnt/Develop/Ronaldo/dev/Temp/T&G_TensorField/T_Tensor_Field_9.5ms';
+output_dir_T_11 = '/mnt/Develop/Ronaldo/dev/Temp/T&G_TensorField/T_Tensor_Field_11ms';
+output_dir_G_95 = '/mnt/Develop/Ronaldo/dev/Temp/T&G_TensorField/G_Tensor_Field_9.5ms';
+output_dir_G_11 = '/mnt/Develop/Ronaldo/dev/Temp/T&G_TensorField/G_Tensor_Field_11ms';
+% T tensor Field
+functions.auxx.TOperator.ComputeTensorField(20,parameters,output_dir_T_95)
+functions.auxx.TOperator.ComputeTensorField(10,parameters,output_dir_T_11)
+% G Tensor Field
+functions.auxx.TOperator.ComputeGTensorField(20,parameters,output_dir_G_95)
+functions.auxx.TOperator.ComputeGTensorField(10,parameters,output_dir_G_11)
+

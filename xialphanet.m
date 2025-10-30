@@ -59,8 +59,7 @@ if(getGlobalGuimode())
     XiAlphaNetUI;
 else
     properties = get_properties();
-    % [status, properties] = check_properties(properties);
-    status = true;
+    [status, properties] = check_properties(properties);
     if(status)
         process_interface(properties);
     end

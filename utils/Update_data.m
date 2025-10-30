@@ -1,8 +1,7 @@
 
 
-input_path = 'D:\XiAlphaNetProject\ParkinsonsXialphaproject\ParkinsonsData\NeuroEPOEEGRawData\Post\Group3Post\';
-output_path = 'D:\XiAlphaNetProject\ParkinsonsXialphaproject\ParkinsonsData\DataGatheredNew\Group3Post\';
-
+input_path = "C:\ronald\last_version_december\New folder\Xi-AlphaNET compress (copy)\Data\Scalp_Density_Matrix\Control";
+output_path = "C:\ronald\Data\Norms";
 
 files = dir(input_path);
 files(ismember({files.name},{'..','.'})) = [];

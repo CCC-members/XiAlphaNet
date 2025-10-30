@@ -80,7 +80,7 @@ switch ext
 end
 
 %% === Normalization only if default anatomy ===
-%if length(properties.channel_params.labels) == 19
+if length(properties.channel_params.labels) == 19
     dnames = {EEG.chanlocs.labels};
 
     % Clean up labels
@@ -113,7 +113,7 @@ end
 
     EEG.data     = data;
     EEG.chanlocs = EEG.chanlocs(idx);
-%end
+end
 
 % Final outputs
 dnames = {EEG.chanlocs.labels};

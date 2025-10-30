@@ -304,11 +304,11 @@ fprintf('--- DAI significance filtering complete ---\n');
 
 target_DAI = DAI_alpha;
 rotSteps = 0;
-circos_plot_test;
+guide.Visualization.circos_plot_test;
 
 target_DAI = DAI_xi;
 rotSteps = -7;
-circos_plot_test;
+guide.Visualization.circos_plot_test;
 
 A = Gxi_mean;
 guide.Visualization.effective_spectral_net;

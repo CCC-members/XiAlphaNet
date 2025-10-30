@@ -1,0 +1,189 @@
+%==========================================================================
+% Xi-AlphaNET: Linearized Inverse Resolution Simulation (PSF + CTF)
+% Comparison: Structural Priors ON vs OFF
+%==========================================================================
+
+clear; clc; close all;
+
+%% === Imports ===========================================================
+import templates.*
+import guide.Visualization.*
+import guide.functions.split_hemisphere
+import functions.auxx.ModelVectorization.*
+import functions.auxx.ZeroInflatedModels.*
+import functions.auxx.TOperator.*
+import functions.auxx.Refine_Solution.*
+import functions.auxx.OptimizedOperations.*
+
+%% === Load Xi-AlphaNET model ============================================
+Cortex = load("templates/Cortex_with_myelin.mat");
+Cortex = Cortex.Cortex;
+parameters = load('/Users/ronald/Library/CloudStorage/OneDrive-CCLAB/New_Data_XiAlphaNET/xialphanet_newresults22/structural/parameters.mat');
+
+dir_data = '/Users/ronald/Downloads/MultinationalNorms';
+subject_folders = dir(fullfile(dir_data, '*'));
+subject_folders = subject_folders([subject_folders.isdir] & ~startsWith({subject_folders.name}, '.'));
+subject_folder = subject_folders(randi(length(subject_folders))).name;
+mat_file_path  = fullfile(dir_data, subject_folder, [subject_folder, '.mat']);
+data_struct    = load(mat_file_path);
+
+Nw = 47;
+freq = data_struct.data_struct.freqrange(1:Nw);
+parameters.Data.freq = freq;
+parameters.Parallel.T = 1;
+
+%% === Function to compute PSF metrics ===================================
+compute_metrics = @(R_avg, distMat, r_local) deal( ...
+    arrayfun(@(j) sqrt(sum(distMat(:,j).^2 .* (abs(R_avg(:,j)).^2 ./ (sum(abs(R_avg(:,j)).^2) + eps)))), 1:size(R_avg,2)), ...
+    arrayfun(@(j) distMat(find(abs(R_avg(:,j))==max(abs(R_avg(:,j))),1), j), 1:size(R_avg,2)), ...
+    arrayfun(@(j) 1 - sum((abs(R_avg(:,j)).^2 ./ (sum(abs(R_avg(:,j)).^2) + eps)) .* (distMat(:,j)<=r_local)), 1:size(R_avg,2)) ...
+);
+
+%% === Compute distance matrix ==========================================
+[Cortex, iHideVert] = split_hemisphere(Cortex, []);
+Vertices = Cortex.Vertices;
+Vertices(iHideVert,:) = [];
+distMat = pdist2(Vertices, Vertices); % Euclidean distance (m)
+fprintf('Distance matrix computed (%d x %d)\n', size(distMat,1), size(distMat,2));
+r_local = 0.075;
+
+%% === Simulation conditions ============================================
+conditions = struct( ...
+    'name', {'PriorON', 'PriorOFF'}, ...
+    'w_C',  {0.04, 1}, ...
+    'w_D',  {1, 0} );
+
+results = struct();
+
+for cond = 1:numel(conditions)
+    fprintf('\n=== Running simulation: %s ===\n', conditions(cond).name);
+
+    % --- Structural weights
+    w_C = conditions(cond).w_C;
+    w_D = conditions(cond).w_D;
+
+    parameters.Model.C = w_C * parameters.Model.C;
+    parameters.Model.D = w_D * parameters.Model.D;
+
+    % --- Evaluate operators
+    [T, G] = Teval(parameters);
+    [Nw, Nv, Ne] = deal(size(T,3), size(T,2), size(T,1));
+    fprintf('Loaded %d frequencies from Xi-AlphaNET model.\n', Nw);
+
+    % --- Average resolution matrix across 10 random frequencies
+    fprintf('Averaging resolution matrices...\n');
+    rng('default');
+    n_select = 10;
+    idx_freq = sort(randsample(Nw, n_select));
+    R_avg = zeros(Nv, Nv);
+    for k = 1:n_select
+        w = idx_freq(k);
+        R_avg = R_avg + G(:,:,w) * T(:,:,w);
+    end
+    R_avg = abs(R_avg / n_select);
+
+    % --- Compute metrics
+    [SD_PSF, PLE_PSF, RSA_PSF] = compute_metrics(R_avg, distMat, r_local);
+
+    % --- Convert units
+    results(cond).SD  = SD_PSF * 1000;  % mm
+    results(cond).PLE = PLE_PSF * 1000; % mm
+    results(cond).RSA = RSA_PSF * 100;  % %
+end
+
+%% === Combine data for comparative violin plot =========================
+data_all = {results(1).SD, results(2).SD; ...
+            results(1).PLE, results(2).PLE; ...
+            results(1).RSA, results(2).RSA};
+
+colors = [0.6 0.8 0.2;   % green for ON
+          0.5 0.5 0.5];  % gray for OFF
+
+labels_main = {'SD (mm)','PLE (mm)','RSA (%)'};
+sub_labels  = {'ON','OFF'};
+
+%% === Compute modes and IQRs ==========================================
+modes = zeros(3,2); q25 = zeros(3,2); q75 = zeros(3,2);
+for i = 1:3
+    for j = 1:2
+        x = data_all{i,j};
+        [f, xi] = ksdensity(x);
+        [~, idx] = max(f);
+        modes(i,j) = xi(idx);
+        q25(i,j) = prctile(x,25);
+        q75(i,j) = prctile(x,75);
+    end
+end
+
+%% === Plot comparative violins ========================================
+import guide.Visualization.DataVizm.daviolinplot.*
+
+figure('Color','w','Position',[400 200 700 460]);
+hold on;
+
+for i = 1:3
+    base_x = (i-1)*3; % spacing between groups
+    for j = 1:2
+        daviolinplot({data_all{i,j}},xpositions', base_x + j, ...
+            'violin','half', ...
+            'box',3, ...
+            'scatter',0, ...
+            'violinalpha',0.8, ...
+            'colors',colors(j,:), ...
+            'boxwidth',1.4, 'violinwidth',1.1, ...
+            'boxcolors','w');
+    end
+end
+
+set(gca,'FontSize',12,'FontWeight','bold','LineWidth',1.4,'TickDir','out');
+ylabel('Value','FontSize',14,'FontWeight','bold');
+grid on; box on;
+ylim([0 100]);
+
+xticks([1.5, 4.5, 7.5]);
+xticklabels(labels_main);
+
+% --- Add ON/OFF text above violins
+for i = 1:3
+    base_x = (i-1)*3;
+    text(base_x + 1, 102, 'ON', 'FontSize',12,'FontWeight','bold', ...
+         'HorizontalAlignment','center','Color',colors(1,:));
+    text(base_x + 2, 102, 'OFF', 'FontSize',12,'FontWeight','bold', ...
+         'HorizontalAlignment','center','Color',colors(2,:));
+end
+
+% --- Add mode + IQR vertical text
+for i = 1:3
+    base_x = (i-1)*3;
+    for j = 1:2
+        str = sprintf('%.1f\n[%.1f–%.1f]', modes(i,j), q25(i,j), q75(i,j));
+        text(base_x + j - 0.2, 50, str, 'Rotation',90, ...
+             'HorizontalAlignment','center','VerticalAlignment','middle', ...
+             'FontSize',11);
+    end
+end
+
+title('Resolution Metrics with / without Structural Priors','FontSize',15,'FontWeight','bold');
+
+%% === Cortical plots: On vs Off =======================================
+figure('Color','w','Position',[300 100 1000 600]);
+metrics = {'SD','PLE','RSA'};
+for i = 1:3
+    subplot(2,3,i);
+    J = results(1).(metrics{i});
+    scale = [0 100];
+    guide.Visualization.esi_plot_hem_R_L;
+    colormap("parula");
+    title([metrics{i} ' (Prior ON)'],'FontWeight','bold');
+    caxis(scale);
+
+    subplot(2,3,i+3);
+    J = results(2).(metrics{i});
+    guide.Visualization.esi_plot_hem_R_L;
+    colormap("parula");
+    title([metrics{i} ' (Prior OFF)'],'FontWeight','bold');
+    caxis(scale);
+end
+
+fprintf('\n=== Summary ===\n');
+disp(array2table(modes, 'VariableNames',{'ON','OFF'}, 'RowNames',{'SD','PLE','RSA'}));
