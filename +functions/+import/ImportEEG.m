@@ -15,90 +15,111 @@ ref = properties.general_params.data.reference;
 keep_signal = properties.general_params.data.keep_signal;
 
 switch ext
-    case '.PLG'   
-        [data, MONTAGE, age, SAMPLING_FREQ, epoch_size, wins, msg] = read_plgwindows(file_name, state, lwin);               
-        nt                          = lwin*SAMPLING_FREQ;
-        nw                          = size(data,2)./nt;
-        data                        = reshape(data(1:19,1:nw*nt), 19, nt, nw);
-        dnames                      = strrep(num2cell(MONTAGE(1:19, 1:3),2), '_', '');
-        xx                          = str2num(char(dnames));
-        if (isequal(xx, [1:19]'))
-            dnames = {'Fp1', 'Fp2', 'F3', 'F4', 'C3', 'C4', 'P3', 'P4', 'O1', 'O2', 'F7', 'F8', 'T3', 'T4', 'T5', 'T6', 'Fz', 'Cz', 'Pz'};
+    case '.PLG'
+        [data, MONTAGE, age, SAMPLING_FREQ, epoch_size, wins, msg] = read_plgwindows(file_name, state, lwin);
+        nt    = lwin * SAMPLING_FREQ;
+        nw    = size(data,2) ./ nt;
+        data  = reshape(data(1:19,1:nw*nt), 19, nt, nw);
+
+        dnames = strrep(num2cell(MONTAGE(1:19,1:3),2), '_','');
+        xx     = str2num(char(dnames)); %#ok<ST2NM>
+        if isequal(xx,[1:19]')
+            dnames = {'Fp1','Fp2','F3','F4','C3','C4','P3','P4','O1','O2',...
+                      'F7','F8','T3','T4','T5','T6','Fz','Cz','Pz'};
         end
-        pat                         = read_plgpat(strrep(file_name, ext, '.pat')); 
-        srate                       = SAMPLING_FREQ;    
+
+        EEG.data     = data;
+        EEG.srate    = SAMPLING_FREQ;
+        EEG.chanlocs = cell2struct(dnames,'labels',2);
+
     case '.edf'
-        EEG                     = pop_biosig(file_name);
-        EEG.setname             = SubID;
-        EEG.subject             = SubID;        
-        EEG.filename            = path;
-        EEG.filepath            = name;        
-        % For cuban dataset
-        new_labels              = replace({EEG.chanlocs.labels}','-REF','');
-        [EEG.chanlocs.labels]   = new_labels{:};
-        new_labels              = replace({EEG.chanlocs.labels}',' ','');
-        [EEG.chanlocs.labels]   = new_labels{:};
-        dnames                  = {EEG.chanlocs(1:19).labels};
-        indx = ismember(dnames,{'T7','T8','P7','P8'});
-        dnames(indx) = {'T3','T4','T5','T6'};
-        data = EEG.data(1:length(dnames),:); 
-        srate                           = EEG.srate;        
+        EEG          = pop_biosig(file_name);
+        EEG.setname  = SubID;
+        EEG.subject  = SubID;
+        EEG.filename = path;
+        EEG.filepath = name;
+
     case '.set'
-         EEG                     = pop_loadset(file_name);
-         dnames                  = {EEG.chanlocs(1:19).labels};
-         indx = ismember(dnames,{'T7','T8','P7','P8'});
-         dnames(indx) = {'T3','T4','T5','T6'};
-         data = EEG.data(1:length(dnames),:);
-         srate                       = EEG.srate;
+        EEG = pop_loadset(file_name);
+
     case '.vhdr'
-            [base_path,hdrfile,extf] = fileparts(file_name);
-            hdrfile = strcat(hdrfile,extf);
+        [base_path,hdrfile,extf] = fileparts(file_name);
+        EEG = pop_loadbv(base_path,[hdrfile extf]);
+        EEG.subject  = SubID;
+        EEG.filename = [hdrfile extf];
+        EEG.filepath = fullfile(base_path);
 
-            [EEG, com] = pop_loadbv(base_path, hdrfile);           
-            EEG.subject = subID;
-            EEG.filename = hdrfile;
-            EEG.filepath = fullfile(base_path);
-            srate                           = EEG.srate;
     case '.mat'
-        EEG                     = eeg_emptyset;
-        load(file_name);
-        EEG.data                = data;
-        
-        % For Pedrito's data selection
-        %         srate                   = SAMPLING_FREQ;
-        %         EEG.srate               = srate;
-        %         EEG.age                 = age;
-        %         if(exist('labels','var'))
-        %             EEG.chanlocs(length(labels)+1:end,:)    = [];
-        %             new_labels                              = labels;
-        %             [EEG.chanlocs.labels]                   = new_labels{:};
-        %         end
+        EEG = eeg_emptyset;
+        load(file_name);   % expects variables: data, labels
+        EEG.data     = data;
+        EEG.srate    = 256;   % default for DEAP dataset
+        EEG.trials   = 1;
+        EEG.nbchan   = size(data,1);
+        EEG.pnts     = size(data,2);
+        EEG.xmin     = 0;
+        EEG.xmax     = EEG.xmin + (EEG.pnts-1) * (1/EEG.srate);
+        EEG.times    = (0:EEG.pnts-1)/EEG.srate * 1000;
+        EEG.chanlocs = cell2struct(labels,'labels',2);
 
-        % For DEAP dataset 
-        EEG.srate               = 256;  
-        EEG.trials              = 1;
-        EEG.nbchan              = size(data,1);
-        EEG.pnts                = size(data,2);
-        EEG.xmin                = 0;
-        EEG.xmax                = EEG.xmin+(EEG.pnts-1)*(1/EEG.srate);
-        EEG.times               = (0:EEG.pnts-1)/EEG.srate.*1000;           
-        EEG.chanlocs                   = cell2struct(labels, 'labels',2);
     case '.txt'
-        EEG                     = eeg_emptyset;
-        [~,filename,~]          = fileparts(file_name);
-        EEG.filename            = filename;
-        EEG.filepath            = filepath;
-        EEG.subject             = subID;
-        data                    = readmatrix(file_name);
-        data                    = data';
-        EEG.data                = data;
-        EEG.nbchan              = length(EEG.chanlocs);
-        EEG.pnts                = size(data,2);
-        EEG.srate               = 200;
-        EEG.min                 = 0;
-        EEG.max                 = EEG.xmin+(EEG.pnts-1)*(1/EEG.srate);
-        EEG.times               = (0:EEG.pnts-1)/EEG.srate.*1000;
+        EEG          = eeg_emptyset;
+        [~,filename,~] = fileparts(file_name);
+        EEG.filename = filename;
+        EEG.filepath = filepath;
+        EEG.subject  = SubID;
+
+        data         = readmatrix(file_name)';
+        EEG.data     = data;
+        EEG.srate    = 200;
+        EEG.nbchan   = size(data,1);
+        EEG.pnts     = size(data,2);
+        EEG.xmin     = 0;
+        EEG.xmax     = EEG.xmin + (EEG.pnts-1) * (1/EEG.srate);
+        EEG.times    = (0:EEG.pnts-1)/EEG.srate * 1000;
 end
+
+%% === Normalization only if default anatomy ===
+%if length(properties.channel_params.labels) == 19
+    dnames = {EEG.chanlocs.labels};
+
+    % Clean up labels
+    dnames = strrep(dnames,'-REF','');
+    dnames = strrep(dnames,' ','');
+
+    % Convert 10-10 to 10-20 equivalents
+    dnames(strcmpi(dnames,'T7')) = {'T3'};
+    dnames(strcmpi(dnames,'T8')) = {'T4'};
+    dnames(strcmpi(dnames,'P7')) = {'T5'};
+    dnames(strcmpi(dnames,'P8')) = {'T6'};
+
+    % Update chanlocs
+    for i = 1:length(dnames)
+        EEG.chanlocs(i).labels = dnames{i};
+    end
+
+    % Reorder & restrict to 19 channels
+    desired_order = {'Fp1','Fp2','F3','F4','C3','C4','P3','P4','O1','O2',...
+                     'F7','F8','T3','T4','T5','T6','Fz','Cz','Pz'};
+    [found, idx] = ismember(desired_order, dnames);
+
+    if any(~found)
+        warning('Missing expected channels: %s', strjoin(desired_order(~found),', '));
+    end
+
+    idx   = idx(found);
+    dnames = dnames(idx);
+    data   = EEG.data(idx,:,:);
+
+    EEG.data     = data;
+    EEG.chanlocs = EEG.chanlocs(idx);
+%end
+
+% Final outputs
+dnames = {EEG.chanlocs.labels};
+srate  = EEG.srate;
+data   = EEG.data;
+
 if(isfield(pat,'age' ))
     Age                         = pat.age;
 elseif(isfield(pat,'Age' ))
@@ -115,7 +136,9 @@ elseif(isfield(pat,'Gender' ))
 else
     Age                         = '';
 end
-        
+%[data_struct, error_msg] = data_gatherer_flexible(data, srate, dnames, SubID, ref, Age, Sex,country, eeg_device, keep_signal, properties);
+
+%
 [data_struct, error_msg]    = data_gatherer_v2(data, srate, dnames, SubID, ref, Age, Sex,...
     country, eeg_device, keep_signal);
 if(isfield(pat,'BirthDate'))

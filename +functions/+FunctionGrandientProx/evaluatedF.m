@@ -42,7 +42,9 @@ for j = 1:Nsw
 
     % Compute xi_omega and alpha_omega
     xi_omega = e(:,1) ./ (1 + e(:,2) .* omega^2).^e(:,3);
-    alpha_omega = a(:,1) ./ (1 + a(:,2) .* (omega - a(:,4)).^2).^a(:,3);
+    alpha_omega = 0.5 * ( ...
+        a(:,1) ./ (1 + a(:,2) .* (omega - a(:,4)).^2).^a(:,3) + ...
+        a(:,1) ./ (1 + a(:,2) .* ((-omega) - a(:,4)).^2).^a(:,3) );
 
     % Compute derivatives
     [dXi_de(:, :, j), dAlpha_da(:, :, j)] = dXiAlpha_deda(e, a, omega);

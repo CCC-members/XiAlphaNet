@@ -1,0 +1,54 @@
+function  [T] = Teval(parameters)
+import functions.*
+import functions.auxx.*
+import functions.auxx.Regularization.*
+%% 
+Nw = parameters.Dimensions.Nw;
+Ne = parameters.Dimensions.Ne;
+Nr = parameters.Dimensions.Nr;
+Nv = parameters.Dimensions.Nv;
+if Nv==Nr
+    C= nulldiag(parameters.Compact_Model.C);
+    K = parameters.Compact_Model.K;
+    D = parameters.Compact_Model.D;
+else
+    C = nulldiag(parameters.Model.C);
+    K = parameters.Model.K;
+    D = parameters.Model.D;
+end
+rho_C = max(abs(eig(C)));
+
+freq = parameters.Data.freq;
+%%
+
+I = eye(size(C));
+T = zeros(Ne,Nv,Nw);
+PF = floor(Nw/2);
+if parameters.Parallel.T == 1
+    parfor w = 1:PF
+       %fprintf('-->Frequency %d/%d\n',w,Nw)
+            Z = C .* exp(-2 * pi * 1i * freq(w) * D);
+            if rho_C < 0.8
+                T(:,:,w) = K + K * Z;
+            else
+                T(:,:,w) = K/(I-Z);
+            end
+    end
+    parfor w = PF+1:Nw
+    %fprintf('-->Frequency %d/%d\n',w,Nw)
+            Z = C .* exp(-2 * pi * 1i * freq(w) * D);
+            if rho_C < 0.8
+                T(:,:,w) = K + K * Z;
+            else
+                T(:,:,w) = K/(I-Z);
+            end
+    end
+else
+   for w = 1:Nw
+       %fprintf('-->Frequency %d/%d\n',w,Nw)
+       Ts = (I - C .* exp(-2 * pi*1i * freq(w) * D));
+       T(:,:,w) = (K/Ts);
+    end
+end 
+
+end

@@ -1,0 +1,269 @@
+%% Population spectral net
+clc;
+clear all;
+
+% Import required helper functions
+import functions.auxx.ModelVectorization.*
+import guide.Visualization.*
+import functions.auxx.ZeroInflatedModels.*
+import functions.auxx.Refine_Solution.*
+import functions.auxx.OptimizedOperations.*
+
+% Define parameters for analysis
+prc = 90;             % Percentile threshold (e.g., for visualizing distributions)
+cross_index = 0;      % Cross-validation index (0 = not using CV)
+num_groups = 1;       % Number of age groups (for age stratification)
+mode = 1;             % 0 = amplitude plots, 1 = zero-inflation probability plots
+age_min = 0;          % Minimum age for inclusion
+age_max = 100;        % Maximum age for inclusion
+Nw = 47;
+% Path to the JSON file with model result metadata
+json_path = '/Users/ronald/Library/CloudStorage/OneDrive-CCLAB/New_Data_XiAlphaNET/xialphanet_newresults22/XIALPHANET.json';
+
+% Automatically determine base directory from JSON file path
+[dataset_dir, ~, ~] = fileparts(json_path);
+
+% Load and decode dataset JSON
+dataset = jsondecode(fileread(json_path));
+
+% Set the location field automatically based on JSON file directory
+dataset.Location = dataset_dir;
+
+% Load structural model parameters
+parameters = load(fullfile(dataset_dir, 'structural', 'parameters.mat'));
+% Set up simulation parameters
+Ne = parameters.Dimensions.Ne;  % Number of electrodes
+Nr = parameters.Dimensions.Nr;  % Number of ROIs
+Nv = parameters.Dimensions.Nr;  % Set voxel to ROI
+Nw = parameters.Dimensions.Nw;  % Number of frequency bins
+%
+
+n = length(dataset.Participants);
+All_Data_tmp = cell(1, n);  % combine both x and age
+Mod_Matrix = cell(1, n);
+ages_tmp = nan(1, n);       % to filter valid ages later
+
+parfor i = 1:n
+    participant = dataset.Participants(i);
+    participant_age = participant.Age;
+
+    if isequal(participant.Status, 'Completed') && ...
+            age_min <= participant_age && participant_age <= age_max
+
+        try
+            % Load JSON metadata
+            Part_Info = jsondecode(fileread(fullfile(dataset.Location, participant.SubID, participant.FileInfo)));
+
+            % Load required matrices
+            Mod_Matrix{i} = load(fullfile(dataset.Location, participant.SubID, Part_Info.Mod_Weights));
+
+            % Alpha component
+            alpha_process = load(fullfile(dataset.Location, participant.SubID, Part_Info.Alpha_estimate));
+            a = zeros(length(alpha_process.Power), 4);
+            a(:,1) = alpha_process.Power;
+            ta = set_threshold_em(a(:,1));
+            a(:,1) = a(:,1) .* (a(:,1) > ta);
+            a(:,2) = alpha_process.Width;
+            a(:,3) = alpha_process.Exponent;
+            a(:,4) = alpha_process.PAF;
+            ta = set_threshold_em(a(:,1));
+            a(:,1) = a(:,1) .* (a(:,1) > ta);
+
+            % Xi component
+            xi_process = load(fullfile(dataset.Location, participant.SubID, Part_Info.Xi_estimate));
+            e = zeros(length(xi_process.Power), 3);
+            e(:,1) = xi_process.Power;
+            e(:,2) = xi_process.Width;
+            e(:,3) = xi_process.Exponent;
+            te = set_threshold_em(e(:,1));
+            e(:,1) = e(:,1) .* (e(:,1) > te);
+
+            % Build the combined feature
+            x = v2x(e, a, 1);
+
+            % Assign single cell entry
+            All_Data_tmp{i} = {x, participant_age};
+            ages_tmp(i) = participant_age;
+
+        catch ME
+            warning("Participant %s failed: %s", participant.SubID, ME.message);
+        end
+    end
+end
+
+% Post-processing to unpack All_Data
+valid = ~cellfun(@isempty, All_Data_tmp);
+All_Data = cell(2, sum(valid));
+All_Data(1,:) = cellfun(@(c) c{1}, All_Data_tmp(valid), 'UniformOutput', false);
+All_Data(2,:) = cellfun(@(c) c{2}, All_Data_tmp(valid), 'UniformOutput', false);
+
+Delay_Matrix = Mod_Matrix(valid);
+ages = ages_tmp(valid);
+
+%%
+
+% Set data dir
+dir_data = '/Users/ronald/Downloads/MultinationalNorms';
+subject_folders = dir(fullfile(dir_data, '*'));
+subject_folders = subject_folders([subject_folders.isdir] & ~startsWith({subject_folders.name}, '.'));
+selected_folders = subject_folders(randperm(length(subject_folders), 1));
+subject_folder = selected_folders(1).name;
+mat_file_path = fullfile(dir_data, subject_folder, [subject_folder, '.mat']);
+data_struct = load(mat_file_path);
+freq = data_struct.data_struct.freqrange(1:Nw);
+parameters.Data.freq = freq;
+
+%% === Setup ===
+R  = parameters.Model.R;
+C0 = parameters.Model.C;
+D0 = parameters.Model.D;
+Nv = size(C0,1);
+Nr = size(R,1);
+N  = length(ages);
+
+omega_xi    = freq(1);
+omega_alpha = freq(25);
+
+batchSize = 20;
+nBatches  = ceil(N / batchSize);
+
+% --- Define 5 age groups: 0–20, 20–40, 40–60, 60–80, 80–100 ---
+ageEdges = [0, 20, 40, 60, 80, 101];
+nGroups  = numel(ageEdges) - 1;
+ageGroupLabels = {'0–20','20–40','40–60','60–80','80–100'};
+
+% --- Initialize accumulators ---
+sqrt_xi_sum_group    = cell(1,nGroups);
+sqrt_alpha_sum_group = cell(1,nGroups);
+wD_sum_group = zeros(1,nGroups);
+wC_sum_group = zeros(1,nGroups);
+count_group  = zeros(1,nGroups);
+
+for gg = 1:nGroups
+    sqrt_xi_sum_group{gg}    = zeros(Nv,1);
+    sqrt_alpha_sum_group{gg} = zeros(Nv,1);
+end
+
+% === Stage 1: Accumulate spectral & structural parameters by age group ===
+fprintf('--- Stage 1: Averaging sqrt_xi, sqrt_alpha, Mod_Weights by age group ---\n');
+for b = 1:nBatches
+    fprintf('Batch %d/%d...\n',b,nBatches);
+    idx_start = (b-1)*batchSize + 1;
+    idx_end   = min(b*batchSize, N);
+    idx_batch = idx_start:idx_end;
+
+    for k = 1:numel(idx_batch)
+        s = idx_batch(k);
+        [e,a,s2] = x2v(All_Data{s});
+                age_s = ages(s);
+
+        % --- Determine group index ---
+        g = find((age_s >= ageEdges(1:end-1)) & (age_s < ageEdges(2:end)), 1);
+        if isempty(g), continue; end
+
+        % --- Spectral components (√power envelopes) ---
+        sqrt_xi    = sqrt(e(:,1) ./ (1 + e(:,2).*omega_xi.^2).^e(:,3));
+        sqrt_alpha = sqrt(0.5*( a(:,1)./(1 + a(:,2).*(omega_alpha - a(:,4)).^2).^a(:,3) + ...
+                                 a(:,1)./(1 + a(:,2).*(omega_alpha + a(:,4)).^2).^a(:,3) ));
+
+        % --- Accumulate ---
+        sqrt_xi_sum_group{g}    = sqrt_xi_sum_group{g}    + sqrt_xi;
+        sqrt_alpha_sum_group{g} = sqrt_alpha_sum_group{g} + sqrt_alpha;
+        wD_sum_group(g) = wD_sum_group(g) + Mod_Matrix{s}.Mod_Weights(1);
+        wC_sum_group(g) = wC_sum_group(g) + Mod_Matrix{s}.Mod_Weights(2);
+        count_group(g)  = count_group(g)  + 1;
+    end
+end
+
+% === Stage 2: Compute mean transfer functions per group ===
+fprintf('--- Stage 2: Computing averaged transfer functions per group ---\n');
+Gxi_groups    = cell(1,nGroups);
+Galpha_groups = cell(1,nGroups);
+
+for g = 1:nGroups
+    if count_group(g)==0
+        Gxi_groups{g} = nan(Nr);
+        Galpha_groups{g} = nan(Nr);
+        continue;
+    end
+
+    fprintf('  Group %d (%s): %d participants\n', g, ageGroupLabels{g}, count_group(g));
+
+    % --- Group means ---
+    sqrt_xi_mean    = sqrt_xi_sum_group{g}    / count_group(g);
+    sqrt_alpha_mean = sqrt_alpha_sum_group{g} / count_group(g);
+    mean_wD = wD_sum_group(g) / count_group(g);
+    mean_wC = wC_sum_group(g) / count_group(g);
+
+    % --- Structural matrices ---
+    C_mean = mean_wC * C0;
+    D_mean = mean_wD * D0;
+    I = eye(Nv);
+
+    % --- Inverse network operators (transfer matrices) ---
+    inv_xi    = inv(I - C_mean .* exp(-2*pi*1i*omega_xi*D_mean));
+    inv_alpha = inv(I - C_mean .* exp(-2*pi*1i*omega_alpha*D_mean));
+
+    % --- ROI-level transfer functions ---
+    Hxi    = R * inv_xi    * diag(sqrt_xi_mean) * R';
+    Halpha = R * inv_alpha * diag(sqrt_alpha_mean) * R';
+
+    % === Stage 3: Geweke GC per group ===
+    Gxi    = zeros(Nr);
+    Galpha = zeros(Nr);
+
+    for i = 1:Nr
+        Sii_xi    = sum(abs(Hxi(i,:)).^2);
+        Sii_alpha = sum(abs(Halpha(i,:)).^2);
+
+        for j = 1:Nr
+            if i==j, continue; end
+
+            Hij_xi    = Hxi(i,j);
+            Hij_alpha = Halpha(i,j);
+
+            denom_xi    = Sii_xi    - abs(Hij_xi)^2;
+            denom_alpha = Sii_alpha - abs(Hij_alpha)^2;
+
+            if denom_xi > 0
+                Gxi(i,j) = log(Sii_xi / denom_xi);
+            end
+            if denom_alpha > 0
+                Galpha(i,j) = log(Sii_alpha / denom_alpha);
+            end
+        end
+    end
+
+    Gxi_groups{g}    = Gxi;
+    Galpha_groups{g} = Galpha;
+end
+
+% === Stage 4: Optional summary ===
+fprintf('--- Done. Computed group-wise Geweke GC matrices ---\n');
+for g = 1:nGroups
+    fprintf('Group %s: %d subjects\n', ageGroupLabels{g}, count_group(g));
+end
+
+%% === Visualization ===
+
+% Age Group Visualizations
+for gg = 1:nGroups
+    gg
+    ageLabel = ['Age Group ' ageGroupLabels{gg}];
+
+    if ~all(isnan(Gxi_groups{gg}(:)))
+        A = Gxi_groups{gg};
+        guide.Visualization.effective_spectral_net;
+       % title(['Xi Process - ' ageLabel]);
+    end
+
+    if ~all(isnan(Galpha_groups{gg}(:)))
+        A = Galpha_groups{gg};
+        guide.Visualization.effective_spectral_net;
+        %title(['Alpha Process - ' ageLabel]);
+    end
+end
+
+guide.Visualization.effective_spectral_net
+
+%%

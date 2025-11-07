@@ -21,7 +21,9 @@ function [best_params, best_fit, all_fits] = fit_xi_alpha_multi(S, omega, N_init
 
     % === Xi and Alpha model definitions ===
     xi_omega = @(e, omega) e(1) ./ (1 + e(2) * omega.^2).^e(3);
-    alpha_omega = @(a, omega) a(1) ./ (1 + a(2) * (omega - a(4)).^2).^a(3);
+    alpha_omega = @(a, omega) 0.5 * ( ...
+        a(:,1) ./ (1 + a(:,2) .* (omega - a(:,4)).^2).^a(:,3) + ...
+        a(:,1) ./ (1 + a(:,2) .* ((-omega) - a(:,4)).^2).^a(:,3) );
     model_fun = @(params, omega) ...
         log(xi_omega(params(1:3), omega) + alpha_omega(params(4:7), omega));
 
@@ -40,7 +42,6 @@ function [best_params, best_fit, all_fits] = fit_xi_alpha_multi(S, omega, N_init
 
     % === Fix e1 from the lowest-frequency value ===
     e1_fixed = S(1);
-
     % === Run multiple initializations ===
     for k = 1:N_init
         % Generate random initial parameters

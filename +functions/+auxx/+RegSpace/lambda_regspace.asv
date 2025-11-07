@@ -1,0 +1,39 @@
+function  [lambda] = lambda_regspace(freq,T,Sw,L,index_stoch,Nsfreq,x0)
+import functions.auxx.StochasticEval.*
+import functions.auxx.GenerateSourceSample.*
+import functions.FunctionGrandientProx.*
+import functions.auxx.RegSpace.*
+import functions.auxx.ModelVectorization.*
+[Ne,Nv,~] = size(T);
+[nsf_band, sw, sp] = sample_frequencies(freq, index_stoch, Nsfreq);
+x0  = generateRandomSample(x0, 0.001);
+epsilon = 10^(-20);
+dim = size(x0);
+x0 = ones(dim)*epsilon;
+dF = evaluatedF(x0, Ne,Nv, T, sw, sp, nsf_band, Sw);
+[dFe,dFa,dFs2] = x2v(dF);
+lambda(1) = compute_lambda(dFs2,L).^2;
+lambda(2) = compute_lambda(dFe,L);
+lambda(3) = compute_lambda(dFa,L);
+lambda = lambda*9/10; % select the 10% of the regression space to avoid the null solution
+end
+function lambda = compute_lambda(gradient_matrix)
+    % Function to compute the regularization parameter lambda
+    % given the gradient matrix and the Lipschitz constant L.
+    %
+    % Parameters:
+    % gradient_matrix: A matrix where each row represents a group gradient
+    % L: The Lipschitz constant
+    %
+    % Returns:
+    % lambda: The computed regularization parameter
+
+    % Compute the L2 norm of each row
+    row_norms = sqrt(sum(gradient_matrix.^2, 2));
+    
+    % Find the maximum L2 norm
+    max_row_norm = max(row_norms);
+    
+    % Compute lambda
+    lambda = max_row_norm;
+end

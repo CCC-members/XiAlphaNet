@@ -1,0 +1,48 @@
+% === Parameters ===
+a = 1;
+b = 0.5;
+c = 3;
+f0 = 10;                 % Peak frequency (Hz)
+fs = 200;               % Sampling frequency (Hz)
+T = fs/10;                 % Total duration (s)
+dt = 1/fs;
+t = 0:dt:T-dt;           % Time vector
+alpha = 1 / sqrt(b);
+
+% === Impulse response h(t) ===
+h = sqrt(a) * b^(-c/2) * (2*pi)^c / gamma(c) * ...
+    t.^(c-1) .* exp(-2*pi*t/sqrt(b)) .* cos(2*pi*f0*t);
+
+% === White noise with unit power per Hz ===
+rng(42);                          % For reproducibility
+w = randn(size(t)) / sqrt(dt);    % Scale for unit power/Hz
+
+% === Convolve to get process u(t) ===
+u = conv(w, h, 'same');           % Keep output same size as w
+
+% === Power Spectral Density estimate ===
+nfft = 2^14;                      % FFT length
+[U, f] = periodogram(u, [], nfft, fs);
+U = U * (1/nfft);  % Normalize properl
+% === Theoretical spectrum (two-sided symmetric) ===
+S_theo_pos = a ./ (1 + b*(f - f0).^2).^c;
+S_theo_neg = a ./ (1 + b*(f + f0).^2).^c;
+S_theo = S_theo_pos + S_theo_neg;
+
+% === Optional: Normalize theoretical PSD if needed ===
+% Only if you want to match units carefully, scale to match Parseval
+% total_power_theory = trapz(f, S_theo);
+% total_power_empirical = sum(U)*(fs/nfft);
+% S_theo = S_theo * (total_power_empirical / total_power_theory);
+
+% === Plotting ===
+figure;
+plot(f, 10*log10(U), 'b', 'DisplayName', 'Empirical PSD');
+hold on;
+plot(f, 10*log10(S_theo), 'r--', 'DisplayName', 'Theoretical S(f)');
+xlabel('Frequency (Hz)');
+ylabel('Power Spectral Density (dB/Hz)');
+title('Lorentzian Spectrum Simulation (Normalized)');
+legend('Location', 'best');
+grid on;
+xlim([0 50]);

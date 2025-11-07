@@ -178,8 +178,8 @@ if IN == -1
     [IN, message] = fopen(fullfile(path, lower(hdr.commoninfos.datafile)));
     if IN == -1
         hdr.commoninfos.datafile = [ hdrfile(1:end-4) 'eeg' ];
-        fprintf(2, 'The header file points to a binary file that does not exist\n');
-        fprintf(2, 'trying to open a binary file with the same name as the header\nfile and a different extension...\n');
+        %fprintf(2, 'The header file points to a binary file that does not exist\n');
+        %fprintf(2, 'trying to open a binary file with the same name as the header\nfile and a different extension...\n');
         [IN, message] = fopen(fullfile(path, hdr.commoninfos.datafile), 'r');
         if IN == -1
             [IN, message] = fopen(fullfile(path, lower(hdr.commoninfos.datafile)));
