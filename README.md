@@ -1,8 +1,8 @@
 
 # Xi-AlphaNET
 
-**Version**: 1.0  
-**Release Date**: February 2025  
+**Version**: 5.0  
+**Release Date**: November 2025  
 **Authors**: Ronaldo Garcia Reyes, Ariosky Areaces Gonzales, Pedro A. Valdes–Sosa, Xi-AlphaNET Research Team
 
 ---
