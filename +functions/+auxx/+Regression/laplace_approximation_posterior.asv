@@ -201,7 +201,7 @@ R_map = R_yeo * R_inv;
 R_map = R_map / norm(R_map,'fro');
 
 for s = 1:Ns
-    [e,a,~] = x2v(SNR_all{s});
+    [e,a,~] = x2v(SNR_all{s}.^2);
     for p = 1:4
         if p < 4
             A(:,p,s) = R_map * a(:,p);

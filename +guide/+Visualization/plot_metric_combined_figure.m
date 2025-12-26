@@ -1,0 +1,264 @@
+function plot_metric_combined_figure(metric_results, R_inv, metric_name, clim)
+% ============================================================
+% plot_metric_combined_figure
+%
+% Metric-agnostic version of the combined figure:
+%   - Left: horizontal bar plot with bootstrap CI
+%   - Right: Yeo-7 network heatmap with FDR masking
+%   - Cortical projections (L/R hemispheres)
+%
+% INPUTS
+%   metric_results : struct with fields:
+%       .ROIvals     (vector, per ROI)
+%       .CI_lower
+%       .CI_upper
+%       .qvals
+%
+%   R_inv       : inverse / projection operator
+%   metric_name : string (e.g. 'SNR', 'Reliability', 'Stability')
+%   clim        : [min max] color limits for heatmap
+%
+% ============================================================
+
+
+%% ============================================================
+% Load shared colormap
+%% ============================================================
+colorMap = load("templates/mycolormap_brain_basic_conn.mat");
+
+%% ============================================================
+% Define single orange color for LEFT PANEL bars
+%% ============================================================
+orange_bar = [1.00 0.55 0.10];   % clean, consistent orange
+
+fields  = fieldnames(metric_results);
+nFields = numel(fields);
+
+%% ============================================================
+% Extract summary statistics
+%% ============================================================
+medianVal = nan(nFields,1);
+ci_lower  = nan(nFields,1);
+ci_upper  = nan(nFields,1);
+
+for i = 1:nFields
+    f = fields{i};
+    medianVal(i) = nanmedian(metric_results.(f).ROIvals);
+    ci_lower(i)  = nanmedian(metric_results.(f).CI_lower);
+    ci_upper(i)  = nanmedian(metric_results.(f).CI_upper);
+end
+
+%% ============================================================
+% Parameter order & labels
+%% ============================================================
+param_labels = {'A\alpha','B\alpha','E\alpha','F\alpha', ...
+                'A\xi','B\xi','E\xi'};
+
+param_fields = {'Alpha_Power','Alpha_Width','Alpha_Exponent','Alpha_PAF', ...
+                'Xi_Power','Xi_Width','Xi_Exponent'};
+
+order      = 1:numel(param_labels);
+medianVal  = medianVal(order);
+ci_lower   = ci_lower(order);
+ci_upper   = ci_upper(order);
+
+err_lower = medianVal - ci_lower;
+err_upper = ci_upper - medianVal;
+
+%% ============================================================
+% Create figure with BACKWARD-COMPATIBLE unequal panel widths
+%% ============================================================
+figure('Color','w','Position',[200 200 1300 500]);
+
+% 1×3 grid: left = 1 tile, right = 2 tiles
+t = tiledlayout(1,3, ...
+    'TileSpacing','compact', ...
+    'Padding','compact');
+
+%% ============================================================
+% Robust visualization parameters (SNR in dB)
+%% ============================================================
+epsilon = 1e-6;
+qlo_pct = 5;
+qhi_pct = 95;
+
+%% ============================================================
+% LEFT PANEL — Horizontal bar plot (SNR in dB)
+%% ============================================================
+medianVal_dB = 10*log10(medianVal + epsilon);
+
+err_lower_dB = medianVal_dB ...
+             - 10*log10(medianVal - err_lower + epsilon);
+
+err_upper_dB = 10*log10(medianVal + err_upper + epsilon) ...
+             - medianVal_dB;
+
+ax1 = nexttile(1);
+hold(ax1,'on');
+
+for i = 1:numel(param_labels)
+    barh(ax1, i, medianVal_dB(i), ...
+        'FaceColor', orange_bar, ...
+        'EdgeColor','none');
+end
+
+errorbar(ax1, medianVal_dB, 1:numel(param_labels), ...
+         err_lower_dB, err_upper_dB, ...
+         'horizontal','k', ...
+         'LineStyle','none', ...
+         'LineWidth',1.2);
+
+set(ax1,'YTick',1:numel(param_labels), ...
+        'YTickLabel',param_labels, ...
+        'TickLabelInterpreter','tex', ...
+        'YDir','reverse', ...
+        'FontWeight','bold', ...
+        'FontSize',18);
+
+xlabel(ax1, ...
+    sprintf('%s (95%% CI, q_{FDR}<0.05)', metric_name), ...
+    'Interpreter','tex', ...
+    'FontWeight','bold', ...
+    'FontSize',18);
+
+ylabel(ax1,'Spectral parameter', ...
+       'FontWeight','bold', ...
+       'FontSize',18);
+
+title(ax1, ...
+    sprintf('Whole-brain %s across spectral parameters', metric_name), ...
+    'FontWeight','bold', ...
+    'FontSize',18, ...
+    'Interpreter','tex');
+
+xlim(ax1,[min(medianVal_dB)-1 max(medianVal_dB)+1]);
+ylim(ax1,[0.5 numel(param_labels)+0.5]);
+
+grid(ax1,'on'); 
+box(ax1,'on');
+
+set(ax1,'LineWidth',1.2, ...
+        'GridLineStyle',':', ...
+        'GridColor',[0.8 0.8 0.8]);
+
+% Enforce shared colormap (harmless for bars)
+colormap(ax1, colorMap.cmap_a);
+
+%% ============================================================
+% RIGHT PANEL — Network heatmap (SNR in dB)
+%% ============================================================
+network_acr = {'VIS','SMN','DAN','VAN','LIM','FPN','DMN'};
+n_networks  = numel(network_acr);
+n_params    = numel(param_fields);
+
+metric_matrix = nan(n_params,n_networks);
+sig_mask      = false(n_params,n_networks);
+
+for p = 1:n_params
+    key   = param_fields{p};
+    vals  = metric_results.(key).ROIvals;
+    qvals = metric_results.(key).qvals;
+
+    for n = 1:n_networks
+        idx = [2*(n-1)+1, 2*(n-1)+2];
+        metric_matrix(p,n) = median(vals(idx),'omitnan');
+        sig_mask(p,n)      = any(qvals(idx) < 0.05);
+    end
+end
+
+row_order     = flip(1:n_params);
+metric_matrix = metric_matrix(row_order,:);
+sig_mask      = sig_mask(row_order,:);
+
+metric_matrix_dB = 10*log10(metric_matrix + epsilon);
+clim_robust      = prctile(metric_matrix_dB(:), [qlo_pct qhi_pct]);
+
+% Span two tiles to make this panel wider
+ax2 = nexttile(2,[1 2]);
+imagesc(ax2, metric_matrix_dB, clim_robust);
+hold(ax2,'on');
+
+% Apply shared colormap
+colormap(ax2, colorMap.cmap_a);
+
+%% ============================================================
+% Non-significant markers
+%% ============================================================
+for i = 1:n_params
+    for j = 1:n_networks
+        if ~sig_mask(i,j)
+            text(ax2, j, i, '*', ...
+                'Color','k', ...
+                'FontSize',18, ...
+                'HorizontalAlignment','center', ...
+                'VerticalAlignment','middle', ...
+                'FontWeight','bold');
+        end
+    end
+end
+
+%% ============================================================
+% Grid lines
+%% ============================================================
+for x = 0.5:1:n_networks+0.5
+    plot(ax2,[x x],[0.5 n_params+0.5],'w','LineWidth',0.6);
+end
+for y = 0.5:1:n_params+0.5
+    plot(ax2,[0.5 n_networks+0.5],[y y],'w','LineWidth',0.6);
+end
+
+cb = colorbar(ax2);
+cb.Layout.Tile = 'east';
+
+ylabel(cb, metric_name, ...
+       'FontWeight','bold', ...
+       'FontSize',18);
+
+set(ax2,'XTick',1:n_networks,'XTickLabel',network_acr, ...
+        'YTick',1:n_params, ...
+        'YTickLabel',param_labels(row_order), ...
+        'TickLabelInterpreter','tex', ...
+        'YDir','normal', ...
+        'FontWeight','bold', ...
+        'FontSize',18);
+
+xlabel(ax2,'Yeo-7 network (* q_{FDR}>0.05)', ...
+       'FontWeight','bold', ...
+       'FontSize',18, ...
+       'Interpreter','tex');
+
+title(ax2, ...
+    sprintf('Network-wise %s patterns', metric_name), ...
+    'FontWeight','bold', ...
+    'FontSize',18, ...
+    'Interpreter','tex');
+
+axis(ax2,'tight');
+box(ax2,'on');
+set(ax2,'LineWidth',1.2);
+
+
+%% ============================================================
+% Cortical projections
+% ============================================================
+params = {'Alpha_Power','Alpha_PAF','Alpha_Width','Alpha_Exponent', ...
+          'Xi_Power','Xi_Width','Xi_Exponent'};
+
+disp('-->> Cortical projection');
+
+for hemi = ["Left","Right"]
+    for i = 1:numel(params)
+        field = params{i};
+        if ~isfield(metric_results,field), continue; end
+
+        J = ((R_inv * metric_results.(field).ROIvals));
+        J(isnan(J)) = 0;
+
+        guide.Visualization.esi_plot_single;
+        title(sprintf('%s – %s Hemisphere', ...
+              strrep(field,'_',' '),hemi));
+        if hemi=="Left", view(-180,0); else, view(0,0); end
+    end
+end
+
+end

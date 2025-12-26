@@ -16,7 +16,7 @@ age_min = 0;          % Minimum age for inclusion
 age_max = 100;        % Maximum age for inclusion
 
 % Path to the JSON file with model result metadata
-json_path = '/mnt/Develop/Ronaldo/program_working/xialphanet_newresults22/XIALPHANET.json';
+json_path = 'D:\OneDrive - CCLAB\New_Data_XiAlphaNET\xialphanet_newresults22\XIALPHANET.json';
 
 % Automatically determine base directory from JSON file path
 [dataset_dir, ~, ~] = fileparts(json_path);
