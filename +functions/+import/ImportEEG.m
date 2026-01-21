@@ -22,7 +22,7 @@ switch ext
         data  = reshape(data(1:19,1:nw*nt), 19, nt, nw);
 
         dnames = strrep(num2cell(MONTAGE(1:19,1:3),2), '_','');
-        xx     = str2num(char(dnames)); %#ok<ST2NM>
+        xx     = str2num(char(dnames)); 
         if isequal(xx,[1:19]')
             dnames = {'Fp1','Fp2','F3','F4','C3','C4','P3','P4','O1','O2',...
                       'F7','F8','T3','T4','T5','T6','Fz','Cz','Pz'};
@@ -79,41 +79,6 @@ switch ext
         EEG.times    = (0:EEG.pnts-1)/EEG.srate * 1000;
 end
 
-%% === Normalization only if default anatomy ===
-%if length(properties.channel_params.labels) == 19
-    dnames = {EEG.chanlocs.labels};
-
-    % Clean up labels
-    dnames = strrep(dnames,'-REF','');
-    dnames = strrep(dnames,' ','');
-
-    % Convert 10-10 to 10-20 equivalents
-    dnames(strcmpi(dnames,'T7')) = {'T3'};
-    dnames(strcmpi(dnames,'T8')) = {'T4'};
-    dnames(strcmpi(dnames,'P7')) = {'T5'};
-    dnames(strcmpi(dnames,'P8')) = {'T6'};
-
-    % Update chanlocs
-    for i = 1:length(dnames)
-        EEG.chanlocs(i).labels = dnames{i};
-    end
-
-    % Reorder & restrict to 19 channels
-    desired_order = {'Fp1','Fp2','F3','F4','C3','C4','P3','P4','O1','O2',...
-                     'F7','F8','T3','T4','T5','T6','Fz','Cz','Pz'};
-    [found, idx] = ismember(desired_order, dnames);
-
-    if any(~found)
-        warning('Missing expected channels: %s', strjoin(desired_order(~found),', '));
-    end
-
-    idx   = idx(found);
-    dnames = dnames(idx);
-    data   = EEG.data(idx,:,:);
-
-    EEG.data     = data;
-    EEG.chanlocs = EEG.chanlocs(idx);
-%end
 
 % Final outputs
 dnames = {EEG.chanlocs.labels};
@@ -152,4 +117,3 @@ if(isfield(pat,'Status'))
 end
 
 end
-
