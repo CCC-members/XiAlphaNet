@@ -41,7 +41,7 @@ import tools.*
 %   Eval               - Array of smoothed objective values for each lambda
 
 % Generate regularization space
-lambda_space = lambda_regspace(freq, T, Cross, stoch1, Nsfreq, x0);
+lambda_space = max(lambda_regspace(freq, T, Cross, stoch1, Nsfreq, x0),1.5*10^(-4));
 
 % Initialize evaluation containers
 Eval = zeros(1, N_spaces);
