@@ -12,12 +12,6 @@
 Xi-AlphaNET is a parametric, multivariate generative framework designed to map lifespan trajectories of EEG source spectral dynamics at high spatial resolution across large populations. Grounded in biophysical modeling, the framework jointly estimates source-level spectral parameters, effective connectivity, and interareal conduction delays while remaining computationally scalable. In its current formulation, Xi-AlphaNET explicitly models aperiodic (ξ) activity and the alpha rhythm (α) as anatomically constrained stochastic processes, enabling characterization of their distinct spatiotemporal organization across the cortex. Applied to large, harmonized EEG cohorts, the model reveals systematic age-dependent effects, including nonlinear inverted-U trajectories of spectral parameters and global conduction delays, as well as an isotropic spatial organization of aperiodic activity. Future releases will extend this framework to incorporate additional spectral components, providing a more comprehensive generative description of cortical electrophysiological dynamics across the lifespan.
 
 
-
-## Check our [wiki](https://github.com/CCC-members/XiAlphaNet/wiki)
-* the [[FAQ]](https://github.com/CCC-members/XiAlphaNet/wiki/FAQ) and
-* the [[Installation and Usage Instructions]](https://github.com/CCC-members/XiAlphaNet/wiki/Installation-and-Usage-Instructions) guide
----
-
 ## Output Files Overview
 
 After processing each subject, Xi-AlphaNET produces a standardized set of output files stored in the designated results directory. These files contain source-level spectral estimates, connectivity measures, and model-specific parameters:
@@ -54,7 +48,6 @@ After processing each subject, Xi-AlphaNET produces a standardized set of output
 ### 3. Launch the Application
 - Launch Xi-AlphaNET using one of the following methods:
   - MATLAB command window: `xialphanet`
-  - Windows systems: double-click the provided executable
 
 ### 4. Application Interface
 
