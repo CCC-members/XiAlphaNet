@@ -3,7 +3,7 @@
 
 **Version**: 5.0  
 **Release Date**: November 2025  
-**Authors**: Ronaldo Garcia Reyes, Ariosky Areaces Gonzales, Pedro A. Valdes–Sosa, Xi-AlphaNET Research Team
+**Authors**: Ronald Garcia Reyes, Ariosky Areaces Gonzales, Pedro A. Valdes–Sosa, Xi-AlphaNET Research Team
 
 ---
 
