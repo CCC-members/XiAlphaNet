@@ -9,7 +9,8 @@
 
 ## Overview
 
-Xi-AlphaNET is a parametric, multivariate model developed to map the lifespan of EEG source spectral dynamics across large datasets with high spatial resolution. This tool uses biophysical modeling to estimate source spectral components and effective connectivity while maintaining computational efficiency. The model integrates aperiodic and periodic spectral components, specifically the alpha rhythm (α), and characterizes their spatiotemporal distributions across cortical regions. By analyzing EEG data from a global cohort, the tool allows researchers to explore age-related changes in brain activity, including the unique U-shaped trajectory of conduction delays and the isotropic spatial distribution of aperiodic components.
+Xi-AlphaNET is a parametric, multivariate generative framework designed to map lifespan trajectories of EEG source spectral dynamics at high spatial resolution across large populations. Grounded in biophysical modeling, the framework jointly estimates source-level spectral parameters, effective connectivity, and interareal conduction delays while remaining computationally scalable. In its current formulation, Xi-AlphaNET explicitly models aperiodic (ξ) activity and the alpha rhythm (α) as anatomically constrained stochastic processes, enabling characterization of their distinct spatiotemporal organization across the cortex. Applied to large, harmonized EEG cohorts, the model reveals systematic age-dependent effects, including nonlinear inverted-U trajectories of spectral parameters and global conduction delays, as well as an isotropic spatial organization of aperiodic activity. Future releases will extend this framework to incorporate additional spectral components, providing a more comprehensive generative description of cortical electrophysiological dynamics across the lifespan.
+
 
 
 ## Check our [wiki](https://github.com/CCC-members/XiAlphaNet/wiki)
