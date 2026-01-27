@@ -16,47 +16,47 @@ import functions.auxx.ModelVectorization.*
 %%
 %%  Tensor Field
 %%
-if(properties.model_params.tensor_field.default)
-    % Download the Tensor Field files
-    TF_path = fullfile(properties.general_params.tmp.path,'TensorField');
-    if(~isfolder(TF_path))
-        mkdir(TF_path);
-    end
-    disp(strcat("-->> Downloading Tensor Field files......."));  
-    TF9_5_dir = fullfile(TF_path,'Tensor_Field_9.5ms');
-    TF9_5_files = dir(TF9_5_dir);
-    TF9_5_files(ismember({TF9_5_files.name},{'.','..'})) = [];
-    if(~isfolder(TF9_5_dir) || isempty(TF9_5_files))
-        url = properties.test_data.tensor_field9;
-        matlab.net.http.HTTPOptions.VerifyServerName = false;
-        options = weboptions('Timeout',Inf,'RequestMethod','auto');
-        downladed_file = websave(fullfile(TF_path,strcat('Tensor_Field_9.5ms.zip')),url,options);
-        pause(1);
-        %% Unzip lasted version
-        disp(strcat("-->> Unziping files......."));
-        exampleFiles = unzip(fullfile(TF_path,strcat('Tensor_Field_9.5ms.zip')),TF_path);
-        pause(1);
-        delete(fullfile(TF_path,strcat('Tensor_Field_9.5ms.zip')));
-    end
-    TF11_dir = fullfile(TF_path,'Tensor_Field_11ms');
-    TF11_files = dir(TF11_dir);
-    TF11_files(ismember({TF11_files.name},{'.','..'})) = [];
-    if(~isfolder(TF11_dir) || isempty(TF11_files))
-        url = properties.test_data.tensor_field11;
-        matlab.net.http.HTTPOptions.VerifyServerName = false;
-        options = weboptions('Timeout',Inf,'RequestMethod','auto');
-        downladed_file = websave(fullfile(TF_path,strcat('Tensor_Field_11ms.zip')),url,options);
-        pause(1);
-        %% Unzip lasted version
-        disp(strcat("-->> Unziping files......."));
-        exampleFiles = unzip(fullfile(TF_path,strcat('Tensor_Field_11ms.zip')),TF_path);
-        pause(1);
-        delete(fullfile(TF_path,strcat('Tensor_Field_11ms.zip')));
-    end    
-else
-    % Compute the Tensor Field
-
-end
+% if(properties.model_params.tensor_field.default)
+%     % Download the Tensor Field files
+%     TF_path = fullfile(properties.general_params.tmp.path,'TensorField');
+%     if(~isfolder(TF_path))
+%         mkdir(TF_path);
+%     end
+%     disp(strcat("-->> Downloading Tensor Field files......."));  
+%     TF9_5_dir = fullfile(TF_path,'Tensor_Field_9.5ms');
+%     TF9_5_files = dir(TF9_5_dir);
+%     TF9_5_files(ismember({TF9_5_files.name},{'.','..'})) = [];
+%     if(~isfolder(TF9_5_dir) || isempty(TF9_5_files))
+%         url = properties.test_data.tensor_field9;
+%         matlab.net.http.HTTPOptions.VerifyServerName = false;
+%         options = weboptions('Timeout',Inf,'RequestMethod','auto');
+%         downladed_file = websave(fullfile(TF_path,strcat('Tensor_Field_9.5ms.zip')),url,options);
+%         pause(1);
+%         %% Unzip lasted version
+%         disp(strcat("-->> Unziping files......."));
+%         exampleFiles = unzip(fullfile(TF_path,strcat('Tensor_Field_9.5ms.zip')),TF_path);
+%         pause(1);
+%         delete(fullfile(TF_path,strcat('Tensor_Field_9.5ms.zip')));
+%     end
+%     TF11_dir = fullfile(TF_path,'Tensor_Field_11ms');
+%     TF11_files = dir(TF11_dir);
+%     TF11_files(ismember({TF11_files.name},{'.','..'})) = [];
+%     if(~isfolder(TF11_dir) || isempty(TF11_files))
+%         url = properties.test_data.tensor_field11;
+%         matlab.net.http.HTTPOptions.VerifyServerName = false;
+%         options = weboptions('Timeout',Inf,'RequestMethod','auto');
+%         downladed_file = websave(fullfile(TF_path,strcat('Tensor_Field_11ms.zip')),url,options);
+%         pause(1);
+%         %% Unzip lasted version
+%         disp(strcat("-->> Unziping files......."));
+%         exampleFiles = unzip(fullfile(TF_path,strcat('Tensor_Field_11ms.zip')),TF_path);
+%         pause(1);
+%         delete(fullfile(TF_path,strcat('Tensor_Field_11ms.zip')));
+%     end    
+% else
+%     % Compute the Tensor Field
+% 
+% end
 
 %% Reading Anatomical Data
 disp('-->> Reading Anatomical Data')
