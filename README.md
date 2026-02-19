@@ -119,7 +119,7 @@ After processing each subject, Xi-AlphaNET produces a standardized set of output
 
 ## Contact & Resources
 - **Primary reference**:  
- [ https://www.researchgate.net/publication/389324537_Lifespan_Mapping_of_EEG_Source_Spectral_Dynamics_with_x_-_aNET](https://www.biorxiv.org/content/biorxiv/early/2025/08/01/2025.02.21.639413.full.pdf)
+ [Lifespan Development of EEG Alpha and Aperiodic Component Sources is Shaped by the Connectome and Axonal Delays](https://academic.oup.com/nsr/advance-article/doi/10.1093/nsr/nwag076/8466408?searchresult=1)
 - **Support contact**:  
   ronaldo@neuroinformatics-collaboratory.org
 
